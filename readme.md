@@ -1,0 +1,29 @@
+# Project Overview
+
+## File Descriptions
+- `shared.py`: The file contains global variables.
+- `main.py`: The main entry point of the project.
+- `thread_module.py`: The thread control module.
+- `gui_module.py`: The gui plot control module.
+- `log_module.py`: The log recording module.
+- `serial_module.py`: The serial control module.
+- `io_module.py`: The serial I/O module(send setting/single send/advanced send/file send).
+- `suffix_module.py`: The serial send suffix calculate module.
+- `shortcut_module.py`: The command shortcut module.
+- `data_module`: The data collect and process module.
+- `document_module`: The document save and load module.
+- `view_module`: The widget view control module.
+- `info_module`: The changelog display module.
+- `\icon`: The folder contains icons.
+
+## Requirements
+- `pyinstaller`               6.11.1
+- `PySide6`                   6.8.1.1
+- `pyqtdarktheme`             2.1.0
+- `psutil`                    6.1.1
+- `pyqtgraph`                 0.13.7
+
+## Pack Command
+pyinstaller --onedir --noconsole --add-data "icon/*;icon" main.py
+
+[//]: # (pyinstaller --onedir --noconsole --add-data "icon/*;icon" --icon=icon.ico main.py)
