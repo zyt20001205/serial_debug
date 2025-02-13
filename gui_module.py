@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QShortcut, QKeySequence
-from PySide6.QtWidgets import QMenu, QWidget, QSizePolicy, QStatusBar, QToolBar, QDockWidget
+from PySide6.QtWidgets import QWidget, QSizePolicy, QStatusBar, QToolBar, QDockWidget
 
 import shared
 from thread_module import thread_initialization
@@ -12,7 +12,7 @@ from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
 from document_module import config_save, config_save_as, config_file_load_from, document_gui
-from view_module import view_gui
+from view_module import ViewWidget
 from setting_module import setting_gui
 from info_module import InfoWidget
 
@@ -49,13 +49,10 @@ def main_gui():
     # seperator
     toolbar.addSeparator()
     # view tab
-    global view_tab, view_menu
-    view_menu = QMenu("View Menu")
-    view_menu.setStyleSheet("background: #ebebeb;")
-    view_menu.addAction("Option 1")
+    global view_tab
     view_tab = QAction(QIcon("icon:view.svg"), "", shared.main_window)
-    view_tab.triggered.connect(view_tab_gui)
-    # toolbar.addAction(view_tab)
+    view_tab.hovered.connect(view_tab_gui)
+    toolbar.addAction(view_tab)
     # document tab
     document_tab = QAction(QIcon("icon:document.svg"), "", shared.main_window)
     document_tab.triggered.connect(document_tab_gui)
@@ -151,8 +148,6 @@ def gui_init():
 
     document_gui()
 
-    view_gui()
-
     setting_gui()
 
     info_widget = InfoWidget()
@@ -164,111 +159,101 @@ def send_tab_gui():
     tab_clear()
     shared.layout["tab"] = "send_tab"
 
-    if shared.view["serial_log"]:
-        serial_log_dock_widget = QDockWidget("Serial Log", shared.main_window)
-        serial_log_dock_widget.setObjectName("Serial Log")
-        serial_log_dock_widget.setWidget(shared.serial_log_widget)
-        serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
+    serial_log_dock_widget = QDockWidget("Serial Log", shared.main_window)
+    serial_log_dock_widget.setObjectName("serial_log")
+    serial_log_dock_widget.setWidget(shared.serial_log_widget)
+    serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
 
-    if shared.view["io_status"]:
-        send_setting_dock_widget = QDockWidget("IO Status", shared.main_window)
-        send_setting_dock_widget.setObjectName("IO Status")
-        send_setting_dock_widget.setWidget(shared.io_status_widget)
-        send_setting_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        send_setting_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        send_setting_dock_widget.setMinimumWidth(450)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, send_setting_dock_widget)
-        shared.main_window.resizeDocks([send_setting_dock_widget], [450], Qt.Orientation.Horizontal)
+    send_setting_dock_widget = QDockWidget("IO Status", shared.main_window)
+    send_setting_dock_widget.setObjectName("io_status")
+    send_setting_dock_widget.setWidget(shared.io_status_widget)
+    send_setting_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    send_setting_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    send_setting_dock_widget.setMinimumWidth(450)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, send_setting_dock_widget)
+    shared.main_window.resizeDocks([send_setting_dock_widget], [450], Qt.Orientation.Horizontal)
 
-    if shared.view["single_send"]:
-        single_send_dock_widget = QDockWidget("Single Send", shared.main_window)
-        single_send_dock_widget.setObjectName("Single Send")
-        single_send_dock_widget.setWidget(shared.single_send_widget)
-        single_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        single_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        single_send_dock_widget.setMinimumWidth(450)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-        shared.main_window.resizeDocks([single_send_dock_widget], [450], Qt.Orientation.Horizontal)
+    single_send_dock_widget = QDockWidget("Single Send", shared.main_window)
+    single_send_dock_widget.setObjectName("single_send")
+    single_send_dock_widget.setWidget(shared.single_send_widget)
+    single_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    single_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    single_send_dock_widget.setMinimumWidth(450)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
+    shared.main_window.resizeDocks([single_send_dock_widget], [450], Qt.Orientation.Horizontal)
 
-    if shared.view["advanced_send"]:
-        advanced_send_dock_widget = QDockWidget("Advanced Send", shared.main_window)
-        advanced_send_dock_widget.setObjectName("Advanced Send")
-        advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
-        advanced_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        advanced_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        advanced_send_dock_widget.setMinimumWidth(450)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-        shared.main_window.resizeDocks([advanced_send_dock_widget], [450], Qt.Orientation.Horizontal)
+    advanced_send_dock_widget = QDockWidget("Advanced Send", shared.main_window)
+    advanced_send_dock_widget.setObjectName("advanced_send")
+    advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
+    advanced_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    advanced_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    advanced_send_dock_widget.setMinimumWidth(450)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
+    shared.main_window.resizeDocks([advanced_send_dock_widget], [450], Qt.Orientation.Horizontal)
 
-    if shared.view["command_shortcut"]:
-        command_shortcut_dock_widget = QDockWidget("Command Shortcut", shared.main_window)
-        command_shortcut_dock_widget.setObjectName("Command Shortcut")
-        command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
-        command_shortcut_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        command_shortcut_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        command_shortcut_dock_widget.setMinimumWidth(450)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-        shared.main_window.resizeDocks([command_shortcut_dock_widget], [450], Qt.Orientation.Horizontal)
-        shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
+    command_shortcut_dock_widget = QDockWidget("Command Shortcut", shared.main_window)
+    command_shortcut_dock_widget.setObjectName("command_shortcut")
+    command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
+    command_shortcut_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    command_shortcut_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    command_shortcut_dock_widget.setMinimumWidth(450)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
+    shared.main_window.resizeDocks([command_shortcut_dock_widget], [450], Qt.Orientation.Horizontal)
+    shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
 
 
 def file_tab_gui():
     tab_clear()
     shared.layout["tab"] = "file_tab"
 
-    if shared.view["serial_log"]:
-        serial_log_dock_widget = QDockWidget("Serial Log", shared.main_window)
-        serial_log_dock_widget.setObjectName("Serial Log")
-        serial_log_dock_widget.setWidget(shared.serial_log_widget)
-        serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
+    serial_log_dock_widget = QDockWidget("Serial Log", shared.main_window)
+    serial_log_dock_widget.setObjectName("serial_log")
+    serial_log_dock_widget.setWidget(shared.serial_log_widget)
+    serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
 
-    if shared.view["file_send"]:
-        file_send_dock_widget = QDockWidget("File Send", shared.main_window)
-        file_send_dock_widget.setObjectName("File Send")
-        file_send_dock_widget.setWidget(shared.file_send_widget)
-        file_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        file_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        file_send_dock_widget.setMinimumWidth(600)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-        shared.main_window.resizeDocks([file_send_dock_widget], [600], Qt.Orientation.Horizontal)
+    file_send_dock_widget = QDockWidget("File Send", shared.main_window)
+    file_send_dock_widget.setObjectName("file_send")
+    file_send_dock_widget.setWidget(shared.file_send_widget)
+    file_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    file_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    file_send_dock_widget.setMinimumWidth(600)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
+    shared.main_window.resizeDocks([file_send_dock_widget], [600], Qt.Orientation.Horizontal)
 
 
 def data_tab_gui():
     tab_clear()
     shared.layout["tab"] = "data_tab"
 
-    if shared.view["serial_log"]:
-        serial_log_dock_widget = QDockWidget("Serial Log", shared.main_window)
-        serial_log_dock_widget.setObjectName("Serial Log")
-        serial_log_dock_widget.setWidget(shared.serial_log_widget)
-        serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
+    serial_log_dock_widget = QDockWidget("Serial Log", shared.main_window)
+    serial_log_dock_widget.setObjectName("serial_log")
+    serial_log_dock_widget.setWidget(shared.serial_log_widget)
+    serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
 
-    if shared.view["data_collect"]:
-        data_collect_dock_widget = QDockWidget("Data Collect", shared.main_window)
-        data_collect_dock_widget.setObjectName("Data Collect")
-        data_collect_dock_widget.setWidget(shared.data_collect_widget)
-        data_collect_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        data_collect_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        data_collect_dock_widget.setMinimumWidth(500)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-        shared.main_window.resizeDocks([data_collect_dock_widget], [500], Qt.Orientation.Horizontal)
+    data_collect_dock_widget = QDockWidget("Data Collect", shared.main_window)
+    data_collect_dock_widget.setObjectName("data_collect")
+    data_collect_dock_widget.setWidget(shared.data_collect_widget)
+    data_collect_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    data_collect_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    data_collect_dock_widget.setMinimumWidth(500)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
+    shared.main_window.resizeDocks([data_collect_dock_widget], [500], Qt.Orientation.Horizontal)
 
-    if shared.view["command_shortcut"]:
-        command_shortcut_dock_widget = QDockWidget("Command Shortcut", shared.main_window)
-        command_shortcut_dock_widget.setObjectName("Command Shortcut")
-        command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
-        command_shortcut_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        command_shortcut_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-        command_shortcut_dock_widget.setMinimumWidth(500)
-        shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-        shared.main_window.resizeDocks([command_shortcut_dock_widget], [500], Qt.Orientation.Horizontal)
-        shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
+    command_shortcut_dock_widget = QDockWidget("Command Shortcut", shared.main_window)
+    command_shortcut_dock_widget.setObjectName("command_shortcut")
+    command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
+    command_shortcut_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    command_shortcut_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    command_shortcut_dock_widget.setMinimumWidth(500)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
+    shared.main_window.resizeDocks([command_shortcut_dock_widget], [500], Qt.Orientation.Horizontal)
+    shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
 
 
 def toolbox_tab_gui():
@@ -286,13 +271,15 @@ def document_tab_gui():
 
 
 def view_tab_gui():
+    global view_widget
+    dock_widget_list = []
+    dock_widgets = shared.main_window.findChildren(QDockWidget)
+    for dock in dock_widgets:
+        dock_widget_list.append(dock.objectName())
+    view_widget = ViewWidget(dock_widget_list)
     action_rect = toolbar.actionGeometry(view_tab)
-    menu_pos = toolbar.mapToGlobal(action_rect.topRight())
-    view_menu.popup(menu_pos)
-
-    # tab_clear()
-    # shared.layout["tab"] = "view_tab"
-    # shared.main_window.setCentralWidget(shared.view_widget)
+    pos = toolbar.mapToGlobal(action_rect.topRight())
+    view_widget.popup(pos)
 
 
 def setting_tab_gui():

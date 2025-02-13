@@ -1,10 +1,8 @@
 import time
-from typing import cast
 from PySide6.QtGui import QKeySequence, QIcon, QColor
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, \
-    QWidget, QSizePolicy, QMessageBox, QSpinBox, QProgressBar, \
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, QProgressBar, \
     QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize
 from PySide6.QtNetwork import QHostAddress
