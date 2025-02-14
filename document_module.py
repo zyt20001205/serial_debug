@@ -16,16 +16,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "geometry": None,
         "state": None
     },
-    "view": {
-        "serial_log": True,
-        "io_status": True,
-        "single_send": True,
-        "advanced_send": True,
-        "file_send": True,
-        "command_shortcut": True,
-        "data_collect": True,
-        "status_bar": False
-    },
     "keyboard_shortcut": {
         "save": "Ctrl+S",
         "save_as": "Ctrl+Shift+S",

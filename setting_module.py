@@ -2,7 +2,7 @@ import socket
 
 from PySide6.QtGui import QFont, QIcon, QKeySequence, QFontDatabase
 from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QPushButton, QSpinBox, QLineEdit, QVBoxLayout, QFrame, QHBoxLayout, QKeySequenceEdit, QScrollArea, \
-    QMessageBox, QStackedWidget, QSizePolicy, QLayout
+    QMessageBox, QStackedWidget, QSizePolicy
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtSerialPort import QSerialPortInfo
 
