@@ -284,14 +284,11 @@ def layout_load(config):
 
 def config_save_on_closed():
     result = QMessageBox.question(shared.main_window, "Confirm Exit", "Save and exit?",
-                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
-                                  QMessageBox.StandardButton.Yes)
+                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel, QMessageBox.StandardButton.Yes)
     if result == QMessageBox.StandardButton.Yes:
         config_save()
-        thread_module.performance_monitor_thread.stop()
         return True
     elif result == QMessageBox.StandardButton.No:
-        thread_module.performance_monitor_thread.stop()
         return True
     else:
         return False

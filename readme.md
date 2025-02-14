@@ -20,7 +20,6 @@
 - `pyinstaller`               6.11.1
 - `PySide6`                   6.8.1.1
 - `pyqtdarktheme`             2.1.0
-- `psutil`                    6.1.1
 - `pyqtgraph`                 0.13.7
 
 ## Pack Command
