@@ -12,7 +12,7 @@ from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
 from document_module import config_save, config_save_as, config_file_load_from, document_gui
 from view_module import ViewWidget
-from setting_module import setting_gui
+from setting_module import SettingWidget
 from info_module import InfoWidget
 
 toolbar: QToolBar
@@ -127,7 +127,9 @@ def widget_init():
 
     document_gui()
 
-    setting_gui()
+    setting_widget = SettingWidget()
+    setting_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    shared.setting_widget = setting_widget
 
     info_widget = InfoWidget()
     info_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
