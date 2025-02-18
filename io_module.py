@@ -1,5 +1,7 @@
 import time
-from PySide6.QtGui import QKeySequence, QIcon, QColor
+import os
+import tempfile
+from PySide6.QtGui import QKeySequence, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, QProgressBar, \
@@ -8,7 +10,6 @@ from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QDataStream, QI
 from PySide6.QtNetwork import QHostAddress
 
 import shared
-import thread_module
 from suffix_module import modbus_crc16
 
 variable = []
@@ -52,7 +53,7 @@ class IOStatusWidget(QWidget):
         self.io_status_gui()
 
     class SerialControl(QObject):
-        def __init__(self, parent):
+        def __init__(self, parent: "IOStatusWidget"):
             super().__init__()
             self.serial = None
             self.tcp_client = None
@@ -178,24 +179,21 @@ class IOStatusWidget(QWidget):
             peer = self.tcp_server.nextPendingConnection()
             self.tcp_peer.append(peer)
             peer.readyRead.connect(lambda: self.read_timer(peer))
-            peer.disconnected.connect(self.tcp_server_lost_peer)
+            peer.disconnected.connect(lambda: self.tcp_server_lost_peer(peer))
             self.server_refresh()
             shared.serial_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|\n"
-                                                f"---------------------------------------------------------------",
-                                                "info")
+                                                f"---------------------------------------------------------------", "info")
 
-        def tcp_server_lost_peer(self):
-            peer = self.sender()
+        def tcp_server_lost_peer(self, peer):
             self.tcp_peer.remove(peer)
             peer.deleteLater()
             self.server_refresh()
             shared.serial_log_widget.log_insert("connection lost\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|\n"
-                                                f"---------------------------------------------------------------",
-                                                "info")
+                                                f"---------------------------------------------------------------", "info")
 
         # def client_refresh(self):
 
@@ -493,7 +491,7 @@ class SingleSendWidget(QWidget):
             if stream.readQString() == "single":
                 self.single_send_load(stream.readQString())
             else:
-                QMessageBox.critical(None, "Invalid input", "Please choose a single shortcut.")
+                QMessageBox.critical(shared.main_window, "Invalid input", "Please choose a single shortcut.")
                 shared.serial_log_widget.log_insert("shortcut load failed", "error")
         else:
             event.ignore()
@@ -964,7 +962,7 @@ class AdvancedSendWidget(QWidget):
             if stream.readQString() == "advanced":
                 self.advanced_send_load(eval(stream.readQString()))
             else:
-                QMessageBox.critical(None, "Invalid input", "Please choose an advanced shortcut.")
+                QMessageBox.critical(shared.main_window, "Invalid input", "Please choose an advanced shortcut.")
                 shared.serial_log_widget.log_insert("shortcut load failed", "error")
         else:
             event.ignore()
@@ -1038,7 +1036,7 @@ class AdvancedSendWidget(QWidget):
         abort_button.setFixedWidth(26)
         abort_button.setIcon(QIcon("icon:stop.svg"))
         abort_button.setToolTip("abort")
-        abort_button.clicked.connect(lambda: self.advanced_send_threadpool.stop())
+        abort_button.clicked.connect(self.advanced_send_threadpool.stop)
         control_layout.addWidget(abort_button)
 
         # advanced send thread combobox
@@ -1412,10 +1410,13 @@ class AdvancedSendWidget(QWidget):
 
     def advanced_send_buffer_delete(self) -> None:
         # get widget index
+        index = -1
         for row in range(self.advanced_send_table.rowCount()):
             if self.advanced_send_table.cellWidget(row, 1) == self.sender():
                 index = row
                 break
+        if index == -1:
+            return
         if self.advanced_send_buffer[index][0] == "loop":
             depth = 0
             while 1:
@@ -1511,165 +1512,281 @@ class AdvancedSendWidget(QWidget):
         shared.advanced_send_buffer = self.advanced_send_buffer
 
 
-def file_send_gui():
-    shared.file_send_widget = QWidget()
-    shared.file_send_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-    file_send_layout = QVBoxLayout(shared.file_send_widget)
-    file_send_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+class FileSendWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        # instance variables
+        self.path_lineedit = QLineEdit()
+        self.preview_textedit = QTextEdit()
+        self.file_progressbar = QProgressBar()
+        self.expand_button = QPushButton()
+        self.setting_widget = QWidget()
+        self.split_spinbox = QSpinBox()
 
-    # file path lineedit
-    global path_lineedit
-    path_lineedit = QLineEdit()
-    path_lineedit.setStyleSheet("background-color: white;")
-    file_send_layout.addWidget(path_lineedit)
-    # file preview textedit
-    global preview_textedit
-    preview_textedit = QTextEdit()
-    preview_textedit.setAcceptDrops(False)
-    preview_textedit.setStyleSheet("margin: 0px;")
-    file_send_layout.addWidget(preview_textedit)
-    # file send progress bar
-    global file_progressbar
-    file_progressbar = QProgressBar()
-    file_send_layout.addWidget(file_progressbar)
+        self.file_chunk = 0
+        self.file_line = 0
 
-    # control widget
-    control_groupbox = QWidget()
-    control_layout = QHBoxLayout(control_groupbox)
-    control_layout.setContentsMargins(0, 0, 0, 0)
-    control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-    file_send_layout.addWidget(control_groupbox)
+        self.file_send_thread = self.FileSendThread(self)
+        self.file_send_thread.log_signal.connect(shared.serial_log_widget.log_insert)
+        self.file_send_thread.send_signal.connect(shared.single_send_widget.single_send)
+        self.file_send_thread.progress_signal.connect(self.file_progress_refresh)
+        # draw gui
+        self.file_send_gui()
 
-    # file send button
-    send_button = QPushButton()
-    send_button.setFixedWidth(26)
-    send_button.setIcon(QIcon("icon:send.svg"))
-    send_button.clicked.connect(lambda: thread_module.file_send_thread.start())
-    send_button.setToolTip("send")
-    control_layout.addWidget(send_button)
-    # file load button
-    load_button = QPushButton()
-    load_button.setFixedWidth(26)
-    load_button.setIcon(QIcon("icon:folder_open.svg"))
-    load_button.clicked.connect(file_send_load)
-    load_button.setToolTip("load")
-    control_layout.addWidget(load_button)
-    # file clear button
-    clear_button = QPushButton()
-    clear_button.setFixedWidth(26)
-    clear_button.setIcon(QIcon("icon:delete.svg"))
-    clear_button.clicked.connect(file_send_clear)
-    clear_button.setToolTip("clear")
-    control_layout.addWidget(clear_button)
-    # file send abort button
-    abort_button = QPushButton()
-    abort_button.setFixedWidth(26)
-    abort_button.setIcon(QIcon("icon:stop.svg"))
-    abort_button.clicked.connect(lambda: file_send_thread.stop())
-    abort_button.setToolTip("abort")
-    control_layout.addWidget(abort_button)
+    class FileSendThread(QThread):
+        log_signal = Signal(str, str)
+        send_signal = Signal(str, str, str)
+        progress_signal = Signal(int, int, str)
 
+        def __init__(self, parent: "FileSendWidget"):
+            super().__init__()
+            self.enable = True
+            self.parent = parent
 
-class FileSendThread(QThread):
-    log_signal = Signal(str, str)
-    send_signal = Signal(str, str, str)
+            self.path = None
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.enable = True
+        def send(self) -> None:
+            current_chunk = 0
+            current_line = 0
+            self.path = self.parent.path_lineedit.text()
+            with open(self.path, "r") as file:
+                for line in file:
+                    # thread abort
+                    if not self.enable:
+                        raise Exception
+                    line = line.strip()
+                    if line:
+                        self.send_signal.emit(line, "\r\n", "ascii")
+                    if line.startswith(":"):
+                        current_line += 1
+                    if line == ":00000001FF":
+                        current_chunk += 1
+                        global receive_buffer
+                        receive_buffer = b""
+                        # while 1:
+                        #     if not self.enable:
+                        #         raise Exception
+                        #     if receive_buffer == b"OK":
+                        #         break
+                        #     QThread.msleep(100)
+                    self.progress_signal.emit(current_line, None, f"chunk({current_chunk}/{self.parent.file_chunk}) line({current_line}/{self.parent.file_line})")
+                    # QThread.msleep(10)
+                self.log_signal.emit("file send end", "info")
 
-    def send(self):
-        path = path_lineedit.text()
-        current_segment = 0
-        current_line = 0
-        with open(path, "r") as file:
-            for line in file:
-                # thread abort
-                if not self.enable:
-                    raise Exception
-                line = line.strip()
-                if line.startswith(":"):
-                    current_line += 1
-                if line == ":00000001FF":
-                    current_segment += 1
-                file_progressbar.setValue(current_line)
-                file_progressbar.setFormat(
-                    f"segment({current_segment}/{total_segment}) line({current_line}/{total_line})")
-                if line:
-                    self.send_signal.emit(line, "\r\n", "ascii")  # test pending!!!!!!!!
-                    # while check_checkbutton.instate(["selected"]):
-                    #     if not file_send_thread_en:
-                    #         raise Exception
-                    #     log_content = shared.log_text.get("end-2l", "end-1c").strip()
-                    #     if "OK" in log_content:
-                    #         break
-                QThread.msleep(10)
-            time.sleep(0.1)
-            self.log_signal.emit("file send end", "info")
+        def run(self):
+            # open serial first
+            if not shared.io_status_widget.serial_toggle_button.isChecked():
+                shared.io_status_widget.serial_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not shared.io_status_widget.serial_toggle_button.isChecked():
+                return
+            self.log_signal.emit("file send start", "info")
+            self.enable = True
+            try:
+                self.send()
+                if self.path.endswith(".tmp"):
+                    os.remove(self.path)
+                    self.progress_signal.emit(0, None, "idle")
+            except Exception:
+                self.log_signal.emit("advanced send aborted", "warning")
+                self.progress_signal.emit(0, self.parent.file_line, f"chunk(0/{self.parent.file_chunk}) line(0/{self.parent.file_line})")
 
-    def run(self):
-        thread_module.threadpool.append("file send thread")
-        # open serial first
-        if not shared.io_status_widget.serial_toggle_button.isChecked():
-            shared.io_status_widget.serial_toggle_button.setChecked(True)
-            time.sleep(0.1)
-        # check if serial is opened
-        if not shared.io_status_widget.serial_toggle_button.isChecked():
-            return
-        self.log_signal.emit("file send start", "info")
-        time.sleep(0.1)
-        self.enable = True
+        def stop(self):
+            self.enable = False
+            self.wait()
+
+    def file_send_gui(self) -> None:
+        file_send_layout = QVBoxLayout(self)
+        file_send_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        # file path entry
+        self.path_lineedit.setStyleSheet("background-color: white;")
+        file_send_layout.addWidget(self.path_lineedit)
+        # file preview textedit
+        self.preview_textedit.setAcceptDrops(False)
+        self.preview_textedit.setStyleSheet("margin: 0px;")
+        # textedit initialization
+        font = QFont()
+        font.setFamily(shared.font["family"])
+        font.setPointSize(shared.font["pointsize"])
+        font.setBold(shared.font["bold"])
+        font.setItalic(shared.font["italic"])
+        font.setUnderline(shared.font["underline"])
+        self.preview_textedit.setFont(font)
+        self.preview_textedit.setWordWrapMode(QTextOption.WrapMode.NoWrap)
+        file_send_layout.addWidget(self.preview_textedit)
+        # file send progress bar
+        file_send_layout.addWidget(self.file_progressbar)
+
+        # control widget
+        control_widget = QWidget()
+        file_send_layout.addWidget(control_widget)
+        control_layout = QHBoxLayout(control_widget)
+        control_layout.setContentsMargins(0, 0, 0, 0)
+        control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        # file send button
+        send_button = QPushButton()
+        send_button.setFixedWidth(26)
+        send_button.setIcon(QIcon("icon:send.svg"))
+        send_button.clicked.connect(self.file_send_thread.start)
+        send_button.setToolTip("send")
+        control_layout.addWidget(send_button)
+        # file load button
+        load_button = QPushButton()
+        load_button.setFixedWidth(26)
+        load_button.setIcon(QIcon("icon:folder_open.svg"))
+        load_button.clicked.connect(self.file_send_load)
+        load_button.setToolTip("load")
+        control_layout.addWidget(load_button)
+        # file clear button
+        clear_button = QPushButton()
+        clear_button.setFixedWidth(26)
+        clear_button.setIcon(QIcon("icon:delete.svg"))
+        clear_button.clicked.connect(self.file_send_clear)
+        clear_button.setToolTip("clear")
+        control_layout.addWidget(clear_button)
+        # file send abort button
+        abort_button = QPushButton()
+        abort_button.setFixedWidth(26)
+        abort_button.setIcon(QIcon("icon:stop.svg"))
+        abort_button.clicked.connect(self.file_send_thread.stop)
+        abort_button.setToolTip("abort")
+        control_layout.addWidget(abort_button)
+        # spacer
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        control_layout.addWidget(spacer)
+        # file send expand button
+        self.expand_button.setFixedWidth(26)
+        self.expand_button.setCheckable(True)
+        self.expand_button.setIcon(QIcon("icon:arrow_expand.svg"))
+        self.expand_button.setToolTip("show advanced settings")
+        self.expand_button.clicked.connect(self.file_send_toggle)
+        control_layout.addWidget(self.expand_button)
+
+        # advanced setting widget
+        self.setting_widget.hide()
+        file_send_layout.addWidget(self.setting_widget)
+        setting_layout = QHBoxLayout(self.setting_widget)
+        setting_layout.setContentsMargins(0, 0, 0, 0)
+        # split widget
+        split_widget = QWidget()
+        setting_layout.addWidget(split_widget)
+        split_layout = QHBoxLayout(split_widget)
+        split_layout.setContentsMargins(0, 0, 0, 0)
+        split_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # split button
+        split_button = QPushButton()
+        split_button.setFixedWidth(26)
+        split_button.setIcon(QIcon("icon:split.svg"))
+        split_button.setToolTip("split file")
+        split_button.clicked.connect(self.file_send_split)
+        split_layout.addWidget(split_button)
+        # split size
+        self.split_spinbox.setFixedWidth(120)
+        self.split_spinbox.setRange(10, 1000)
+        self.split_spinbox.setSingleStep(10)
+        split_layout.addWidget(self.split_spinbox)
+
+    def file_preview_font(self) -> None:
+        font = QFont()
+        font.setFamily(shared.font["family"])
+        font.setPointSize(shared.font["pointsize"])
+        font.setBold(shared.font["bold"])
+        font.setItalic(shared.font["italic"])
+        font.setUnderline(shared.font["underline"])
+        self.preview_textedit.setFont(font)
+
+    def file_progress_refresh(self, value: int, max: int, format: str) -> None:
+        self.file_progressbar.setValue(value)
+        if max is None:
+            pass
+        self.file_progressbar.setFormat(format)
+
+    def file_info_get(self, path: str) -> None:
+        self.file_chunk = 0
+        self.file_line = 0
         try:
-            self.send()
+            with open(path, "r") as file:
+                for line in file:
+                    line = line.strip()
+                    if line.startswith(":"):
+                        self.file_line += 1
+                    if line == ":00000001FF":
+                        self.file_chunk += 1
         except Exception:
-            file_send_clear()
-            file_info_get(path_lineedit.text())
-            file_progressbar.setMaximum(total_line)
-            file_progressbar.setValue(0)
-            file_progressbar.setFormat("idle")
-            self.log_signal.emit("advanced send aborted", "warning")
-        thread_module.threadpool.remove("file send thread")
+            pass
 
-    def stop(self):
-        self.enable = False
-        self.wait()
+    def file_send_clear(self) -> None:
+        self.path_lineedit.clear()
+        self.file_progressbar.setMaximum(1)
+        self.file_progressbar.setValue(0)
+        self.file_progressbar.setFormat("idle")
 
+    def file_send_load(self, file_path: str = None) -> None:
+        if not file_path:
+            file_path, _ = QFileDialog.getOpenFileName(None, "Open hex file", "", "HEX Files (*.hex);;All Files (*)")
+            if file_path:
+                shared.serial_log_widget.log_insert("hex file loaded", "info")
+            else:
+                shared.serial_log_widget.log_insert("hex file open cancelled", "warning")
+        self.path_lineedit.setText(file_path)
+        with open(file_path, "r", encoding="utf-8") as file:
+            file_content = file.read()
+        self.preview_textedit.setPlainText(file_content)
+        self.file_info_get(file_path)
+        self.file_progressbar.setMaximum(self.file_line)
+        self.file_progressbar.setValue(0)
+        self.file_progressbar.setFormat(f"chunk(0/{self.file_chunk}) progress(0/{self.file_line})")
 
-def file_info_get(path):
-    global total_segment, total_line
-    total_segment = 0
-    total_line = 0
-    try:
-        with open(path, "r") as file:
-            for line in file:
-                line = line.strip()
-                if line.startswith(":"):
-                    total_line += 1
-                if line == ":00000001FF":
-                    total_segment += 1
-    except Exception as e:
-        pass
-
-
-def file_send_clear():
-    path_lineedit.clear()
-    file_progressbar.setMaximum(1)
-    file_progressbar.setValue(0)
-    file_progressbar.setFormat("idle")
-
-
-def file_send_load(file_path=None):
-    if not file_path:
-        file_path, _ = QFileDialog.getOpenFileName(None, "Open hex file", "", "HEX Files (*.hex);;All Files (*)")
-        if file_path:
-            shared.serial_log_widget.log_insert("hex file loaded", "info")
+    def file_send_toggle(self):
+        if self.expand_button.isChecked():
+            self.expand_button.setIcon(QIcon("icon:arrow_collapse.svg"))
+            self.expand_button.setToolTip("hide advanced settings")
+            self.setting_widget.show()
         else:
-            shared.serial_log_widget.log_insert("hex file open cancelled", "warning")
-    path_lineedit.setText(file_path)
-    with open(file_path, "r", encoding="utf-8") as file:
-        file_content = file.read()
-    preview_textedit.setPlainText(file_content)
-    file_info_get(file_path)
-    file_progressbar.setMaximum(total_line)
-    file_progressbar.setValue(0)
-    file_progressbar.setFormat(f"segment(0/{total_segment}) progress(0/{total_line})")
+            self.expand_button.setIcon(QIcon("icon:arrow_expand.svg"))
+            self.expand_button.setToolTip("show advanced settings")
+            self.setting_widget.hide()
+
+    def file_send_split(self):
+        source_file_path = self.path_lineedit.text()
+        source_dir = os.path.dirname(source_file_path)
+        chunk_size = self.split_spinbox.value()
+        temp_file_fd, temp_file_path = tempfile.mkstemp(dir=source_dir, suffix=".tmp")
+        os.close(temp_file_fd)
+        try:
+            with open(source_file_path, "r") as source_file, open(temp_file_path, "w") as temp_file:
+                chunk_lines = []
+                head = None
+                tail = ":00000001FF"
+                for line in source_file:
+                    line = line.strip()
+                    if not line.startswith(":"):
+                        continue
+                    elif line == tail:
+                        continue
+                    elif line[7:9] == "04":
+                        if chunk_lines:
+                            temp_file.write(head + "\n")
+                            temp_file.write("\n".join(chunk_lines) + "\n")
+                            temp_file.write(":00000001FF\n")
+                            chunk_lines = []
+                        head = line
+                    else:
+                        chunk_lines.append(line)
+                    if len(chunk_lines) == chunk_size:
+                        temp_file.write(head + "\n")
+                        temp_file.write("\n".join(chunk_lines) + "\n")
+                        temp_file.write(":00000001FF\n")
+                        chunk_lines = []
+                if chunk_lines:
+                    temp_file.write(head + "\n")
+                    temp_file.write("\n".join(chunk_lines) + "\n")
+                    temp_file.write(":00000001FF\n")
+        except Exception:
+            pass
+        shared.serial_log_widget.log_insert(f"file split finished, chunk size: {chunk_size}", "info")
+        self.path_lineedit.setText(temp_file_path)
+        self.file_send_load(temp_file_path)

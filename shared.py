@@ -28,7 +28,6 @@ shortcut_table = None
 
 # gui module
 layout = None
-view = None
 keyboard_shortcut = None
 
 # serial module

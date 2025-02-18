@@ -3,7 +3,6 @@
 ## File Descriptions
 - `shared.py`: The file contains global variables.
 - `main.py`: The main entry point of the project.
-- `thread_module.py`: The thread control module.
 - `gui_module.py`: The gui plot control module.
 - `log_module.py`: The log recording module.
 - `serial_module.py`: The serial control module.

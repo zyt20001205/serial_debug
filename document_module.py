@@ -6,7 +6,6 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget, QGridLayout, QPushButton
 
 import shared
-import thread_module
 
 CONFIG_FILE = "config.json"
 
@@ -128,8 +127,7 @@ def file_drop(event):
             if file_path.endswith(".json"):
                 config_file_load_from(file_path)
             elif file_path.endswith(".hex"):
-                from io_module import file_send_load
-                file_send_load(file_path)
+                shared.file_send_widget.file_send_load(file_path)
             else:
                 shared.serial_log_widget.log_insert("unknown file dropped", "warning")
 
@@ -144,7 +142,7 @@ def config_file_load():
                 return json.load(file)
         except(json.JSONDecodeError, IOError) as e:
             shared.serial_log_widget.log_insert("workspace load failed", "error")
-            QMessageBox.critical(None, "Error", "Config load failed.")
+            QMessageBox.critical(shared.main_window, "Error", "Config load failed.")
 
 
 def config_file_load_from(file_path=None):
@@ -157,11 +155,13 @@ def config_file_load_from(file_path=None):
         with open(file_path, "r", encoding="utf-8") as file:
             config = json.load(file)
             config_to_shared(config)
-            from gui_module import gui_init
-            gui_init()
+            from gui_module import widget_init,dock_init,tab_init
+            widget_init()
+            dock_init()
+            tab_init()
     except(json.JSONDecodeError, IOError) as e:
         shared.serial_log_widget.log_insert("workspace load failed", "error")
-        QMessageBox.critical(None, "Error", "Config load failed.")
+        QMessageBox.critical(shared.main_window, "Error", "Config load failed.")
 
 
 def config_file_save(config):
@@ -175,7 +175,7 @@ def config_file_save(config):
             return
     except IOError as e:
         shared.serial_log_widget.log_insert("workspace save failed", "error")
-        QMessageBox.critical(None, "Error", "Config save failed.")
+        QMessageBox.critical(shared.main_window, "Error", "Config save failed.")
 
 
 def config_file_save_as(config):
@@ -189,13 +189,12 @@ def config_file_save_as(config):
             shared.serial_log_widget.log_insert(f"workspace saved to: {file_path}", "info")
     except IOError as e:
         shared.serial_log_widget.log_insert("workspace save failed", "error")
-        QMessageBox.critical(None, "Error", "Config save failed.")
+        QMessageBox.critical(shared.main_window, "Error", "Config save failed.")
 
 
 def config_to_shared(config):
     try:
         shared.layout = config["layout"]
-        shared.view = config["view"]
         shared.keyboard_shortcut = config["keyboard_shortcut"]
         shared.serial = config["serial"]
         shared.log = config["log"]
@@ -209,14 +208,13 @@ def config_to_shared(config):
         shared.data_collect = config["data_collect"]
     except KeyError as e:
         shared.serial_log_widget.log_insert(f"config file invalid", "error")
-        QMessageBox.critical(None, "Error", "Config file invalid.")
+        QMessageBox.critical(shared.main_window, "Error", "Config file invalid.")
 
 
 def shared_to_config(config):
     config["layout"] = shared.layout
     config["layout"]["geometry"] = shared.main_window.saveGeometry().data().hex()
     config["layout"]["state"] = shared.main_window.saveState().data().hex()
-    config["view"] = shared.view
     config["keyboard_shortcut"] = shared.keyboard_shortcut
     config["serial"] = shared.serial
     config["log"] = shared.log
@@ -270,6 +268,7 @@ def layout_load(config):
         shared.main_window.restoreGeometry(bytes.fromhex(geometry))
     if state:
         shared.main_window.restoreState(bytes.fromhex(state))
+
 
 
 def config_save_on_closed():

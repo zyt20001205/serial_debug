@@ -1,8 +1,8 @@
 {
     "layout": {
-        "tab": "send_tab",
-        "geometry": "01d9d0cb00030000000000a9fffffc2b000006a3ffffff93000000a9fffffc4a000006a3ffffff9300000001000000000780000000a9fffffc4a000006a3ffffff93",
-        "state": "000000ff00000000fd0000000200000000000004080000034afc0200000016fc00000000000002f10000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc000000000000033e0000000000fffffffc0100000000fc00000000000002ca0000000000fffffffc0200000000fc00000000000002df0000000000fffffffc0100000000fc00000000000002df0000000000fffffffc0100000000fb0000001a0041006400760061006e006300650064002000530065006e006401000000000000011d0000000000000000fb0000001400530065007200690061006c0020004c006f00670100000121000001950000000000000000fb0000001400730065007200690061006c005f006c006f006701000000000000034a0000009a00ffffff00000001000001c20000034afc020000000cfb0000001200460069006c0065002000530065006e00640100000000000003290000000000000000fb00000018004400610074006100200043006f006c006c0065006300740100000000000001ce0000000000000000fb000000120049004f00200053007400610074007500730100000000000000a80000000000000000fb0000001600530069006e0067006c0065002000530065006e006401000000ac000000820000000000000000fb000000200043006f006d006d0061006e0064002000530068006f007200740063007500740100000132000001840000000000000000fb000000120069006f005f0053007400610074007500730100000000000000a80000000000000000fb000000120069006f005f0073007400610074007500730100000000000000a8000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000008200000082fb0000001a0061006400760061006e006300650064005f00730065006e00640100000132000000fb0000009e00fffffffb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000d800fffffffb000000200063006f006d006d0061006e0064005f00730068006f007200740063007500740100000231000001190000009a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00ffffff000000000000034a00000004000000040000000800000008fc000000010000000000000001ffffffff0300000000ffffffff0000000000000000"
+        "tab": "file_tab",
+        "geometry": "01d9d0cb0003000000000066fffffc530000067effffff5b00000066fffffc720000067effffff5b0000000100000000078000000066fffffc720000067effffff5b",
+        "state": "000000ff00000000fd000000020000000000000390000002eafc0200000001fb0000001400730065007200690061006c005f006c006f00670100000000000002ea0000009a00ffffff0000000100000258000002eafc0200000006fb000000120069006f005f0073007400610074007500730000000000ffffffff000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e00640000000000ffffffff0000008200000082fb0000001a0061006400760061006e006300650064005f00730065006e00640000000000ffffffff0000009e00fffffffb0000001200660069006c0065005f00730065006e00640100000000000002ea000000f800fffffffb000000200063006f006d006d0061006e0064005f00730068006f007200740063007500740000000000ffffffff0000009a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00ffffff00000000000002ea00000004000000040000000800000008fc000000010000000000000001ffffffff0300000000ffffffff0000000000000000"
     },
     "keyboard_shortcut": {
         "save": "Ctrl+S",
@@ -27,12 +27,12 @@
     "log": {
         "timestamp": true,
         "lock": false,
-        "format": "hex",
+        "format": "ascii",
         "wrap": "none"
     },
     "font": {
         "family": "Consolas",
-        "pointsize": 11,
+        "pointsize": 12,
         "bold": false,
         "italic": false,
         "underline": false
@@ -40,7 +40,7 @@
     "send_format": "hex",
     "send_suffix": "modbus crc16",
     "receive_buffersize": 0,
-    "single_send_buffer": "010300F10001",
+    "single_send_buffer": "011000FA000102000A",
     "advanced_send_buffer": [
         [
             "tail",
@@ -49,97 +49,97 @@
     ],
     "shortcut": [
         {
-            "type": "advanced",
-            "function": "input case",
-            "command": "[['input', 'x0'], ['tail', '']]",
-            "suffix": "",
-            "format": "",
+            "type": "single",
+            "function": "start update",
+            "command": "011000FA0001020001",
+            "suffix": "73CA",
+            "format": "hex",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "command case",
-            "command": "[['command', '01 03 00 F0 00 01'], ['delay', 100], ['tail', '']]",
-            "suffix": "",
-            "format": "",
+            "type": "single",
+            "function": "jump to app",
+            "command": "011000FA000102000A",
+            "suffix": "320D",
+            "format": "hex",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "message case",
-            "command": "[['message', 'hello'], ['message', 'the initial value of x0 is {x0}'], ['input', 'x0'], ['message', 'the value of x0 is now {x0}'], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "white"
         },
         {
-            "type": "advanced",
-            "function": "expression case",
-            "command": "[['message', 'the initial value of x0 is {x0}'], ['expression', 'x0=100'], ['message', 'the value of x0 is now {x0}'], ['expression', 'x0=x0*2'], ['message', 'the value of x0 is now {x0}'], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "delay case",
-            "command": "[['message', 'delay case start'], ['delay', 1000], ['message', 'delay case end'], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "shortcut case",
-            "command": "[['shortcut', 3], ['message', 'shortcut3 end'], ['shortcut', 4], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "loop case",
-            "command": "[['expression', 'x0 = 0'], ['loop', 10], ['expression', 'x0 += 1'], ['message', 'x0 = {x0}'], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "if case",
-            "command": "[['if', 'True'], ['if', '1 == 1'], ['message', '1 == 1 is true'], ['endif', ''], ['if', '1 + 1 == 3'], ['message', '1 + 1 == 3 is true'], ['endif', ''], ['endif', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "break case",
-            "command": "[['loop', 10], ['message', 'loop'], ['break', ''], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "abort case",
-            "command": "[['loop', 10], ['message', 'ready to abort'], ['abort', 'abort test'], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "dummy thread 1",
-            "command": "[['loop', 100], ['message', 'dummy thread 1'], ['delay', 1000], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "dummy thread 2",
-            "command": "[['loop', 100], ['message', 'dummy thread 2'], ['delay', 1000], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
@@ -153,57 +153,57 @@
             "color": "#55ffff"
         },
         {
-            "type": "advanced",
-            "function": "multi command send case",
-            "command": "[['message', 'first command'], ['command', '010300F00001'], ['delay', 100], ['message', 'second command'], ['command', '010300F10001'], ['delay', 100], ['message', 'third command'], ['command', '010300F20001'], ['delay', 100], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "white"
         },
         {
-            "type": "advanced",
-            "function": "loop send case",
-            "command": "[['message', 'loop send 10 times'], ['loop', 10], ['command', '010300F00001'], ['delay', 100], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "single reg input case",
-            "command": "[['command', '010300F20001'], ['input', 'x0'], ['command', 'hex(0x011000F20001020000+x0)[2:].zfill(18)'], ['delay', 100], ['command', '010300F20001'], ['delay', 100], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "single reg input case 2",
-            "command": "[['command', '010300F20001'], ['input', 'x0'], ['command', 'hex(0x011000F20001020000+x0%65536)[2:].zfill(18)'], ['delay', 100], ['command', '010300F20001'], ['delay', 100], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "duo reg input case",
-            "command": "[['input', 'x0'], ['command', 'hex(0x011000F30001020000+x0%65536)[2:].zfill(18)'], ['delay', 100], ['command', 'hex(0x011000F20001020000+x0//65536%65536)[2:].zfill(18)'], ['delay', 100], ['command', '010300F30001'], ['delay', 100], ['command', '010300F20001'], ['delay', 100], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "message print case",
-            "command": "[['command', '010300F20001'], ['delay', 100], ['message', 'the initial value of reg 00F2 is {receive_buffer.hex().upper()[6:10]}'], ['input', 'x0'], ['command', 'hex(0x011000F20001020000+x0)[2:].zfill(18)'], ['delay', 100], ['command', '010300F20001'], ['delay', 100], ['message', 'the value of reg 00F2 is now {receive_buffer.hex().upper()[6:10]}'], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
         },
         {
-            "type": "advanced",
-            "function": "logic control case",
-            "command": "[['message', 'send move command'], ['delay', 100], ['command', '000001'], ['loop', 10], ['command', '000002'], ['delay', 1000], ['if', 'receive_buffer.hex()==\"01\"'], ['break', ''], ['endif', ''], ['endloop', ''], ['if', 'receive_buffer.hex()!=\"01\"'], ['abort', 'timeout'], ['endif', ''], ['message', 'motor in position'], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
@@ -217,9 +217,9 @@
             "color": "#55ffff"
         },
         {
-            "type": "advanced",
-            "function": "passive data collect",
-            "command": "[['loop', 10], ['command', '010300F00001'], ['delay', 500], ['command', '010300F10001'], ['delay', 500], ['endloop', ''], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
             "color": "#ffffff"
@@ -233,12 +233,12 @@
             "color": "white"
         },
         {
-            "type": "advanced",
-            "function": "x to 1000000",
-            "command": "[['command', '011000000001020001'], ['delay', 50], ['command', '011000070001020000'], ['delay', 50], ['command', '0110000B0001024240'], ['delay', 50], ['command', '0110000B000102000F'], ['delay', 50], ['command', '011000080001020001'], ['delay', 50], ['command', '011000060001020001'], ['delay', 50], ['tail', '']]",
+            "type": "",
+            "function": "",
+            "command": "",
             "suffix": "",
             "format": "",
-            "color": "white"
+            "color": "#ffffff"
         },
         {
             "type": "",
@@ -851,26 +851,26 @@
     ],
     "data_collect": [
         {
-            "title": "reg 00F0",
-            "match_line_index": -2,
-            "match_start_index": 19,
-            "match_end_index": 42,
-            "match_content": "01 03 00 F0 00 01 84 39",
+            "title": "slot0",
+            "match_line_index": -1,
+            "match_start_index": 0,
+            "match_end_index": 0,
+            "match_content": "N/A",
             "data_line_index": -1,
-            "data_start_index": 28,
-            "data_end_index": 33,
-            "data_format": "int"
+            "data_start_index": 0,
+            "data_end_index": 0,
+            "data_format": "raw"
         },
         {
-            "title": "reg 00F1",
-            "match_line_index": -2,
-            "match_start_index": 19,
-            "match_end_index": 42,
-            "match_content": "01 03 00 F1 00 01 D5 F9",
+            "title": "slot1",
+            "match_line_index": -1,
+            "match_start_index": 0,
+            "match_end_index": 0,
+            "match_content": "N/A",
             "data_line_index": -1,
-            "data_start_index": 28,
-            "data_end_index": 33,
-            "data_format": "int"
+            "data_start_index": 0,
+            "data_end_index": 0,
+            "data_format": "raw"
         },
         {
             "title": "slot2",
@@ -960,15 +960,5 @@
             "data_end_index": 0,
             "data_format": "raw"
         }
-    ],
-    "view": {
-        "serial_log": true,
-        "io_status": true,
-        "single_send": true,
-        "advanced_send": true,
-        "file_send": true,
-        "command_shortcut": true,
-        "data_collect": true,
-        "status_bar": false
-    }
+    ]
 }

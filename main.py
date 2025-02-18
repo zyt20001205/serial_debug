@@ -6,7 +6,6 @@ from PySide6.QtCore import QDir
 import shared
 from gui_module import main_gui
 from document_module import config_file_load, config_file_load_from, config_to_shared, config_save_on_closed, layout_load
-from io_module import file_send_load
 
 
 class MainWindow(QMainWindow):
@@ -40,7 +39,7 @@ class MainWindow(QMainWindow):
                 if file_path.endswith(".json"):
                     config_file_load_from(file_path)
                 elif file_path.endswith(".hex"):
-                    file_send_load(file_path)
+                    shared.file_send_widget.file_send_load(file_path)
                 else:
                     shared.serial_log_widget.log_insert("unknown file dropped", "error")
             else:

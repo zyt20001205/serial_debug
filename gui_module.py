@@ -3,10 +3,8 @@ from PySide6.QtGui import QAction, QIcon, QShortcut, QKeySequence
 from PySide6.QtWidgets import QWidget, QSizePolicy, QToolBar, QDockWidget
 
 import shared
-from thread_module import thread_initialization
 from log_module import SerialLogWidget
-from io_module import file_send_gui
-from io_module import IOStatusWidget, SingleSendWidget, AdvancedSendWidget
+from io_module import IOStatusWidget, SingleSendWidget, AdvancedSendWidget, FileSendWidget
 from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
@@ -84,9 +82,6 @@ def main_gui():
     # shortcut initialization
     shortcut_init()
 
-    # thread initialization
-    thread_initialization()
-
     # tab initialization
     tab_init()
 
@@ -111,7 +106,9 @@ def widget_init():
     advanced_send_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     shared.advanced_send_widget = advanced_send_widget
 
-    file_send_gui()
+    file_send_widget = FileSendWidget()
+    file_send_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    shared.file_send_widget = file_send_widget
 
     command_shortcut_widget = CommandShortcutWidget()
     command_shortcut_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -457,11 +454,3 @@ def dock_update(widget, checked):
         widget.show()
     else:
         widget.hide()
-
-# def theme_set(theme):
-#     if theme == "Light":
-#         qdarktheme.setup_theme("light")
-#     elif theme == "Dark":
-#         qdarktheme.setup_theme("dark")
-#     else:  # theme == "Auto"
-#         qdarktheme.setup_theme("auto")

@@ -229,11 +229,13 @@ class SerialLogWidget(QWidget):
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "none")
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "char")
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "word")
+        self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "crlf")
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "auto")
         self.wrap_combobox.setCurrentText(shared.log["wrap"])
         self.wrap_combobox.setToolTip("none: text is not wrapped\n"
                                       "char: text is wrapped at character level\n"
                                       "word: text is wrapped at word boundaries\n"
+                                      "crlf: text is wrapped at crlf boundaries\n"
                                       "auto: text is wrapped at word boundaries when possible")
         self.wrap_combobox.currentIndexChanged.connect(self.log_wrap)
         log_control_layout.addWidget(self.wrap_combobox)
@@ -242,6 +244,9 @@ class SerialLogWidget(QWidget):
         self.length_spinbox.setRange(100, 10000)
         self.length_spinbox.setSingleStep(100)
         self.length_spinbox.setValue(1000)
+        self.length_spinbox.setToolTip("Sets the maximum number of log entries displayed.\n"
+                                       "Older entries will be removed when the limit is exceeded.\n"
+                                       "Adjust to balance performance and visibility.")
         log_control_layout.addWidget(self.length_spinbox)
 
     def log_insert(self, message, level):
@@ -299,7 +304,8 @@ class SerialLogWidget(QWidget):
             else:
                 message = f'{timestamp}<span style="background-color:lightgreen;">&lt;-{message_data}<span style="color:orange;">{message_suffix}</span></span>'
             # replace newline character "\r\n" with html newline character "<br>"
-            message = message.replace("\r\n", "<br>")
+            if self.wrap_combobox.currentText() == "crlf":
+                message = message.replace("\r\n", "<br>")
         if self.lock_button.isChecked():
             vertical_scrollbar = self.log_textedit.verticalScrollBar()
             current_value = vertical_scrollbar.value()
@@ -365,6 +371,8 @@ class SerialLogWidget(QWidget):
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
         elif self.wrap_combobox.currentText() == "word":
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
+        elif self.wrap_combobox.currentText() == "crlf":
+            return
         else:  # shared.log["wrap"] == "auto"
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
 
@@ -381,11 +389,13 @@ class SerialLogWidget(QWidget):
         font = self.log_textedit.font()
         font.setPointSize(font.pointSize() + 1)
         self.log_textedit.setFont(font)
+        shared.file_send_widget.preview_textedit.setFont(font)
 
     def log_zoom_out(self):
         font = self.log_textedit.font()
         font.setPointSize(font.pointSize() - 1)
         self.log_textedit.setFont(font)
+        shared.file_send_widget.preview_textedit.setFont(font)
 
     def log_config_save(self):
         shared.log = {

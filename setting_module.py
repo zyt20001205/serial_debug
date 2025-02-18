@@ -91,6 +91,12 @@ class SettingWidget(QWidget):
         control_layout.setContentsMargins(0, 0, 0, 0)
         control_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         setting_layout.addWidget(control_widget)
+        # refresh button
+        refresh_button = QPushButton()
+        refresh_button.setIcon(QIcon("icon:refresh.svg"))
+        refresh_button.setIconSize(QSize(32, 32))
+        refresh_button.clicked.connect(self.setting_refresh)
+        control_layout.addWidget(refresh_button)
         # reset button
         reset_button = QPushButton()
         reset_button.setIcon(QIcon("icon:arrow_reset.svg"))
@@ -259,12 +265,7 @@ class SettingWidget(QWidget):
             serial_tcpclient_layout.addWidget(self.remoteipv4_label, 0, 0)
             self.remoteipv4_lineedit.setFont(self.font)
             self.remoteipv4_lineedit.setText(shared.serial["remoteipv4"])
-            if self.port_combobox.currentText() == "tcp server":
-                self.remoteipv4_lineedit.setEnabled(False)
-                self.remoteipv4_lineedit.setToolTip("Not required in server mode.")
-            else:
-                self.remoteipv4_lineedit.setEnabled(True)
-                self.remoteipv4_lineedit.setToolTip("Specifies the remote ipv4 address to use for tcp communication.")
+            self.remoteipv4_lineedit.setToolTip("Specifies the remote ipv4 address to use for tcp communication.")
             serial_tcpclient_layout.addWidget(self.remoteipv4_lineedit, 0, 1)
 
             # remote port entry
@@ -273,12 +274,7 @@ class SettingWidget(QWidget):
             serial_tcpclient_layout.addWidget(self.remoteport_label, 1, 0)
             self.remoteport_lineedit.setFont(self.font)
             self.remoteport_lineedit.setText(shared.serial["remoteport"])
-            if self.port_combobox.currentText() == "tcp server":
-                self.remoteport_lineedit.setEnabled(False)
-                self.remoteport_lineedit.setToolTip("Not required in server mode.")
-            else:
-                self.remoteport_lineedit.setEnabled(True)
-                self.remoteport_lineedit.setToolTip("Specifies the remote port number to use for tcp communication.")
+            self.remoteport_lineedit.setToolTip("Specifies the remote port number to use for tcp communication.")
             serial_tcpclient_layout.addWidget(self.remoteport_lineedit, 1, 1)
 
         def tcp_server_gui():
@@ -310,12 +306,9 @@ class SettingWidget(QWidget):
             self.localipv4_combobox.clear()
             self.localipv4_combobox.addItems([""] + localipv4_get())
             self.localipv4_combobox.setCurrentText(shared.serial["localipv4"])
-            if self.port_combobox.currentText() == "tcp server":
-                self.localipv4_combobox.setEnabled(False)
-                self.localipv4_combobox.setToolTip("Not required in server mode.")
-            else:
-                self.localipv4_combobox.setEnabled(True)
-                self.localipv4_combobox.setToolTip("Specifies the local ipv4 address to use for tcp communication.")
+            self.localipv4_combobox.setEditable(True)
+            self.localipv4_combobox.lineEdit().setFont(self.font)
+            self.localipv4_combobox.setToolTip("Specifies the local ipv4 address to use for tcp communication.")
             serial_tcpserver_layout.addWidget(self.localipv4_combobox, 0, 1)
 
             # local port entry
@@ -324,12 +317,7 @@ class SettingWidget(QWidget):
             serial_tcpserver_layout.addWidget(self.localport_label, 1, 0)
             self.localport_lineedit.setFont(self.font)
             self.localport_lineedit.setText(shared.serial["localport"])
-            if self.port_combobox.currentText() == "tcp server":
-                self.localport_lineedit.setEnabled(False)
-                self.localport_lineedit.setToolTip("Not required in server mode.")
-            else:
-                self.localport_lineedit.setEnabled(True)
-                self.localport_lineedit.setToolTip("Specifies the local port number to use for tcp communication.")
+            self.localport_lineedit.setToolTip("Specifies the local port number to use for tcp communication.")
             serial_tcpserver_layout.addWidget(self.localport_lineedit, 1, 1)
 
         serial_setting_widget = QWidget()
@@ -603,7 +591,15 @@ class SettingWidget(QWidget):
         shortcut_view_layout.addWidget(shortcut_icon)
 
         return shortcut_setting_widget
-
+    
+    def setting_refresh(self):
+        self.port_combobox.clear()
+        self.port_combobox.addItem("", "")
+        for port_info in QSerialPortInfo.availablePorts():
+            self.port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
+        self.port_combobox.addItem("tcp client", "tcp client")
+        self.port_combobox.addItem("tcp server", "tcp server")
+    
     def setting_reset(self):
         # reset serial setting
         self.port_combobox.setCurrentIndex(0)
@@ -630,6 +626,7 @@ class SettingWidget(QWidget):
         shared.font["underline"] = False
         self.underline_combobox.setCurrentText("False")
         shared.serial_log_widget.log_font()
+        shared.file_send_widget.file_preview_font()
         # save keyboard shortcut setting
         self.save_sequence.setKeySequence("Ctrl+S")
         shared.save_shortcut.setKey(QKeySequence("Ctrl+S"))
@@ -677,6 +674,7 @@ class SettingWidget(QWidget):
         shared.font["italic"] = self.italic_combobox.currentData()
         shared.font["underline"] = self.underline_combobox.currentData()
         shared.serial_log_widget.log_font()
+        shared.file_send_widget.file_preview_font()
         # save keyboard shortcut setting
         shared.save_shortcut.setKey(self.save_sequence.keySequence())
         shared.keyboard_shortcut["save"] = self.save_sequence.keySequence().toString()
