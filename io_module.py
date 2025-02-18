@@ -6,7 +6,7 @@ from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
     QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
 from PySide6.QtNetwork import QHostAddress
 
 import shared
@@ -1535,6 +1535,7 @@ class FileSendWidget(QWidget):
         self.file_send_thread.log_signal.connect(shared.serial_log_widget.log_insert)
         self.file_send_thread.send_signal.connect(shared.single_send_widget.single_send)
         self.file_send_thread.progress_signal.connect(self.file_progress_refresh)
+        self.file_send_thread.clear_signal.connect(self.file_send_clear)
         # draw gui
         self.file_send_gui()
 
@@ -1542,6 +1543,7 @@ class FileSendWidget(QWidget):
         log_signal = Signal(str, str)
         send_signal = Signal(str, str, str)
         progress_signal = Signal(int, int, str)
+        clear_signal = Signal()
 
         def __init__(self, parent: "FileSendWidget"):
             super().__init__()
@@ -1555,6 +1557,7 @@ class FileSendWidget(QWidget):
             current_line = 0
             start_line = 0
             self.path = self.parent.path_lineedit.text()
+            self.log_signal.emit("file send start", "info")
             with open(self.path, "r") as file:
                 lines = file.readlines()
                 while current_line < len(lines):
@@ -1568,9 +1571,10 @@ class FileSendWidget(QWidget):
                             current_line += 1
                         if line == ":00000001FF":
                             current_chunk += 1
-                            global receive_buffer
-                            receive_buffer = b""
+                            # file send flow control
                             if self.parent.chunk_resume_lineedit.text() or self.parent.chunk_restart_lineedit.text():
+                                global receive_buffer
+                                receive_buffer = b""
                                 while True:
                                     if not self.enable:
                                         raise Exception
@@ -1584,7 +1588,7 @@ class FileSendWidget(QWidget):
                                     QThread.msleep(100)
                     self.progress_signal.emit(current_line, None, f"chunk({current_chunk}/{self.parent.file_chunk}) line({current_line}/{self.parent.file_line})")
                     QThread.msleep(self.parent.line_delay_spinbox.value())
-                self.log_signal.emit("file send end", "info")
+                self.log_signal.emit(f"file send end", "info")
 
         def run(self):
             # open serial first
@@ -1594,13 +1598,12 @@ class FileSendWidget(QWidget):
             # check if serial is opened
             if not shared.io_status_widget.serial_toggle_button.isChecked():
                 return
-            self.log_signal.emit("file send start", "info")
             self.enable = True
             try:
                 self.send()
                 if self.path.endswith(".tmp"):
                     os.remove(self.path)
-                    self.progress_signal.emit(0, None, "idle")
+                    self.clear_signal.emit()
             except Exception:
                 self.log_signal.emit("advanced send aborted", "warning")
                 self.progress_signal.emit(0, self.parent.file_line, f"chunk(0/{self.parent.file_chunk}) line(0/{self.parent.file_line})")
@@ -1705,6 +1708,7 @@ class FileSendWidget(QWidget):
         flow_control_layout.addWidget(self.line_delay_spinbox, 0, 1)
         # line delay info label
         line_delay_info_label = QLabel()
+        line_delay_info_label.setFixedWidth(22)
         line_delay_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
         line_delay_info_label.setToolTip("The interval time between sending two consecutive lines. (ms)")
         flow_control_layout.addWidget(line_delay_info_label, 0, 2)
@@ -1718,6 +1722,7 @@ class FileSendWidget(QWidget):
         flow_control_layout.addWidget(self.chunk_resume_lineedit, 1, 1)
         # chunk resume info label
         chunk_resume_info_label = QLabel()
+        chunk_resume_info_label.setFixedWidth(22)
         chunk_resume_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
         chunk_resume_info_label.setToolTip("Controls when to continue sending the next chunk.\n"
                                            "When the received buffer matches this value, send the next chunk.\n"
@@ -1733,6 +1738,7 @@ class FileSendWidget(QWidget):
         flow_control_layout.addWidget(self.chunk_restart_lineedit, 2, 1)
         # chunk restart info label
         chunk_restart_info_label = QLabel()
+        chunk_restart_info_label.setFixedWidth(22)
         chunk_restart_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
         chunk_restart_info_label.setToolTip("Controls when to resend the previous chunk.\n"
                                             "When the received buffer matches this value, resend the previous chunk.\n"
@@ -1823,7 +1829,7 @@ class FileSendWidget(QWidget):
         self.file_progressbar.setValue(0)
         self.file_progressbar.setFormat(f"chunk(0/{self.file_chunk}) line(0/{self.file_line})")
 
-    def file_send_toggle(self):
+    def file_send_toggle(self) -> None:
         if self.expand_button.isChecked():
             self.expand_button.setIcon(QIcon("icon:arrow_collapse.svg"))
             self.expand_button.setToolTip("hide advanced settings")
@@ -1833,7 +1839,7 @@ class FileSendWidget(QWidget):
             self.expand_button.setToolTip("show advanced settings")
             self.setting_widget.hide()
 
-    def file_send_split(self):
+    def file_send_split(self) -> None:
         source_file_path = self.path_lineedit.text()
         source_dir = os.path.dirname(source_file_path)
         chunk_size = self.chunk_size_spinbox.value()
