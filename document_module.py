@@ -53,6 +53,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "receive_buffersize": 0,
     "single_send_buffer": "",
     "advanced_send_buffer": [["tail", ""]],
+    "file_send": {
+        "line_delay": 0,
+        "chunk_resume": "",
+        "chunk_restart": "",
+        "chunk_size": 100
+    },
     "shortcut": [],
     "data_collect": []
 }
@@ -155,7 +161,7 @@ def config_file_load_from(file_path=None):
         with open(file_path, "r", encoding="utf-8") as file:
             config = json.load(file)
             config_to_shared(config)
-            from gui_module import widget_init,dock_init,tab_init
+            from gui_module import widget_init, dock_init, tab_init
             widget_init()
             dock_init()
             tab_init()
@@ -204,6 +210,7 @@ def config_to_shared(config):
         shared.receive_buffersize = config["receive_buffersize"]
         shared.single_send_buffer = config["single_send_buffer"]
         shared.advanced_send_buffer = config["advanced_send_buffer"]
+        shared.file_send = config["file_send"]
         shared.shortcut = config["shortcut"]
         shared.data_collect = config["data_collect"]
     except KeyError as e:
@@ -224,6 +231,7 @@ def shared_to_config(config):
     config["receive_buffersize"] = shared.receive_buffersize
     config["single_send_buffer"] = shared.single_send_buffer
     config["advanced_send_buffer"] = shared.advanced_send_buffer
+    config["file_send"] = shared.file_send
     config["shortcut"] = shared.shortcut
     config["data_collect"] = shared.data_collect
     return config
@@ -235,6 +243,7 @@ def config_save():
     shared.io_status_widget.io_status_config_save()
     shared.single_send_widget.single_send_config_save()
     shared.advanced_send_widget.advanced_send_config_save()
+    shared.file_send_widget.file_send_config_save()
     shared.command_shortcut_widget.shortcut_config_save()
     shared.data_collect_widget.data_collect_config_save()
     # load config
@@ -251,6 +260,7 @@ def config_save_as():
     shared.io_status_widget.io_status_config_save()
     shared.single_send_widget.single_send_config_save()
     shared.advanced_send_widget.advanced_send_config_save()
+    shared.file_send_widget.file_send_config_save()
     shared.command_shortcut_widget.shortcut_config_save()
     shared.data_collect_widget.data_collect_config_save()
     # load config
@@ -268,7 +278,6 @@ def layout_load(config):
         shared.main_window.restoreGeometry(bytes.fromhex(geometry))
     if state:
         shared.main_window.restoreState(bytes.fromhex(state))
-
 
 
 def config_save_on_closed():

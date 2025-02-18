@@ -43,6 +43,7 @@ send_suffix = ""
 receive_buffersize = ""
 single_send_buffer = ""
 advanced_send_buffer = []
+file_send = None
 
 # shortcut module
 shortcut_count = 100

@@ -4,8 +4,8 @@ import tempfile
 from PySide6.QtGui import QKeySequence, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, QProgressBar, \
-    QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
+    QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize
 from PySide6.QtNetwork import QHostAddress
 
@@ -1517,14 +1517,19 @@ class FileSendWidget(QWidget):
         super().__init__()
         # instance variables
         self.path_lineedit = QLineEdit()
+        self.info_label = QLabel("no file found")
         self.preview_textedit = QTextEdit()
         self.file_progressbar = QProgressBar()
         self.expand_button = QPushButton()
         self.setting_widget = QWidget()
-        self.split_spinbox = QSpinBox()
+        self.line_delay_spinbox = QSpinBox()
+        self.chunk_resume_lineedit = QLineEdit()
+        self.chunk_restart_lineedit = QLineEdit()
+        self.chunk_size_spinbox = QSpinBox()
 
         self.file_chunk = 0
         self.file_line = 0
+        self.file_format = None
 
         self.file_send_thread = self.FileSendThread(self)
         self.file_send_thread.log_signal.connect(shared.serial_log_widget.log_insert)
@@ -1548,29 +1553,37 @@ class FileSendWidget(QWidget):
         def send(self) -> None:
             current_chunk = 0
             current_line = 0
+            start_line = 0
             self.path = self.parent.path_lineedit.text()
             with open(self.path, "r") as file:
-                for line in file:
+                lines = file.readlines()
+                while current_line < len(lines):
                     # thread abort
                     if not self.enable:
                         raise Exception
-                    line = line.strip()
+                    line = lines[current_line].strip()
                     if line:
                         self.send_signal.emit(line, "\r\n", "ascii")
-                    if line.startswith(":"):
-                        current_line += 1
-                    if line == ":00000001FF":
-                        current_chunk += 1
-                        global receive_buffer
-                        receive_buffer = b""
-                        # while 1:
-                        #     if not self.enable:
-                        #         raise Exception
-                        #     if receive_buffer == b"OK":
-                        #         break
-                        #     QThread.msleep(100)
+                        if line.startswith(":"):
+                            current_line += 1
+                        if line == ":00000001FF":
+                            current_chunk += 1
+                            global receive_buffer
+                            receive_buffer = b""
+                            if self.parent.chunk_resume_lineedit.text() or self.parent.chunk_restart_lineedit.text():
+                                while True:
+                                    if not self.enable:
+                                        raise Exception
+                                    if receive_buffer == self.parent.chunk_resume_lineedit.text().encode():
+                                        start_line = current_line
+                                        break
+                                    if receive_buffer == self.parent.chunk_restart_lineedit.text().encode():
+                                        current_line = start_line
+                                        current_chunk -= 1
+                                        break
+                                    QThread.msleep(100)
                     self.progress_signal.emit(current_line, None, f"chunk({current_chunk}/{self.parent.file_chunk}) line({current_line}/{self.parent.file_line})")
-                    # QThread.msleep(10)
+                    QThread.msleep(self.parent.line_delay_spinbox.value())
                 self.log_signal.emit("file send end", "info")
 
         def run(self):
@@ -1600,9 +1613,14 @@ class FileSendWidget(QWidget):
         file_send_layout = QVBoxLayout(self)
         file_send_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
+        # file status splitter
+        status_splitter = QSplitter(Qt.Orientation.Horizontal)
+        file_send_layout.addWidget(status_splitter)
         # file path entry
         self.path_lineedit.setStyleSheet("background-color: white;")
-        file_send_layout.addWidget(self.path_lineedit)
+        status_splitter.addWidget(self.path_lineedit)
+        # file status label
+        status_splitter.addWidget(self.info_label)
         # file preview textedit
         self.preview_textedit.setAcceptDrops(False)
         self.preview_textedit.setStyleSheet("margin: 0px;")
@@ -1668,26 +1686,85 @@ class FileSendWidget(QWidget):
         # advanced setting widget
         self.setting_widget.hide()
         file_send_layout.addWidget(self.setting_widget)
-        setting_layout = QHBoxLayout(self.setting_widget)
+        setting_layout = QVBoxLayout(self.setting_widget)
         setting_layout.setContentsMargins(0, 0, 0, 0)
-        # split widget
-        split_widget = QWidget()
-        setting_layout.addWidget(split_widget)
-        split_layout = QHBoxLayout(split_widget)
-        split_layout.setContentsMargins(0, 0, 0, 0)
-        split_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        # split button
-        split_button = QPushButton()
-        split_button.setFixedWidth(26)
-        split_button.setIcon(QIcon("icon:split.svg"))
-        split_button.setToolTip("split file")
-        split_button.clicked.connect(self.file_send_split)
-        split_layout.addWidget(split_button)
-        # split size
-        self.split_spinbox.setFixedWidth(120)
-        self.split_spinbox.setRange(10, 1000)
-        self.split_spinbox.setSingleStep(10)
-        split_layout.addWidget(self.split_spinbox)
+        # flow control groupbox
+        flow_control_groupbox = QGroupBox("Flow Control")
+        setting_layout.addWidget(flow_control_groupbox)
+        flow_control_layout = QGridLayout(flow_control_groupbox)
+        flow_control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # line delay label
+        line_delay_label = QLabel("line delay")
+        line_delay_label.setFixedWidth(80)
+        flow_control_layout.addWidget(line_delay_label, 0, 0)
+        # line delay spinbox
+        self.line_delay_spinbox.setFixedWidth(120)
+        self.line_delay_spinbox.setRange(0, 1000)
+        self.line_delay_spinbox.setSingleStep(1)
+        self.line_delay_spinbox.setValue(shared.file_send["line_delay"])
+        flow_control_layout.addWidget(self.line_delay_spinbox, 0, 1)
+        # line delay info label
+        line_delay_info_label = QLabel()
+        line_delay_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
+        line_delay_info_label.setToolTip("The interval time between sending two consecutive lines. (ms)")
+        flow_control_layout.addWidget(line_delay_info_label, 0, 2)
+        # chunk resume label
+        chunk_resume_label = QLabel("chunk resume")
+        chunk_resume_label.setFixedWidth(80)
+        flow_control_layout.addWidget(chunk_resume_label, 1, 0)
+        # chunk resume lineedit
+        self.chunk_resume_lineedit.setFixedWidth(120)
+        self.chunk_resume_lineedit.setText(shared.file_send["chunk_resume"])
+        flow_control_layout.addWidget(self.chunk_resume_lineedit, 1, 1)
+        # chunk resume info label
+        chunk_resume_info_label = QLabel()
+        chunk_resume_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
+        chunk_resume_info_label.setToolTip("Controls when to continue sending the next chunk.\n"
+                                           "When the received buffer matches this value, send the next chunk.\n"
+                                           "If left empty, this feature is disabled.")
+        flow_control_layout.addWidget(chunk_resume_info_label, 1, 2)
+        # chunk restart label
+        chunk_restart_label = QLabel("chunk restart")
+        chunk_restart_label.setFixedWidth(80)
+        flow_control_layout.addWidget(chunk_restart_label, 2, 0)
+        # chunk restart lineedit
+        self.chunk_restart_lineedit.setFixedWidth(120)
+        self.chunk_restart_lineedit.setText(shared.file_send["chunk_restart"])
+        flow_control_layout.addWidget(self.chunk_restart_lineedit, 2, 1)
+        # chunk restart info label
+        chunk_restart_info_label = QLabel()
+        chunk_restart_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
+        chunk_restart_info_label.setToolTip("Controls when to resend the previous chunk.\n"
+                                            "When the received buffer matches this value, resend the previous chunk.\n"
+                                            "If left empty, this feature is disabled.")
+        flow_control_layout.addWidget(chunk_restart_info_label, 2, 2)
+
+        # file split groupbox
+        file_split_groupbox = QGroupBox("File Split")
+        setting_layout.addWidget(file_split_groupbox)
+        file_split_layout = QHBoxLayout(file_split_groupbox)
+        file_split_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # file split label
+        file_split_label = QLabel("chunk size: ")
+        file_split_label.setFixedWidth(80)
+        file_split_layout.addWidget(file_split_label)
+        # file split size
+        self.chunk_size_spinbox.setFixedWidth(120)
+        self.chunk_size_spinbox.setRange(10, 1000)
+        self.chunk_size_spinbox.setSingleStep(10)
+        self.chunk_size_spinbox.setValue(shared.file_send["chunk_size"])
+        file_split_layout.addWidget(self.chunk_size_spinbox)
+        # spacer
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        file_split_layout.addWidget(spacer)
+        # file split button
+        file_split_button = QPushButton()
+        file_split_button.setFixedWidth(26)
+        file_split_button.setIcon(QIcon("icon:split.svg"))
+        file_split_button.setToolTip("split file")
+        file_split_button.clicked.connect(self.file_send_split)
+        file_split_layout.addWidget(file_split_button)
 
     def file_preview_font(self) -> None:
         font = QFont()
@@ -1704,22 +1781,10 @@ class FileSendWidget(QWidget):
             pass
         self.file_progressbar.setFormat(format)
 
-    def file_info_get(self, path: str) -> None:
-        self.file_chunk = 0
-        self.file_line = 0
-        try:
-            with open(path, "r") as file:
-                for line in file:
-                    line = line.strip()
-                    if line.startswith(":"):
-                        self.file_line += 1
-                    if line == ":00000001FF":
-                        self.file_chunk += 1
-        except Exception:
-            pass
-
     def file_send_clear(self) -> None:
         self.path_lineedit.clear()
+        self.info_label.setText("no file found")
+        self.preview_textedit.clear()
         self.file_progressbar.setMaximum(1)
         self.file_progressbar.setValue(0)
         self.file_progressbar.setFormat("idle")
@@ -1731,14 +1796,32 @@ class FileSendWidget(QWidget):
                 shared.serial_log_widget.log_insert("hex file loaded", "info")
             else:
                 shared.serial_log_widget.log_insert("hex file open cancelled", "warning")
+                return
+        self.file_send_clear()
+        self.file_chunk = 0
+        self.file_line = 0
+        self.file_format = None
+        try:
+            with open(file_path, "r") as file:
+                format_checked = False
+                for line in file:
+                    line = line.strip()
+                    if not format_checked:
+                        if line.startswith(":"):
+                            self.file_format = "intel hex"
+                        format_checked = True
+                    if line.startswith(":"):
+                        self.file_line += 1
+                    if line == ":00000001FF":
+                        self.file_chunk += 1
+                    self.preview_textedit.append(line)
+        except Exception:
+            pass
         self.path_lineedit.setText(file_path)
-        with open(file_path, "r", encoding="utf-8") as file:
-            file_content = file.read()
-        self.preview_textedit.setPlainText(file_content)
-        self.file_info_get(file_path)
+        self.info_label.setText(f"{self.file_format} file found")
         self.file_progressbar.setMaximum(self.file_line)
         self.file_progressbar.setValue(0)
-        self.file_progressbar.setFormat(f"chunk(0/{self.file_chunk}) progress(0/{self.file_line})")
+        self.file_progressbar.setFormat(f"chunk(0/{self.file_chunk}) line(0/{self.file_line})")
 
     def file_send_toggle(self):
         if self.expand_button.isChecked():
@@ -1753,7 +1836,7 @@ class FileSendWidget(QWidget):
     def file_send_split(self):
         source_file_path = self.path_lineedit.text()
         source_dir = os.path.dirname(source_file_path)
-        chunk_size = self.split_spinbox.value()
+        chunk_size = self.chunk_size_spinbox.value()
         temp_file_fd, temp_file_path = tempfile.mkstemp(dir=source_dir, suffix=".tmp")
         os.close(temp_file_fd)
         try:
@@ -1790,3 +1873,9 @@ class FileSendWidget(QWidget):
         shared.serial_log_widget.log_insert(f"file split finished, chunk size: {chunk_size}", "info")
         self.path_lineedit.setText(temp_file_path)
         self.file_send_load(temp_file_path)
+
+    def file_send_config_save(self) -> None:
+        shared.file_send["line_delay"] = self.line_delay_spinbox.value()
+        shared.file_send["chunk_resume"] = self.chunk_resume_lineedit.text()
+        shared.file_send["chunk_restart"] = self.chunk_restart_lineedit.text()
+        shared.file_send["chunk_size"] = self.chunk_size_spinbox.value()
