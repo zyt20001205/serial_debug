@@ -156,7 +156,7 @@ class SettingWidget(QWidget):
                 self.port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
             self.port_combobox.addItem("tcp client", "tcp client")
             self.port_combobox.addItem("tcp server", "tcp server")
-            index = self.port_combobox.findData(shared.serial["port"])
+            index = self.port_combobox.findData(shared.serial_setting["port"])
             if index >= 0:
                 self.port_combobox.setCurrentIndex(index)
             self.port_combobox.currentIndexChanged.connect(serial_setting_gui_refresh)
@@ -170,7 +170,7 @@ class SettingWidget(QWidget):
             self.timeout_spinbox.setFixedHeight(self.height)
             self.timeout_spinbox.setRange(0, 100)
             self.timeout_spinbox.setSingleStep(1)
-            self.timeout_spinbox.setValue(shared.serial["timeout"])
+            self.timeout_spinbox.setValue(shared.serial_setting["timeout"])
             self.timeout_spinbox.setToolTip("Specifies the read timeout for the serial port in milliseconds.\n"
                                             "Set an appropriate value based on the expected response time.\n"
                                             "None: Waits indefinitely for data.\n"
@@ -201,7 +201,7 @@ class SettingWidget(QWidget):
             self.baudrate_combobox.addItems(
                 ["", "110", "300", "600", "1200", "2400", "4800", "9600", "14400", "19200", "38400", "56000", "57600", "115200", "128000", "230400", "256000", "460800", "500000",
                  "512000", "600000", "750000", "921600", "1000000", "1500000", "2000000"])
-            self.baudrate_combobox.setCurrentText(shared.serial["baudrate"])
+            self.baudrate_combobox.setCurrentText(shared.serial_setting["baudrate"])
             self.baudrate_combobox.setToolTip("Set the communication speed in bits per second(bps).\n"
                                               "Must match with the connected device's baud rate.")
             serial_com_layout.addWidget(self.baudrate_combobox, 0, 1)
@@ -213,7 +213,7 @@ class SettingWidget(QWidget):
             self.databits_combobox.setFont(self.font)
             self.databits_combobox.setFixedHeight(self.height)
             self.databits_combobox.addItems(["", "5", "6", "7", "8"])
-            self.databits_combobox.setCurrentText(shared.serial["databits"])
+            self.databits_combobox.setCurrentText(shared.serial_setting["databits"])
             self.databits_combobox.setToolTip("Set the number of data bits in each character.\n"
                                               "Most devices use 8 data bits.")
             serial_com_layout.addWidget(self.databits_combobox, 1, 1)
@@ -225,7 +225,7 @@ class SettingWidget(QWidget):
             self.parity_combobox.setFont(self.font)
             self.parity_combobox.setFixedHeight(self.height)
             self.parity_combobox.addItems(["", "None", "Even", "Odd", "Mark", "Space"])
-            self.parity_combobox.setCurrentText(shared.serial["parity"])
+            self.parity_combobox.setCurrentText(shared.serial_setting["parity"])
             self.parity_combobox.setToolTip("Select the parity for error checking.\n"
                                             "None: No parity bit.\n"
                                             "Even: Parity bit ensures even number of 1s.\n"
@@ -241,7 +241,7 @@ class SettingWidget(QWidget):
             self.stopbits_combobox.setFont(self.font)
             self.stopbits_combobox.setFixedHeight(self.height)
             self.stopbits_combobox.addItems(["", "1", "1.5", "2"])
-            self.stopbits_combobox.setCurrentText(shared.serial["stopbits"])
+            self.stopbits_combobox.setCurrentText(shared.serial_setting["stopbits"])
             self.stopbits_combobox.setToolTip("Set the number of stop bits used to indicate the end of a data frame.\n"
                                               "Must match with the connected device's configuration.\n"
                                               "1: One stop bit.\n"
@@ -264,7 +264,7 @@ class SettingWidget(QWidget):
             self.remoteipv4_label.setFixedHeight(self.height)
             serial_tcpclient_layout.addWidget(self.remoteipv4_label, 0, 0)
             self.remoteipv4_lineedit.setFont(self.font)
-            self.remoteipv4_lineedit.setText(shared.serial["remoteipv4"])
+            self.remoteipv4_lineedit.setText(shared.serial_setting["remoteipv4"])
             self.remoteipv4_lineedit.setToolTip("Specifies the remote ipv4 address to use for tcp communication.")
             serial_tcpclient_layout.addWidget(self.remoteipv4_lineedit, 0, 1)
 
@@ -273,7 +273,7 @@ class SettingWidget(QWidget):
             self.remoteport_label.setFixedHeight(self.height)
             serial_tcpclient_layout.addWidget(self.remoteport_label, 1, 0)
             self.remoteport_lineedit.setFont(self.font)
-            self.remoteport_lineedit.setText(shared.serial["remoteport"])
+            self.remoteport_lineedit.setText(shared.serial_setting["remoteport"])
             self.remoteport_lineedit.setToolTip("Specifies the remote port number to use for tcp communication.")
             serial_tcpclient_layout.addWidget(self.remoteport_lineedit, 1, 1)
 
@@ -305,7 +305,7 @@ class SettingWidget(QWidget):
             self.localipv4_combobox.setFixedHeight(self.height)
             self.localipv4_combobox.clear()
             self.localipv4_combobox.addItems([""] + localipv4_get())
-            self.localipv4_combobox.setCurrentText(shared.serial["localipv4"])
+            self.localipv4_combobox.setCurrentText(shared.serial_setting["localipv4"])
             self.localipv4_combobox.setEditable(True)
             self.localipv4_combobox.lineEdit().setFont(self.font)
             self.localipv4_combobox.setToolTip("Specifies the local ipv4 address to use for tcp communication.")
@@ -316,7 +316,7 @@ class SettingWidget(QWidget):
             self.localport_label.setFixedHeight(self.height)
             serial_tcpserver_layout.addWidget(self.localport_label, 1, 0)
             self.localport_lineedit.setFont(self.font)
-            self.localport_lineedit.setText(shared.serial["localport"])
+            self.localport_lineedit.setText(shared.serial_setting["localport"])
             self.localport_lineedit.setToolTip("Specifies the local port number to use for tcp communication.")
             serial_tcpserver_layout.addWidget(self.localport_lineedit, 1, 1)
 
@@ -417,7 +417,7 @@ class SettingWidget(QWidget):
         self.family_combobox.setFont(self.font)
         self.family_combobox.setFixedHeight(self.height)
         self.family_combobox.addItems(QFontDatabase.families())
-        self.family_combobox.setCurrentText(shared.font["family"])
+        self.family_combobox.setCurrentText(shared.log_font["family"])
         self.family_combobox.currentTextChanged.connect(lambda value: font_view_gui_refresh(family=value))
         font_param_layout.addWidget(self.family_combobox, 0, 1)
         # pointsize spinbox
@@ -429,7 +429,7 @@ class SettingWidget(QWidget):
         self.pointsize_spinbox.setFixedHeight(self.height)
         self.pointsize_spinbox.setRange(1, 72)
         self.pointsize_spinbox.setSingleStep(1)
-        self.pointsize_spinbox.setValue(shared.font["pointsize"])
+        self.pointsize_spinbox.setValue(shared.log_font["pointsize"])
         self.pointsize_spinbox.valueChanged.connect(lambda value: font_view_gui_refresh(pointsize=value))
         font_param_layout.addWidget(self.pointsize_spinbox, 1, 1)
         # bold combobox
@@ -441,7 +441,7 @@ class SettingWidget(QWidget):
         self.bold_combobox.setFixedHeight(self.height)
         self.bold_combobox.addItem("True", True)
         self.bold_combobox.addItem("False", False)
-        self.bold_combobox.setCurrentText(str(shared.font["bold"]))
+        self.bold_combobox.setCurrentText(str(shared.log_font["bold"]))
         self.bold_combobox.currentTextChanged.connect(lambda value: font_view_gui_refresh(bold=value))
         font_param_layout.addWidget(self.bold_combobox, 2, 1)
         # italic combobox
@@ -453,7 +453,7 @@ class SettingWidget(QWidget):
         self.italic_combobox.setFixedHeight(self.height)
         self.italic_combobox.addItem("True", True)
         self.italic_combobox.addItem("False", False)
-        self.italic_combobox.setCurrentText(str(shared.font["italic"]))
+        self.italic_combobox.setCurrentText(str(shared.log_font["italic"]))
         self.italic_combobox.currentTextChanged.connect(lambda value: font_view_gui_refresh(italic=value))
         font_param_layout.addWidget(self.italic_combobox, 3, 1)
         # underline combobox
@@ -465,7 +465,7 @@ class SettingWidget(QWidget):
         self.underline_combobox.setFixedHeight(self.height)
         self.underline_combobox.addItem("True", True)
         self.underline_combobox.addItem("False", False)
-        self.underline_combobox.setCurrentText(str(shared.font["underline"]))
+        self.underline_combobox.setCurrentText(str(shared.log_font["underline"]))
         self.underline_combobox.currentTextChanged.connect(lambda value: font_view_gui_refresh(underline=value))
         font_param_layout.addWidget(self.underline_combobox, 4, 1)
 
@@ -478,11 +478,11 @@ class SettingWidget(QWidget):
         font_label = QLabel("AaBbCc")
         font_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         font_preview = QFont()
-        font_preview.setFamily(shared.font["family"])
-        font_preview.setPointSize(shared.font["pointsize"])
-        font_preview.setBold(shared.font["bold"])
-        font_preview.setItalic(shared.font["italic"])
-        font_preview.setUnderline(shared.font["underline"])
+        font_preview.setFamily(shared.log_font["family"])
+        font_preview.setPointSize(shared.log_font["pointsize"])
+        font_preview.setBold(shared.log_font["bold"])
+        font_preview.setItalic(shared.log_font["italic"])
+        font_preview.setUnderline(shared.log_font["underline"])
         font_label.setFont(font_preview)
         font_view_layout.addWidget(font_label)
 
@@ -603,27 +603,27 @@ class SettingWidget(QWidget):
     def setting_reset(self):
         # reset serial setting
         self.port_combobox.setCurrentIndex(0)
-        shared.serial["port"] = ""
-        shared.serial["baudrate"] = ""
-        shared.serial["databits"] = ""
-        shared.serial["parity"] = ""
-        shared.serial["stopbits"] = ""
-        shared.serial["timeout"] = ""
-        shared.serial["localipv4"] = ""
-        shared.serial["localport"] = ""
-        shared.serial["remoteipv4"] = ""
-        shared.serial["remoteport"] = ""
-        shared.serial["timeout"] = 0
+        shared.serial_setting["port"] = ""
+        shared.serial_setting["baudrate"] = ""
+        shared.serial_setting["databits"] = ""
+        shared.serial_setting["parity"] = ""
+        shared.serial_setting["stopbits"] = ""
+        shared.serial_setting["timeout"] = ""
+        shared.serial_setting["localipv4"] = ""
+        shared.serial_setting["localport"] = ""
+        shared.serial_setting["remoteipv4"] = ""
+        shared.serial_setting["remoteport"] = ""
+        shared.serial_setting["timeout"] = 0
         # save font setting
-        shared.font["family"] = "Consolas"
+        shared.log_font["family"] = "Consolas"
         self.family_combobox.setCurrentText("Consolas")
-        shared.font["pointsize"] = 12
+        shared.log_font["pointsize"] = 12
         self.pointsize_spinbox.setValue(12)
-        shared.font["bold"] = False
+        shared.log_font["bold"] = False
         self.bold_combobox.setCurrentText("False")
-        shared.font["italic"] = False
+        shared.log_font["italic"] = False
         self.italic_combobox.setCurrentText("False")
-        shared.font["underline"] = False
+        shared.log_font["underline"] = False
         self.underline_combobox.setCurrentText("False")
         shared.serial_log_widget.log_font()
         shared.file_send_widget.file_preview_font()
@@ -652,27 +652,27 @@ class SettingWidget(QWidget):
 
     def setting_save(self):
         # save serial setting
-        shared.serial["port"] = self.port_combobox.currentData()
+        shared.serial_setting["port"] = self.port_combobox.currentData()
         if self.port_combobox.currentData() == "":
             pass
         elif self.port_combobox.currentData() in ["tcp client", "tcp server"]:
-            shared.serial["localipv4"] = self.localipv4_combobox.currentText()
-            shared.serial["localport"] = self.localport_lineedit.text()
-            shared.serial["remoteipv4"] = self.remoteipv4_lineedit.text()
-            shared.serial["remoteport"] = self.remoteport_lineedit.text()
-            shared.serial["timeout"] = self.timeout_spinbox.value()
+            shared.serial_setting["localipv4"] = self.localipv4_combobox.currentText()
+            shared.serial_setting["localport"] = self.localport_lineedit.text()
+            shared.serial_setting["remoteipv4"] = self.remoteipv4_lineedit.text()
+            shared.serial_setting["remoteport"] = self.remoteport_lineedit.text()
+            shared.serial_setting["timeout"] = self.timeout_spinbox.value()
         else:
-            shared.serial["baudrate"] = self.baudrate_combobox.currentText()
-            shared.serial["databits"] = self.databits_combobox.currentText()
-            shared.serial["parity"] = self.parity_combobox.currentText()
-            shared.serial["stopbits"] = self.stopbits_combobox.currentText()
-            shared.serial["timeout"] = self.timeout_spinbox.value()
+            shared.serial_setting["baudrate"] = self.baudrate_combobox.currentText()
+            shared.serial_setting["databits"] = self.databits_combobox.currentText()
+            shared.serial_setting["parity"] = self.parity_combobox.currentText()
+            shared.serial_setting["stopbits"] = self.stopbits_combobox.currentText()
+            shared.serial_setting["timeout"] = self.timeout_spinbox.value()
         # save font setting
-        shared.font["family"] = self.family_combobox.currentText()
-        shared.font["pointsize"] = self.pointsize_spinbox.value()
-        shared.font["bold"] = self.bold_combobox.currentData()
-        shared.font["italic"] = self.italic_combobox.currentData()
-        shared.font["underline"] = self.underline_combobox.currentData()
+        shared.log_font["family"] = self.family_combobox.currentText()
+        shared.log_font["pointsize"] = self.pointsize_spinbox.value()
+        shared.log_font["bold"] = self.bold_combobox.currentData()
+        shared.log_font["italic"] = self.italic_combobox.currentData()
+        shared.log_font["underline"] = self.underline_combobox.currentData()
         shared.serial_log_widget.log_font()
         shared.file_send_widget.file_preview_font()
         # save keyboard shortcut setting

@@ -23,7 +23,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "zoom_in": "Ctrl+]",
         "zoom_out": "Ctrl+["
     },
-    "serial": {
+    "serial_setting": {
         "port": "",
         "baudrate": "",
         "databits": "",
@@ -35,13 +35,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "remoteport": "",
         "timeout": 0,
     },
-    "log": {
+    "log_setting": {
         "timestamp": True,
         "lock": False,
         "format": "hex",
-        "wrap": "none"
+        "wrap": "none",
+        "length": 1000
     },
-    "font": {
+    "log_font": {
         "family": "Consolas",
         "pointsize": 12,
         "bold": False,
@@ -59,12 +60,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "chunk_restart": "",
         "chunk_size": 100
     },
-    "shortcut": [],
+    "command_shortcut": [],
     "data_collect": []
 }
 
 for i in range(shared.shortcut_count):
-    DEFAULT_CONFIG["shortcut"].append({
+    DEFAULT_CONFIG["command_shortcut"].append({
         "type": "",
         "function": "",
         "command": "",
@@ -202,16 +203,16 @@ def config_to_shared(config):
     try:
         shared.layout = config["layout"]
         shared.keyboard_shortcut = config["keyboard_shortcut"]
-        shared.serial = config["serial"]
-        shared.log = config["log"]
-        shared.font = config["font"]
+        shared.serial_setting = config["serial_setting"]
+        shared.log_setting = config["log_setting"]
+        shared.log_font = config["log_font"]
         shared.send_format = config["send_format"]
         shared.send_suffix = config["send_suffix"]
         shared.receive_buffersize = config["receive_buffersize"]
         shared.single_send_buffer = config["single_send_buffer"]
         shared.advanced_send_buffer = config["advanced_send_buffer"]
         shared.file_send = config["file_send"]
-        shared.shortcut = config["shortcut"]
+        shared.command_shortcut = config["command_shortcut"]
         shared.data_collect = config["data_collect"]
     except KeyError as e:
         shared.serial_log_widget.log_insert(f"config file invalid", "error")
@@ -223,16 +224,16 @@ def shared_to_config(config):
     config["layout"]["geometry"] = shared.main_window.saveGeometry().data().hex()
     config["layout"]["state"] = shared.main_window.saveState().data().hex()
     config["keyboard_shortcut"] = shared.keyboard_shortcut
-    config["serial"] = shared.serial
-    config["log"] = shared.log
-    config["font"] = shared.font
+    config["serial_setting"] = shared.serial_setting
+    config["log_setting"] = shared.log_setting
+    config["log_font"] = shared.log_font
     config["send_format"] = shared.send_format
     config["send_suffix"] = shared.send_suffix
     config["receive_buffersize"] = shared.receive_buffersize
     config["single_send_buffer"] = shared.single_send_buffer
     config["advanced_send_buffer"] = shared.advanced_send_buffer
     config["file_send"] = shared.file_send
-    config["shortcut"] = shared.shortcut
+    config["command_shortcut"] = shared.command_shortcut
     config["data_collect"] = shared.data_collect
     return config
 

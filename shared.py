@@ -31,11 +31,11 @@ layout = None
 keyboard_shortcut = None
 
 # serial module
-serial = None
+serial_setting = None
 
 # log module
-log = None
-font = None
+log_setting = None
+log_font = None
 
 # io module
 send_format = ""
@@ -47,7 +47,7 @@ file_send = None
 
 # shortcut module
 shortcut_count = 100
-shortcut = None
+command_shortcut = None
 
 # data module
 slot_count = 10

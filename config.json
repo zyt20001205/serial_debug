@@ -1,8 +1,8 @@
 {
     "layout": {
         "tab": "send_tab",
-        "geometry": "01d9d0cb0003000000000064fffffc4500000680ffffff5d00000064fffffc6400000680ffffff5d0000000100000000078000000064fffffc6400000680ffffff5d",
-        "state": "000000ff00000000fd00000002000000000000042a000002fafc0200000001fb0000001400730065007200690061006c005f006c006f00670100000000000002fa0000009a00ffffff00000001000001c2000002fafc0200000006fb000000120069006f005f0073007400610074007500730100000000000000a8000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000008200000082fb0000001a0061006400760061006e006300650064005f00730065006e00640100000132000000c30000009e00fffffffb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000d800fffffffb000000200063006f006d006d0061006e0064005f00730068006f0072007400630075007401000001f9000001010000009a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00ffffff00000000000002fa00000004000000040000000800000008fc000000010000000000000001ffffffff0300000000ffffffff0000000000000000"
+        "geometry": "01d9d0cb00030000000000a0fffffbf0000006dfffffff92000000a0fffffc0f000006dfffffff9200000001000000000780000000a0fffffc0f000006dfffffff92",
+        "state": "000000ff00000000fd00000002000000000000044d00000384fc0200000001fb0000001400730065007200690061006c005f006c006f00670100000000000003840000009a00ffffff00000001000001c200000384fc0200000006fb000000120069006f005f0073007400610074007500730100000000000000a8000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000008200000082fb0000001a0061006400760061006e006300650064005f00730065006e00640100000132000001250000009e00fffffffb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000d600fffffffb000000200063006f006d006d0061006e0064005f00730068006f00720074006300750074010000025b000001290000009a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00ffffff000000000000038400000004000000040000000800000008fc000000010000000000000001ffffffff0300000000ffffffff0000000000000000"
     },
     "keyboard_shortcut": {
         "save": "Ctrl+S",
@@ -12,25 +12,26 @@
         "zoom_in": "Ctrl+]",
         "zoom_out": "Ctrl+["
     },
-    "serial": {
+    "serial_setting": {
         "port": "COM3",
         "baudrate": "115200",
         "databits": "8",
         "parity": "Even",
         "stopbits": "1",
-        "localipv4": "172.20.10.11",
-        "localport": "4196",
-        "remoteipv4": "172.20.10.10",
-        "remoteport": "4196",
+        "localipv4": "",
+        "localport": "",
+        "remoteipv4": "",
+        "remoteport": "",
         "timeout": 2
     },
-    "log": {
+    "log_setting": {
         "timestamp": true,
         "lock": false,
-        "format": "ascii",
-        "wrap": "none"
+        "format": "hex",
+        "wrap": "none",
+        "length": 1000
     },
-    "font": {
+    "log_font": {
         "family": "Consolas",
         "pointsize": 12,
         "bold": false,
@@ -38,9 +39,9 @@
         "underline": false
     },
     "send_format": "hex",
-    "send_suffix": "modbus crc16",
+    "send_suffix": "none",
     "receive_buffersize": 0,
-    "single_send_buffer": "011000FA000102000A",
+    "single_send_buffer": "",
     "advanced_send_buffer": [
         [
             "tail",
@@ -49,25 +50,17 @@
     ],
     "file_send": {
         "line_delay": 0,
-        "chunk_resume": "OK",
-        "chunk_restart": "FAILED",
-        "chunk_size": 300
+        "chunk_resume": "",
+        "chunk_restart": "",
+        "chunk_size": 100
     },
-    "shortcut": [
+    "command_shortcut": [
         {
-            "type": "single",
-            "function": "start update",
-            "command": "011000FA0001020001",
-            "suffix": "73CA",
-            "format": "hex",
-            "color": "#ffffff"
-        },
-        {
-            "type": "single",
-            "function": "jump to app",
-            "command": "011000FA000102000A",
-            "suffix": "320D",
-            "format": "hex",
+            "type": "",
+            "function": "",
+            "command": "",
+            "suffix": "",
+            "format": "",
             "color": "#ffffff"
         },
         {
@@ -156,22 +149,6 @@
             "command": "",
             "suffix": "",
             "format": "",
-            "color": "#55ffff"
-        },
-        {
-            "type": "",
-            "function": "",
-            "command": "",
-            "suffix": "",
-            "format": "",
-            "color": "white"
-        },
-        {
-            "type": "",
-            "function": "",
-            "command": "",
-            "suffix": "",
-            "format": "",
             "color": "#ffffff"
         },
         {
@@ -220,7 +197,7 @@
             "command": "",
             "suffix": "",
             "format": "",
-            "color": "#55ffff"
+            "color": "#ffffff"
         },
         {
             "type": "",
@@ -236,7 +213,31 @@
             "command": "",
             "suffix": "",
             "format": "",
-            "color": "white"
+            "color": "#ffffff"
+        },
+        {
+            "type": "",
+            "function": "",
+            "command": "",
+            "suffix": "",
+            "format": "",
+            "color": "#ffffff"
+        },
+        {
+            "type": "",
+            "function": "",
+            "command": "",
+            "suffix": "",
+            "format": "",
+            "color": "#ffffff"
+        },
+        {
+            "type": "",
+            "function": "",
+            "command": "",
+            "suffix": "",
+            "format": "",
+            "color": "#ffffff"
         },
         {
             "type": "",

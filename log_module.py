@@ -161,20 +161,20 @@ class SerialLogWidget(QWidget):
         self.log_textedit.setStyleSheet("margin: 0px;")
         # font initialization
         font = QFont()
-        font.setFamily(shared.font["family"])
-        font.setPointSize(shared.font["pointsize"])
-        font.setBold(shared.font["bold"])
-        font.setItalic(shared.font["italic"])
-        font.setUnderline(shared.font["underline"])
+        font.setFamily(shared.log_font["family"])
+        font.setPointSize(shared.log_font["pointsize"])
+        font.setBold(shared.log_font["bold"])
+        font.setItalic(shared.log_font["italic"])
+        font.setUnderline(shared.log_font["underline"])
         self.log_textedit.setFont(font)
         # wrap initialization
-        if shared.log["wrap"] == "none":
+        if shared.log_setting["wrap"] == "none":
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.NoWrap)
-        elif shared.log["wrap"] == "char":
+        elif shared.log_setting["wrap"] == "char":
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
-        elif shared.log["wrap"] == "word":
+        elif shared.log_setting["wrap"] == "word":
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
-        else:  # shared.log["wrap"] == "auto"
+        else:  # shared.log_setting["wrap"] == "auto"
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
         serial_log_layout.addWidget(self.log_textedit)
 
@@ -202,7 +202,7 @@ class SerialLogWidget(QWidget):
         # time button
         self.timestamp_button.setFixedWidth(26)
         self.timestamp_button.setCheckable(True)
-        self.timestamp_button.setChecked(shared.log["timestamp"])
+        self.timestamp_button.setChecked(shared.log_setting["timestamp"])
         self.log_timestamp()
         self.timestamp_button.setToolTip("timestamp")
         self.timestamp_button.clicked.connect(self.log_timestamp)
@@ -210,7 +210,7 @@ class SerialLogWidget(QWidget):
         # lock button
         self.lock_button.setFixedWidth(26)
         self.lock_button.setCheckable(True)
-        self.lock_button.setChecked(shared.log["lock"])
+        self.lock_button.setChecked(shared.log_setting["lock"])
         self.log_lock()
         self.lock_button.setToolTip("lock")
         self.lock_button.clicked.connect(self.log_lock)
@@ -218,7 +218,7 @@ class SerialLogWidget(QWidget):
         # format selection
         self.format_combobox.setFixedWidth(100)
         self.format_combobox.addItems(["raw", "hex", "ascii", "utf-8"])
-        self.format_combobox.setCurrentText(shared.log["format"])
+        self.format_combobox.setCurrentText(shared.log_setting["format"])
         self.format_combobox.setToolTip("raw: treat the input as raw format\n"
                                         "hex: treat the input as hexadecimal format\n"
                                         "ascii: treat the input as ascii format\n"
@@ -231,7 +231,7 @@ class SerialLogWidget(QWidget):
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "word")
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "crlf")
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "auto")
-        self.wrap_combobox.setCurrentText(shared.log["wrap"])
+        self.wrap_combobox.setCurrentText(shared.log_setting["wrap"])
         self.wrap_combobox.setToolTip("none: text is not wrapped\n"
                                       "char: text is wrapped at character level\n"
                                       "word: text is wrapped at word boundaries\n"
@@ -243,7 +243,7 @@ class SerialLogWidget(QWidget):
         self.length_spinbox.setFixedWidth(100)
         self.length_spinbox.setRange(100, 10000)
         self.length_spinbox.setSingleStep(100)
-        self.length_spinbox.setValue(1000)
+        self.length_spinbox.setValue(shared.log_setting["length"])
         self.length_spinbox.setToolTip("Sets the maximum number of log entries displayed.\n"
                                        "Older entries will be removed when the limit is exceeded.\n"
                                        "Adjust to balance performance and visibility.")
@@ -373,16 +373,16 @@ class SerialLogWidget(QWidget):
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         elif self.wrap_combobox.currentText() == "crlf":
             return
-        else:  # shared.log["wrap"] == "auto"
+        else:  # shared.log_setting["wrap"] == "auto"
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
 
     def log_font(self):
         font = QFont()
-        font.setFamily(shared.font["family"])
-        font.setPointSize(shared.font["pointsize"])
-        font.setBold(shared.font["bold"])
-        font.setItalic(shared.font["italic"])
-        font.setUnderline(shared.font["underline"])
+        font.setFamily(shared.log_font["family"])
+        font.setPointSize(shared.log_font["pointsize"])
+        font.setBold(shared.log_font["bold"])
+        font.setItalic(shared.log_font["italic"])
+        font.setUnderline(shared.log_font["underline"])
         self.log_textedit.setFont(font)
 
     def log_zoom_in(self):
@@ -398,14 +398,15 @@ class SerialLogWidget(QWidget):
         shared.file_send_widget.preview_textedit.setFont(font)
 
     def log_config_save(self):
-        shared.log = {
+        shared.log_setting = {
             "timestamp": self.timestamp_button.isChecked(),
             "lock": self.lock_button.isChecked(),
             "format": self.format_combobox.currentText(),
-            "wrap": self.wrap_combobox.currentText()
+            "wrap": self.wrap_combobox.currentText(),
+            "length": self.length_spinbox.value()
         }
         font = self.log_textedit.font()
-        shared.font = {
+        shared.log_font = {
             "family": font.family(),
             "pointsize": font.pointSize(),
             "bold": font.bold(),
