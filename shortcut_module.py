@@ -13,6 +13,7 @@ class CommandShortcutWidget(QWidget):
         self.overlay = QWidget(self)
 
         self.shortcut_table = self.ShortcutTableWidget(self)
+        shared.shortcut_table = self.shortcut_table
 
         # draw gui
         self.command_shortcut_gui()
@@ -164,7 +165,6 @@ class CommandShortcutWidget(QWidget):
         self.shortcut_table.setRowCount(shared.shortcut_count)
         self.shortcut_table.setColumnCount(7)
         self.shortcut_table.setHorizontalHeaderLabels(["", "Type", "Function", "Command", "Suffix", "Format", ""])
-        shared.shortcut_table = self.shortcut_table
         header = self.shortcut_table.horizontalHeader()
         self.shortcut_table.setColumnWidth(0, 30)
         self.shortcut_table.setColumnWidth(1, 40)

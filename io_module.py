@@ -20,9 +20,6 @@ for i in range(10):
 
 receive_buffer = b""
 
-# file send
-file_send_thread: QThread
-
 
 class IOStatusWidget(QWidget):
     def __init__(self):
@@ -530,8 +527,7 @@ class SingleSendWidget(QWidget):
         # single send button
         self.single_send_button.setFixedWidth(26)
         self.single_send_button.setIcon(QIcon("icon:send.svg"))
-        self.single_send_button.clicked.connect(lambda: self.single_send(self.single_send_textedit.toPlainText(),
-                                                                         shared.io_status_widget.send_suffix_lineedit.text(),
+        self.single_send_button.clicked.connect(lambda: self.single_send(self.single_send_textedit.toPlainText(), shared.io_status_widget.send_suffix_lineedit.text(),
                                                                          shared.io_status_widget.send_format_combobox.currentText()))
         self.single_send_button.setToolTip("send")
         control_layout.addWidget(self.single_send_button)
@@ -557,11 +553,10 @@ class SingleSendWidget(QWidget):
         self.single_send_textedit.setPlainText(send_buffer)
 
     def single_send_save(self) -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count,
-                                        1)
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count, 1)
         if ok:
-            if shared.shortcut_table.cellWidget(index - 1, 2).text():
-                title = shared.shortcut_table.cellWidget(index - 1, 3).text()
+            if shared.shortcut_table.cellWidget(index - 1, 1).text():
+                title = shared.shortcut_table.cellWidget(index - 1, 2).text()
                 result = QMessageBox.question(shared.main_window, "Shortcut Save",
                                               f"Shortcut already exists.\nDo you want to overwrite it?\n: {title}",
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -658,8 +653,6 @@ class AdvancedSendWidget(QWidget):
         self.advanced_send_combobox = QComboBox()
 
         self.advanced_send_threadpool = self.AdvancedSendThreadPool(self.advanced_send_table, self.advanced_send_combobox)
-        self.advanced_send_threadpool.log_signal.connect(shared.serial_log_widget.log_insert)
-        self.advanced_send_threadpool.send_signal.connect(shared.single_send_widget.single_send)
 
         self.action_window = QWidget()
         self.action_combobox = QComboBox()
@@ -676,9 +669,6 @@ class AdvancedSendWidget(QWidget):
         self.advanced_send_gui()
 
     class AdvancedSendThreadPool(QObject):
-        highlight_signal = Signal(int, int, str)
-        log_signal = Signal(str, str)
-        send_signal = Signal(str, str, str)
 
         def __init__(self, table: QTableWidget, combobox: QComboBox):
             super().__init__()
@@ -694,20 +684,20 @@ class AdvancedSendWidget(QWidget):
             thread.setObjectName(thread_id)
 
             thread.highlight_signal.connect(self.table_highlight)
-            thread.log_signal.connect(self.log_signal)
-            thread.send_signal.connect(self.send_signal)
+            thread.log_signal.connect(shared.serial_log_widget.log_insert)
+            thread.send_signal.connect(shared.single_send_widget.single_send)
             thread.request_signal.connect(self.input_request)
             thread.finish_signal.connect(self.remove)
 
             self.threadpool.append(thread)
             self.combobox_refresh()
-            self.log_signal.emit(f"advanced send start, thread id: {thread_id}", "info")
+            shared.serial_log_widget.log_insert(f"advanced send start, thread id: {thread_id}", "info")
             thread.start()
 
         def remove(self, thread: QThread) -> None:
             thread_id = thread.objectName()
             self.threadpool.remove(thread)
-            self.log_signal.emit(f"advanced send end, thread id: {thread_id}", "info")
+            shared.serial_log_widget.log_insert(f"advanced send end, thread id: {thread_id}", "info")
             self.combobox_refresh()
 
         def stop(self) -> None:
@@ -719,11 +709,11 @@ class AdvancedSendWidget(QWidget):
                 for thread in self.threadpool:
                     thread.stop()
                 self.threadpool = []
-                self.log_signal.emit("all advanced send threads manually terminated", "warning")
+                shared.serial_log_widget.log_insert("all advanced send threads manually terminated", "warning")
             else:
                 thread.stop()
                 self.threadpool.remove(thread)
-                self.log_signal.emit(f"advanced send manually terminated, thread id: {thread_id}", "warning")
+                shared.serial_log_widget.log_insert(f"advanced send manually terminated, thread id: {thread_id}", "warning")
             self.combobox_refresh()
 
         def combobox_refresh(self) -> None:
@@ -1014,8 +1004,7 @@ class AdvancedSendWidget(QWidget):
         advanced_send_button.setFixedWidth(26)
         advanced_send_button.setIcon(QIcon("icon:send.svg"))
         advanced_send_button.setToolTip("send")
-        advanced_send_button.clicked.connect(
-            lambda: self.advanced_send_threadpool.new("editor", self.advanced_send_buffer))
+        advanced_send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", self.advanced_send_buffer))
         control_layout.addWidget(advanced_send_button)
         # advanced send save button
         advanced_save_button = QPushButton()
@@ -1221,19 +1210,19 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox = QComboBox()
         self.action_combobox.addItem("")
         # standard IO action
-        self.action_combobox.addItem("---------------------------- Standard IO ----------------------------")
+        self.action_combobox.addItem("-------------------------- Standard IO --------------------------")
         self.action_combobox.model().item(1).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_import.svg"), "input")
         self.action_combobox.addItem(QIcon("icon:arrow_export_ltr.svg"), "command")
         self.action_combobox.addItem(QIcon("icon:message.svg"), "message")
         # expression statement action
-        self.action_combobox.addItem("---------------------------- Statement -----------------------------")
+        self.action_combobox.addItem("--------------------------- Statement ---------------------------")
         self.action_combobox.model().item(5).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:variable.svg"), "expression")
         self.action_combobox.addItem(QIcon("icon:timer.svg"), "delay")
         self.action_combobox.addItem(QIcon("icon:document_add.svg"), "shortcut")
         # control flow action
-        self.action_combobox.addItem("--------------------------- Control Flow ---------------------------")
+        self.action_combobox.addItem("------------------------- Control Flow --------------------------")
         self.action_combobox.model().item(9).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_repeat_all.svg"), "loop")
         self.action_combobox.addItem(QIcon("icon:branch.svg"), "if")
@@ -1487,11 +1476,10 @@ class AdvancedSendWidget(QWidget):
         self.advanced_send_buffer = [["tail", ""]]
 
     def advanced_send_save(self) -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count,
-                                        1)
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count, 1)
         if ok:
-            if shared.shortcut_table.cellWidget(index - 1, 2).text():
-                title = shared.shortcut_table.cellWidget(index - 1, 3).text()
+            if shared.shortcut_table.cellWidget(index - 1, 1).text():
+                title = shared.shortcut_table.cellWidget(index - 1, 2).text()
                 result = QMessageBox.question(shared.main_window, "Shortcut Save",
                                               f"Shortcut already exists.\nDo you want to overwrite it?\n: {title}",
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
