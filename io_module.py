@@ -1,12 +1,12 @@
 import time
 import os
 import tempfile
-from PySide6.QtGui import QKeySequence, QIcon, QColor, QFont, QTextOption
+from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption, QPen, QPainter
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
     QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
+from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize
 from PySide6.QtNetwork import QHostAddress
 
 import shared
@@ -562,17 +562,17 @@ class SingleSendWidget(QWidget):
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                               QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
-                    shared.command_shortcut_widget.shortcut_save(index, "single",
-                                                                 self.single_send_textedit.toPlainText(),
-                                                                 shared.io_status_widget.send_suffix_lineedit.text(),
-                                                                 shared.io_status_widget.send_format_combobox.currentText())
+                    shared.command_shortcut_widget.command_shortcut_save(index, "single",
+                                                                         self.single_send_textedit.toPlainText(),
+                                                                         shared.io_status_widget.send_suffix_lineedit.text(),
+                                                                         shared.io_status_widget.send_format_combobox.currentText())
                     shared.serial_log_widget.log_insert(f"single shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("single shortcut overwrite cancelled", "info")
             else:
-                shared.command_shortcut_widget.shortcut_save(index, "single", self.single_send_textedit.toPlainText(),
-                                                             shared.io_status_widget.send_suffix_lineedit.text(),
-                                                             shared.io_status_widget.send_format_combobox.currentText())
+                shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText(),
+                                                                     shared.io_status_widget.send_suffix_lineedit.text(),
+                                                                     shared.io_status_widget.send_format_combobox.currentText())
                 shared.serial_log_widget.log_insert(f"single shortcut saved to {index}", "info")
         else:
             shared.serial_log_widget.log_insert("single shortcut save", "warning")
@@ -649,7 +649,7 @@ class AdvancedSendWidget(QWidget):
         self.overlay = QWidget(self)
 
         self.advanced_send_buffer = None
-        self.advanced_send_table = QTableWidget()
+        self.advanced_send_table = self.AdvancedSendTableWidget(self)
         self.advanced_send_combobox = QComboBox()
 
         self.advanced_send_threadpool = self.AdvancedSendThreadPool(self.advanced_send_table, self.advanced_send_combobox)
@@ -730,7 +730,7 @@ class AdvancedSendWidget(QWidget):
 
         def table_highlight(self, length: int, index: int, color: str) -> None:
             if self.table.rowCount() == length:
-                self.table.item(index, 0).setBackground(QColor(f"{color}"))
+                self.table.item(index, 1).setBackground(QColor(f"{color}"))
 
         @staticmethod
         def input_request(label: str, condition: QWaitCondition) -> None:
@@ -930,8 +930,93 @@ class AdvancedSendWidget(QWidget):
                 for index in range(length):
                     self.highlight_signal.emit(length, index, "white")
                 # stop thread
+                self.highlight_signal.disconnect()
                 self.enable = False
                 self.wait()
+
+    class AdvancedSendTableWidget(QTableWidget):
+
+        def __init__(self, parent):
+            super().__init__()
+            self.setDragEnabled(True)
+            self.setAcceptDrops(True)
+            self.setDropIndicatorShown(True)
+            self.setDragDropMode(QTableWidget.DragDropMode.InternalMove)
+            self.setSelectionBehavior(self.SelectionBehavior.SelectRows)
+            self.setSelectionMode(self.SelectionMode.SingleSelection)
+
+            self.setShowGrid(False)
+
+            self.parent = parent
+
+            self.source_index = None
+            self.target_index = None
+
+        def startDrag(self, supportedActions):
+            self.source_index = self.currentRow()
+            # create mime data
+            mime_data = QMimeData()
+            mime_data.setData('application/x-qabstractitemmodeldatalist', b"")
+            # create drag entity
+            drag = QDrag(self)
+            drag.setMimeData(mime_data)
+            drag.exec(Qt.DropAction.MoveAction)
+
+        def dropEvent(self, event):
+            self.target_index = self.rowAt(event.position().toPoint().y())
+            self.row_relocation()
+
+        def row_relocation(self):
+            source_index = self.source_index
+            target_index = self.target_index
+            # manipulate advanced send buffer
+            tmp = self.parent.advanced_send_buffer.pop(source_index)
+            self.parent.advanced_send_buffer.insert(target_index, tmp)
+            if source_index < target_index:
+                # insert new row
+                self.insertRow(target_index + 1)
+                move_icon = QLabel()
+                move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+                move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.setCellWidget(target_index + 1, 0, move_icon)
+                action_label = QTableWidgetItem(self.item(source_index, 1).text())
+                self.setItem(target_index + 1, 1, action_label)
+                param_lineedit = QLineEdit()
+                param_lineedit.setText(self.cellWidget(source_index, 2).text())
+                self.setCellWidget(target_index + 1, 2, param_lineedit)
+                insert_button = QPushButton()
+                insert_button.setIcon(QIcon("icon:arrow_enter_up.svg"))
+                insert_button.clicked.connect(self.parent.advanced_send_buffer_insert_gui)
+                self.setCellWidget(target_index + 1, 3, insert_button)
+                # remove source row
+                self.removeRow(source_index)
+            else:
+                # insert new row
+                self.insertRow(target_index)
+                move_icon = QLabel()
+                move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+                move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.setCellWidget(target_index, 0, move_icon)
+                action_label = QTableWidgetItem(self.item(source_index + 1, 1).text())
+                self.setItem(target_index, 1, action_label)
+                param_lineedit = QLineEdit()
+                param_lineedit.setText(self.cellWidget(source_index + 1, 2).text())
+                self.setCellWidget(target_index, 2, param_lineedit)
+                insert_button = QPushButton()
+                insert_button.setIcon(QIcon("icon:arrow_enter_up.svg"))
+                insert_button.clicked.connect(self.parent.advanced_send_buffer_insert_gui)
+                self.setCellWidget(target_index, 3, insert_button)
+                # remove source row
+                self.removeRow(source_index + 1)
+            # print(self.parent.advanced_send_buffer)
+            self.clearSelection()
+            self.parent.advanced_send_table_indent()
+
+        def keyPressEvent(self, event):
+            if event.key() == Qt.Key.Key_Delete:
+                self.parent.advanced_send_buffer_delete()
+            else:
+                super().keyPressEvent(event)
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasFormat('application/x-qabstractitemmodeldatalist'):
@@ -980,13 +1065,13 @@ class AdvancedSendWidget(QWidget):
         advanced_send_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # advanced send table
-        self.advanced_send_table.setShowGrid(False)
-        self.advanced_send_table.setColumnCount(3)
-        self.advanced_send_table.setHorizontalHeaderLabels(["Action", "Param", "Insert"])
+        self.advanced_send_table.setColumnCount(4)
+        self.advanced_send_table.setHorizontalHeaderLabels(["", "Action", "Param", "Insert"])
         header = self.advanced_send_table.horizontalHeader()
-        self.advanced_send_table.setColumnWidth(0, 100)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.advanced_send_table.setColumnWidth(2, 30)
+        self.advanced_send_table.setColumnWidth(0, 30)
+        self.advanced_send_table.setColumnWidth(1, 100)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.advanced_send_table.setColumnWidth(3, 30)
         self.advanced_send_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         advanced_send_layout.addWidget(self.advanced_send_table)
 
@@ -1043,9 +1128,14 @@ class AdvancedSendWidget(QWidget):
         for i in range(len(self.advanced_send_buffer)):
             # add row
             self.advanced_send_table.insertRow(i)
+            # move icon
+            move_icon = QLabel()
+            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.advanced_send_table.setCellWidget(i, 0, move_icon)
             # action label
             action_label = QTableWidgetItem(self.advanced_send_buffer[i][0])
-            self.advanced_send_table.setItem(i, 0, action_label)
+            self.advanced_send_table.setItem(i, 1, action_label)
             # param widget
             if self.advanced_send_buffer[i][0] == "input":
                 param_widget = QComboBox()
@@ -1110,24 +1200,18 @@ class AdvancedSendWidget(QWidget):
                 param_widget.setText(self.advanced_send_buffer[i][1])
                 param_widget.setEnabled(False)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            param_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-            param_widget.customContextMenuRequested.connect(self.advanced_send_buffer_delete)
-            self.advanced_send_table.setCellWidget(i, 1, param_widget)
+            self.advanced_send_table.setCellWidget(i, 2, param_widget)
             # insert button
             insert_button = QPushButton()
-            insert_button.setFixedWidth(32)
             insert_button.setIcon(QIcon("icon:arrow_enter_up.svg"))
             insert_button.clicked.connect(self.advanced_send_buffer_insert_gui)
-            self.advanced_send_table.setCellWidget(i, 2, insert_button)
+            self.advanced_send_table.setCellWidget(i, 3, insert_button)
         # table indent
         self.advanced_send_table_indent()
 
     def advanced_send_buffer_insert_gui(self) -> None:
-        # get widget index
-        for row in range(self.advanced_send_table.rowCount()):
-            if self.advanced_send_table.cellWidget(row, 2) == self.sender():
-                index = row
-                break
+        # get row index
+        row = self.advanced_send_table.currentRow()
 
         def advanced_send_buffer_insert_gui_refresh():
             # clear all widgets except action selection
@@ -1196,7 +1280,7 @@ class AdvancedSendWidget(QWidget):
             if self.action_combobox.currentText():
                 save_button = QPushButton("Save Action")
                 save_button.setShortcut(QKeySequence(Qt.Key.Key_Return))
-                save_button.clicked.connect(lambda: self.advanced_send_buffer_insert(index))
+                save_button.clicked.connect(lambda: self.advanced_send_buffer_insert(row))
                 action_layout.addWidget(save_button)
 
         self.action_window = QWidget(shared.main_window)
@@ -1214,7 +1298,8 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox.model().item(1).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_import.svg"), "input")
         self.action_combobox.addItem(QIcon("icon:arrow_export_ltr.svg"), "command")
-        self.action_combobox.addItem(QIcon("icon:message.svg"), "message")
+        self.action_combobox.addItem(QIcon("icon:print.256++3"
+                                           "svg"), "message")
         # expression statement action
         self.action_combobox.addItem("--------------------------- Statement ---------------------------")
         self.action_combobox.model().item(5).setEnabled(False)
@@ -1235,202 +1320,202 @@ class AdvancedSendWidget(QWidget):
         self.action_window.show()
 
     def advanced_send_buffer_insert(self, index: int) -> None:
+        self.advanced_send_table.insertRow(index)
+        # move icon
+        move_icon = QLabel()
+        move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+        move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.advanced_send_table.setCellWidget(index, 0, move_icon)
+        # action/command
         if self.action_combobox.currentText() == "input":
             input = self.input_combobox.currentText()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["input", input])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("input")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QComboBox()
             param_widget.addItems(variable)
             param_widget.setCurrentText(input)
             param_widget.currentIndexChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "command":
             command = self.command_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["command", command])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("command")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(command)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "message":
             message = self.message_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["message", message])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("message")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(message)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "expression":
             expression = self.expression_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["expression", expression])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("expression")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(expression)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "delay":
             delay = self.delay_spinbox.value()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["delay", delay])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("delay")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(0, 2147483647)
             param_widget.setSingleStep(10)
             param_widget.setValue(delay)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "shortcut":
             shortcut = self.shortcut_spinbox.value()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["shortcut", shortcut])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("shortcut")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(1, shared.shortcut_count)
             param_widget.setSingleStep(10)
             param_widget.setValue(shortcut)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "loop":
             time = self.loop_spinbox.value()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["endloop", ""])
             self.advanced_send_buffer.insert(index, ["loop", time])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("endloop")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setEnabled(False)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
             insert_button = QPushButton()
             insert_button.setFixedWidth(32)
             insert_button.setIcon(QIcon("icon:arrow_enter_up.svg"))
             insert_button.clicked.connect(self.advanced_send_buffer_insert_gui)
-            self.advanced_send_table.setCellWidget(index, 2, insert_button)
+            self.advanced_send_table.setCellWidget(index, 3, insert_button)
             self.advanced_send_table.insertRow(index)
+            move_icon = QLabel()
+            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.advanced_send_table.setCellWidget(index, 0, move_icon)
             action_label = QTableWidgetItem("loop")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(1, 2147483647)
             param_widget.setSingleStep(1)
             param_widget.setValue(time)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "if":
             condition = self.if_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["endif", ""])
             self.advanced_send_buffer.insert(index, ["if", condition])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("endif")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setEnabled(False)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
             insert_button = QPushButton()
             insert_button.setFixedWidth(32)
             insert_button.setIcon(QIcon("icon:arrow_enter_up.svg"))
             insert_button.clicked.connect(self.advanced_send_buffer_insert_gui)
-            self.advanced_send_table.setCellWidget(index, 2, insert_button)
+            self.advanced_send_table.setCellWidget(index, 3, insert_button)
             self.advanced_send_table.insertRow(index)
+            move_icon = QLabel()
+            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.advanced_send_table.setCellWidget(index, 0, move_icon)
             action_label = QTableWidgetItem("if")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(condition)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "break":
             # add to action slot
             self.advanced_send_buffer.insert(index, ["break", ""])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("break")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setReadOnly(True)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         else:  # self.action_combobox.currentText() == "abort":
             abort = self.abort_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["abort", abort])
             # add to gui
-            self.advanced_send_table.insertRow(index)
             action_label = QTableWidgetItem("abort")
-            self.advanced_send_table.setItem(index, 0, action_label)
+            self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(abort)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 1, param_widget)
-
-        param_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        param_widget.customContextMenuRequested.connect(self.advanced_send_buffer_delete)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         # print(self.advanced_send_buffer)
         insert_button = QPushButton()
-        insert_button.setFixedWidth(32)
         insert_button.setIcon(QIcon("icon:arrow_enter_up.svg"))
         insert_button.clicked.connect(self.advanced_send_buffer_insert_gui)
-        self.advanced_send_table.setCellWidget(index, 2, insert_button)
+        self.advanced_send_table.setCellWidget(index, 3, insert_button)
         self.action_window.close()
         # table indent
         self.advanced_send_table_indent()
 
     def advanced_send_buffer_delete(self) -> None:
-        # get widget index
-        index = -1
-        for row in range(self.advanced_send_table.rowCount()):
-            if self.advanced_send_table.cellWidget(row, 1) == self.sender():
-                index = row
-                break
-        if index == -1:
+        # get clear index
+        row = self.advanced_send_table.currentRow()
+        if row == -1:
+            QMessageBox.warning(shared.main_window, "Clear Shortcut", "Please select a row first.")
             return
-        if self.advanced_send_buffer[index][0] == "loop":
+        if self.advanced_send_buffer[row][0] == "loop":
             depth = 0
             while 1:
-                if self.advanced_send_buffer[index][0] == "loop":
+                if self.advanced_send_buffer[row][0] == "loop":
                     depth += 1
-                elif self.advanced_send_buffer[index][0] == "endloop":
+                elif self.advanced_send_buffer[row][0] == "endloop":
                     depth -= 1
-                del self.advanced_send_buffer[index]
-                self.advanced_send_table.removeRow(index)
+                del self.advanced_send_buffer[row]
+                self.advanced_send_table.removeRow(row)
                 if depth == 0:
                     break
-        elif self.advanced_send_buffer[index][0] == "if":
+        elif self.advanced_send_buffer[row][0] == "if":
             depth = 0
             while 1:
-                if self.advanced_send_buffer[index][0] == "if":
+                if self.advanced_send_buffer[row][0] == "if":
                     depth += 1
-                elif self.advanced_send_buffer[index][0] == "endif":
+                elif self.advanced_send_buffer[row][0] == "endif":
                     depth -= 1
-                del self.advanced_send_buffer[index]
-                self.advanced_send_table.removeRow(index)
+                del self.advanced_send_buffer[row]
+                self.advanced_send_table.removeRow(row)
                 if depth == 0:
                     break
+        elif self.advanced_send_buffer[row][0] in ["endloop", "endif", "tail"]:
+            return
         else:
-            del self.advanced_send_buffer[index]
-            self.advanced_send_table.removeRow(index)
+            del self.advanced_send_buffer[row]
+            self.advanced_send_table.removeRow(row)
 
     def advanced_send_buffer_refresh(self, new: str | int) -> None:
         # get widget index
@@ -1452,23 +1537,23 @@ class AdvancedSendWidget(QWidget):
 
         # remove table indent
         for row in range(self.advanced_send_table.rowCount()):
-            text = self.advanced_send_table.item(row, 0).text()
+            text = self.advanced_send_table.item(row, 1).text()
             text_formatted = text.replace(" ", "").replace("|", "").replace("-", "")
-            self.advanced_send_table.item(row, 0).setText(text_formatted)
+            self.advanced_send_table.item(row, 1).setText(text_formatted)
         # table indent
         for row in range(self.advanced_send_table.rowCount()):
-            text = self.advanced_send_table.item(row, 0).text()
+            text = self.advanced_send_table.item(row, 1).text()
             if text in ["loop", "if"]:
                 text_formatted = prefix(indent) + text
-                self.advanced_send_table.item(row, 0).setText(text_formatted)
+                self.advanced_send_table.item(row, 1).setText(text_formatted)
                 indent += 1
             elif text in ["endloop", "endif"]:
                 indent -= 1
                 text_formatted = prefix(indent) + text
-                self.advanced_send_table.item(row, 0).setText(text_formatted)
+                self.advanced_send_table.item(row, 1).setText(text_formatted)
             else:
                 text_formatted = prefix(indent) + text
-                self.advanced_send_table.item(row, 0).setText(text_formatted)
+                self.advanced_send_table.item(row, 1).setText(text_formatted)
 
     def advanced_send_clear(self) -> None:
         for _ in range(len(self.advanced_send_buffer) - 1):
@@ -1485,13 +1570,13 @@ class AdvancedSendWidget(QWidget):
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                               QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
-                    shared.command_shortcut_widget.shortcut_save(index, "advanced", str(self.advanced_send_buffer), "",
-                                                                 "")
+                    shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "",
+                                                                         "")
                     shared.serial_log_widget.log_insert(f"advanced shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("advanced shortcut overwrite cancelled", "info")
             else:
-                shared.command_shortcut_widget.shortcut_save(index, "advanced", str(self.advanced_send_buffer), "", "")
+                shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "", "")
                 shared.serial_log_widget.log_insert(f"advanced shortcut saved to {index}", "info")
         else:
             shared.serial_log_widget.log_insert("advanced shortcut save", "warning")

@@ -245,7 +245,7 @@ def config_save():
     shared.single_send_widget.single_send_config_save()
     shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
-    shared.command_shortcut_widget.shortcut_config_save()
+    shared.command_shortcut_widget.command_shortcut_config_save()
     shared.data_collect_widget.data_collect_config_save()
     # load config
     config = config_file_load()
@@ -262,7 +262,7 @@ def config_save_as():
     shared.single_send_widget.single_send_config_save()
     shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
-    shared.command_shortcut_widget.shortcut_config_save()
+    shared.command_shortcut_widget.command_shortcut_config_save()
     shared.data_collect_widget.data_collect_config_save()
     # load config
     config = config_file_load()
