@@ -1712,7 +1712,7 @@ class FileSendWidget(QWidget):
                     os.remove(self.path)
                     self.clear_signal.emit()
             except Exception:
-                self.log_signal.emit("advanced send aborted", "warning")
+                self.log_signal.emit("file send abort", "warning")
                 self.progress_signal.emit(0, self.parent.file_line, f"chunk(0/{self.parent.file_chunk}) line(0/{self.parent.file_line})")
 
         def stop(self):
@@ -1960,7 +1960,7 @@ class FileSendWidget(QWidget):
                 for line in source_file:
                     line = line.strip()
                     if not line.startswith(":"):
-                        continue
+                        return
                     elif line == tail:
                         continue
                     elif line[7:9] == "04":

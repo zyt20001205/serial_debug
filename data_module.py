@@ -1,7 +1,7 @@
 import csv
 from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor, QFont, QIcon
-from PySide6.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QWidget, QPushButton, QApplication, QStyle, QScrollArea, QLabel, QSpinBox, QTextEdit, QLineEdit, \
-    QHBoxLayout, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, QInputDialog, QMessageBox
+from PySide6.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QWidget, QPushButton, QScrollArea, QLabel, QSpinBox, QTextEdit, QLineEdit, QHBoxLayout, QComboBox, QTableWidget, \
+    QTableWidgetItem, QFileDialog, QTabWidget, QInputDialog, QMessageBox
 from PySide6.QtCore import Qt, QEvent
 import pyqtgraph as pg
 
@@ -392,7 +392,7 @@ class DataCollectWidget(QWidget):
                 column_indices = [index.column() for index in indices]
                 selected_columns = [[self.slot_groupbox[i].title()] + data_buffer[i] for i in column_indices]
                 if not selected_columns:
-                    QMessageBox.warning(None, "Save Table", "Please select a column for saving first.")
+                    QMessageBox.warning(shared.main_window, "Save Table", "Please select a column for saving first.")
                     return
                 rows = list(zip(*selected_columns))
                 file_path, _ = QFileDialog.getSaveFileName(None, "Save CSV File", "", "CSV Files (*.csv);;All Files (*)")
