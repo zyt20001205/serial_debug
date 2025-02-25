@@ -1,7 +1,7 @@
 import time
 import os
 import tempfile
-from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption, QPen, QPainter
+from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
@@ -662,6 +662,8 @@ class AdvancedSendWidget(QWidget):
         self.command_combobox = QComboBox()
         self.message_lineedit = QLineEdit()
         self.message_combobox = QComboBox()
+        self.messagebox_lineedit = QLineEdit()
+        self.messagebox_combobox = QComboBox()
         self.expression_lineedit = QLineEdit()
         self.delay_spinbox = QSpinBox()
         self.delay_combobox = QComboBox()
@@ -691,6 +693,7 @@ class AdvancedSendWidget(QWidget):
             thread.log_signal.connect(shared.serial_log_widget.log_insert)
             thread.send_signal.connect(shared.single_send_widget.single_send)
             thread.request_signal.connect(self.input_request)
+            thread.message_signal.connect(self.messagebox_show)
             thread.finish_signal.connect(self.remove)
 
             self.threadpool.append(thread)
@@ -737,11 +740,23 @@ class AdvancedSendWidget(QWidget):
                 self.table.item(index, 1).setBackground(QColor(f"{color}"))
 
         @staticmethod
-        def input_request(variable: str, label: str, condition: QWaitCondition) -> None:
-            value, ok = QInputDialog.getInt(shared.main_window, "Input Value", f"{label}", value=0)
+        def input_request(thread: QThread, variable: str, label: str, condition: QWaitCondition) -> None:
+            value, ok = QInputDialog.getInt(shared.main_window, f"{thread.objectName()}:", f"{label}", value=0)
             if ok:
                 globals()[variable] = value
             else:
+                pass
+            condition.wakeOne()
+
+        @staticmethod
+        def messagebox_show(thread: QThread, message: str, level: str, condition: QWaitCondition) -> None:
+            if level == "info":
+                result = QMessageBox.information(shared.main_window, f"{thread.objectName()}:", f"{message}")
+            elif level == "warning":
+                result = QMessageBox.warning(shared.main_window, f"{thread.objectName()}:", f"{message}")
+            else:  # level == "error":
+                result = QMessageBox.critical(shared.main_window, f"{thread.objectName()}:", f"{message}")
+            if result == QMessageBox.StandardButton.Ok:
                 pass
             condition.wakeOne()
 
@@ -749,7 +764,8 @@ class AdvancedSendWidget(QWidget):
             highlight_signal = Signal(int, int, str)
             log_signal = Signal(str, str)
             send_signal = Signal(str, str, str)
-            request_signal = Signal(str, str, QWaitCondition)
+            request_signal = Signal(QThread, str, str, QWaitCondition)
+            message_signal = Signal(QThread, str, str, QWaitCondition)
             finish_signal = Signal(QThread)
 
             def __init__(self, buffer, mutex, condition, parent=None):
@@ -772,7 +788,7 @@ class AdvancedSendWidget(QWidget):
                     optional = buffer[index][2] if len(buffer[index]) > 2 else None
                     if action == "input":
                         self.mutex.lock()
-                        self.request_signal.emit(param, optional, self.condition)
+                        self.request_signal.emit(self, param, optional, self.condition)
                         self.condition.wait(self.mutex)
                         self.mutex.unlock()
                         # remove highlight
@@ -817,6 +833,19 @@ class AdvancedSendWidget(QWidget):
                             self.highlight_signal.emit(length, index, "red")
                             raise Exception(f"message exception: trying to show ({param.strip()})")
                         self.log_signal.emit(message, optional)
+                        # remove highlight
+                        self.highlight_signal.emit(length, index, "white")
+                    elif action == "messagebox":
+                        try:
+                            message = eval(f"f'''{param.strip()}'''")
+                        except:
+                            # error highlight
+                            self.highlight_signal.emit(length, index, "red")
+                            raise Exception(f"message exception: trying to show ({param.strip()})")
+                        self.mutex.lock()
+                        self.message_signal.emit(self, message, optional, self.condition)
+                        self.condition.wait(self.mutex)
+                        self.mutex.unlock()
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "expression":
@@ -1163,6 +1192,10 @@ class AdvancedSendWidget(QWidget):
                 param_widget = QLineEdit()
                 param_widget.setText(self.advanced_send_buffer[i][1])
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            elif self.advanced_send_buffer[i][0] == "messagebox":
+                param_widget = QLineEdit()
+                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             elif self.advanced_send_buffer[i][0] == "expression":
                 param_widget = QLineEdit()
                 param_widget.setText(self.advanced_send_buffer[i][1])
@@ -1227,7 +1260,7 @@ class AdvancedSendWidget(QWidget):
                 if item and item.widget():
                     item.widget().deleteLater()
             # create optional widget for optional param
-            if self.action_combobox.currentText() in ["input", "command", "message", "delay"]:
+            if self.action_combobox.currentText() in ["input", "command", "message", "messagebox", "delay"]:
                 optional_widget = QWidget()
                 action_layout.addWidget(optional_widget)
                 optional_layout = QHBoxLayout(optional_widget)
@@ -1249,6 +1282,12 @@ class AdvancedSendWidget(QWidget):
                     self.message_combobox.addItem(QIcon("icon:warning.svg"), "warning")
                     self.message_combobox.addItem(QIcon("icon:error.svg"), "error")
                     optional_layout.addWidget(self.message_combobox)
+                elif self.action_combobox.currentText() == "messagebox":
+                    self.messagebox_combobox = QComboBox()
+                    self.messagebox_combobox.addItem(QIcon("icon:info.svg"), "info")
+                    self.messagebox_combobox.addItem(QIcon("icon:warning.svg"), "warning")
+                    self.messagebox_combobox.addItem(QIcon("icon:error.svg"), "error")
+                    optional_layout.addWidget(self.messagebox_combobox)
                 elif self.action_combobox.currentText() == "delay":
                     self.delay_combobox = QComboBox()
                     self.delay_combobox.addItems(["ms", "sec", "min", "hour"])
@@ -1274,6 +1313,10 @@ class AdvancedSendWidget(QWidget):
                 self.message_lineedit = QLineEdit()
                 param_layout.addWidget(self.message_lineedit)
                 self.message_lineedit.setFocus()
+            elif self.action_combobox.currentText() == "messagebox":
+                self.messagebox_lineedit = QLineEdit()
+                param_layout.addWidget(self.messagebox_lineedit)
+                self.messagebox_lineedit.setFocus()
             elif self.action_combobox.currentText() == "expression":
                 self.expression_lineedit = QLineEdit()
                 param_layout.addWidget(self.expression_lineedit)
@@ -1327,14 +1370,15 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox.addItem(QIcon("icon:arrow_import.svg"), "input")
         self.action_combobox.addItem(QIcon("icon:arrow_export_ltr.svg"), "command")
         self.action_combobox.addItem(QIcon("icon:print.svg"), "message")
+        self.action_combobox.addItem(QIcon("icon:message.svg"), "messagebox")
         # expression statement action
         self.action_combobox.addItem("--------------------------- Statement ---------------------------")
-        self.action_combobox.model().item(5).setEnabled(False)
+        self.action_combobox.model().item(6).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:variable.svg"), "expression")
         self.action_combobox.addItem(QIcon("icon:timer.svg"), "delay")
         # control flow action
         self.action_combobox.addItem("------------------------- Control Flow --------------------------")
-        self.action_combobox.model().item(8).setEnabled(False)
+        self.action_combobox.model().item(9).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_repeat_all.svg"), "loop")
         self.action_combobox.addItem(QIcon("icon:branch.svg"), "if")
         self.action_combobox.addItem(QIcon("icon:pause.svg"), "break")
@@ -1385,6 +1429,18 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_buffer.insert(index, ["message", param, optional])
             # add to gui
             action_label = QTableWidgetItem("message")
+            self.advanced_send_table.setItem(index, 1, action_label)
+            param_widget = QLineEdit()
+            param_widget.setText(param)
+            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
+        elif self.action_combobox.currentText() == "messagebox":
+            param = self.messagebox_lineedit.text()
+            optional = self.messagebox_combobox.currentText()
+            # add to action slot
+            self.advanced_send_buffer.insert(index, ["messagebox", param, optional])
+            # add to gui
+            action_label = QTableWidgetItem("messagebox")
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param)
@@ -1612,6 +1668,7 @@ class FileSendWidget(QWidget):
         self.file_progressbar = QProgressBar()
         self.expand_button = QPushButton()
         self.setting_widget = QWidget()
+        self.flow_control_groupbox = QGroupBox("Flow Control")
         self.line_delay_spinbox = QSpinBox()
         self.chunk_resume_lineedit = QLineEdit()
         self.chunk_restart_lineedit = QLineEdit()
@@ -1648,39 +1705,52 @@ class FileSendWidget(QWidget):
             start_line = 0
             self.path = self.parent.path_lineedit.text()
             self.log_signal.emit("file send start", "info")
-            with open(self.path, "r") as file:
-                lines = file.readlines()
-                while current_line < len(lines):
-                    # thread abort
-                    if not self.enable:
-                        raise Exception
-                    line = lines[current_line].strip()
-                    if line:
-                        self.send_signal.emit(line, "\r\n", "ascii")
-                        if line.startswith(":"):
-                            current_line += 1
-                        if line == ":00000001FF":
-                            current_chunk += 1
-                            # file send flow control
-                            if self.parent.chunk_resume_lineedit.text() or self.parent.chunk_restart_lineedit.text():
-                                global receive_buffer
-                                receive_buffer = b""
-                                while True:
-                                    if not self.enable:
-                                        raise Exception
-                                    if receive_buffer == self.parent.chunk_resume_lineedit.text().encode():
-                                        start_line = current_line
-                                        break
-                                    if receive_buffer == self.parent.chunk_restart_lineedit.text().encode():
-                                        current_line = start_line
-                                        current_chunk -= 1
-                                        break
-                                    QThread.msleep(100)
-                    self.progress_signal.emit(current_line, None, f"chunk({current_chunk}/{self.parent.file_chunk}) line({current_line}/{self.parent.file_line})")
-                    QThread.msleep(self.parent.line_delay_spinbox.value())
-                self.log_signal.emit(f"file send end", "info")
+            if self.parent.file_format == "intel hex":
+                with open(self.path, "r") as file:
+                    lines = file.readlines()
+                    while current_line < len(lines):
+                        # thread abort
+                        if not self.enable:
+                            raise Exception
+                        line = lines[current_line].strip()
+                        if line:
+                            self.send_signal.emit(line, "\r\n", "ascii")
+                            if line.startswith(":"):
+                                current_line += 1
+                            if line == ":00000001FF":
+                                current_chunk += 1
+                                # file send flow control
+                                if self.parent.flow_control_groupbox.isChecked():
+                                    global receive_buffer
+                                    receive_buffer = b""
+                                    while True:
+                                        if not self.enable:
+                                            raise Exception
+                                        if receive_buffer == self.parent.chunk_resume_lineedit.text().encode():
+                                            start_line = current_line
+                                            break
+                                        if receive_buffer == self.parent.chunk_restart_lineedit.text().encode():
+                                            current_line = start_line
+                                            current_chunk -= 1
+                                            break
+                                        QThread.msleep(100)
+                        self.progress_signal.emit(current_line, None, f"chunk({current_chunk}/{self.parent.file_chunk}) line({current_line}/{self.parent.file_line})")
+                        QThread.msleep(self.parent.line_delay_spinbox.value())
+                    self.log_signal.emit(f"file send end", "info")
+            else:  # self.parent.file_format == "bin"
+                with open(self.path, "rb") as file:
+                    while True:
+                        buffer = file.read(16)
+                        if not buffer:
+                            break
+                        line = buffer.hex()
+                        self.send_signal.emit(line, "", "hex")
+                        current_line += 1
+                        self.progress_signal.emit(current_line, None, f"line({current_line}/{self.parent.file_line})")
+                        QThread.msleep(self.parent.line_delay_spinbox.value())
+                    self.log_signal.emit(f"file send end", "info")
 
-        def run(self):
+        def run(self) -> None:
             # open serial first
             if not shared.io_status_widget.serial_toggle_button.isChecked():
                 shared.io_status_widget.serial_toggle_button.setChecked(True)
@@ -1698,7 +1768,7 @@ class FileSendWidget(QWidget):
                 self.log_signal.emit("file send abort", "warning")
                 self.progress_signal.emit(0, self.parent.file_line, f"chunk(0/{self.parent.file_chunk}) line(0/{self.parent.file_line})")
 
-        def stop(self):
+        def stop(self) -> None:
             self.enable = False
             self.wait()
 
@@ -1782,13 +1852,13 @@ class FileSendWidget(QWidget):
         setting_layout = QVBoxLayout(self.setting_widget)
         setting_layout.setContentsMargins(0, 0, 0, 0)
         # flow control groupbox
-        flow_control_groupbox = QGroupBox("Flow Control")
-        setting_layout.addWidget(flow_control_groupbox)
-        flow_control_layout = QGridLayout(flow_control_groupbox)
+        self.flow_control_groupbox.setCheckable(True)
+        setting_layout.addWidget(self.flow_control_groupbox)
+        flow_control_layout = QGridLayout(self.flow_control_groupbox)
         flow_control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         # line delay label
         line_delay_label = QLabel("line delay")
-        line_delay_label.setFixedWidth(80)
+        line_delay_label.setFixedWidth(100)
         flow_control_layout.addWidget(line_delay_label, 0, 0)
         # line delay spinbox
         self.line_delay_spinbox.setFixedWidth(120)
@@ -1804,7 +1874,7 @@ class FileSendWidget(QWidget):
         flow_control_layout.addWidget(line_delay_info_label, 0, 2)
         # chunk resume label
         chunk_resume_label = QLabel("chunk resume")
-        chunk_resume_label.setFixedWidth(80)
+        chunk_resume_label.setFixedWidth(100)
         flow_control_layout.addWidget(chunk_resume_label, 1, 0)
         # chunk resume lineedit
         self.chunk_resume_lineedit.setFixedWidth(120)
@@ -1815,12 +1885,11 @@ class FileSendWidget(QWidget):
         chunk_resume_info_label.setFixedWidth(22)
         chunk_resume_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
         chunk_resume_info_label.setToolTip("Controls when to continue sending the next chunk.\n"
-                                           "When the received buffer matches this value, send the next chunk.\n"
-                                           "If left empty, this feature is disabled.")
+                                           "When the received buffer matches this value, send the next chunk.")
         flow_control_layout.addWidget(chunk_resume_info_label, 1, 2)
         # chunk restart label
         chunk_restart_label = QLabel("chunk restart")
-        chunk_restart_label.setFixedWidth(80)
+        chunk_restart_label.setFixedWidth(100)
         flow_control_layout.addWidget(chunk_restart_label, 2, 0)
         # chunk restart lineedit
         self.chunk_restart_lineedit.setFixedWidth(120)
@@ -1831,8 +1900,7 @@ class FileSendWidget(QWidget):
         chunk_restart_info_label.setFixedWidth(22)
         chunk_restart_info_label.setPixmap(QIcon("icon:info.svg").pixmap(20, 20))
         chunk_restart_info_label.setToolTip("Controls when to resend the previous chunk.\n"
-                                            "When the received buffer matches this value, resend the previous chunk.\n"
-                                            "If left empty, this feature is disabled.")
+                                            "When the received buffer matches this value, resend the previous chunk.")
         flow_control_layout.addWidget(chunk_restart_info_label, 2, 2)
 
         # file split groupbox
@@ -1841,8 +1909,8 @@ class FileSendWidget(QWidget):
         file_split_layout = QHBoxLayout(file_split_groupbox)
         file_split_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         # file split label
-        file_split_label = QLabel("chunk size: ")
-        file_split_label.setFixedWidth(80)
+        file_split_label = QLabel("chunk size")
+        file_split_label.setFixedWidth(100)
         file_split_layout.addWidget(file_split_label)
         # file split size
         self.chunk_size_spinbox.setFixedWidth(120)
@@ -1905,19 +1973,48 @@ class FileSendWidget(QWidget):
                     if not format_checked:
                         if line.startswith(":"):
                             self.file_format = "intel hex"
+                            intel_hex_valid = True
+                        else:
+                            self.file_format = "unknown"
                         format_checked = True
-                    if line.startswith(":"):
-                        self.file_line += 1
-                    if line == ":00000001FF":
-                        self.file_chunk += 1
+                    if self.file_format == "intel hex":
+                        if line.startswith(":"):
+                            self.file_line += 1
+                        if line == ":00000001FF":
+                            self.file_chunk += 1
+                        # check crc
+                        byte = bytes.fromhex(line[1:-2])
+                        checksum = 0x100 - sum(byte) & 0xFF
+                        if checksum == int(line[-2:], 16):
+                            formatted_line = f'{line[:-2]}<span style="color:lightgreen;">{line[-2:]}</span>'
+                        else:
+                            intel_hex_valid = False
+                            formatted_line = f'<span style="background-color:yellow;">{line}</span>'
+                        self.preview_textedit.append(formatted_line)
+                    else:  # self.file_format == "unknown"
+                        self.preview_textedit.append(line)
+                if not intel_hex_valid:
+                    self.file_format = "intel hex(invalid)"
+        except UnicodeDecodeError:
+            with open(file_path, "rb") as file:
+                self.file_format = "bin"
+                address = 0
+                while True:
+                    buffer = file.read(16)
+                    if not buffer:
+                        break
+                    line = f"0x{address:08x}" + " | " + " ".join([f"{byte:02x}" for byte in buffer])
+                    self.file_line += 1
+                    address += 16
                     self.preview_textedit.append(line)
-        except Exception:
-            pass
         self.path_lineedit.setText(file_path)
         self.info_label.setText(f"{self.file_format} file found")
         self.file_progressbar.setMaximum(self.file_line)
         self.file_progressbar.setValue(0)
-        self.file_progressbar.setFormat(f"chunk(0/{self.file_chunk}) line(0/{self.file_line})")
+        if self.file_format == "intel hex":
+            self.file_progressbar.setFormat(f"chunk(0/{self.file_chunk}) line(0/{self.file_line})")
+        else:  # self.file_format == "bin"
+            self.file_progressbar.setFormat(f"line(0/{self.file_line})")
 
     def file_send_toggle(self) -> None:
         if self.expand_button.isChecked():
@@ -1930,6 +2027,10 @@ class FileSendWidget(QWidget):
             self.setting_widget.hide()
 
     def file_send_split(self) -> None:
+        if self.file_format != "intel hex":
+            QMessageBox.warning(shared.main_window, "Split Failed", "Unsupported file format.\n"
+                                                                    "support format: intel hex")
+            return
         source_file_path = self.path_lineedit.text()
         if source_file_path.endswith(".tmp"):
             shared.serial_log_widget.log_insert("file already split", "warning")
