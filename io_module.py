@@ -659,6 +659,7 @@ class AdvancedSendWidget(QWidget):
         self.input_combobox = QComboBox()
         self.input_lineedit = QLineEdit()
         self.command_lineedit = QLineEdit()
+        self.command_combobox = QComboBox()
         self.message_lineedit = QLineEdit()
         self.message_combobox = QComboBox()
         self.expression_lineedit = QLineEdit()
@@ -777,23 +778,37 @@ class AdvancedSendWidget(QWidget):
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "command":
-                        if not all(c in "0123456789ABCDEFabcdef" for c in param):
-                            try:
-                                command = eval(param)
-                            except:
+                        if optional == "shortcut":
+                            param = eval(param)
+                            type = shared.shortcut_table.cellWidget(param - 1, 1).text()
+                            if type == "single":
+                                command = shared.shortcut_table.cellWidget(param - 1, 3).text()
+                                suffix = shared.shortcut_table.cellWidget(param - 1, 4).text()
+                                format = shared.shortcut_table.cellWidget(param - 1, 5).text()
+                                self.send_signal.emit(command, suffix, format)
+                            else:
+                                command = eval(shared.shortcut_table.cellWidget(param - 1, 3).text())
+                                self.send(command)
+                            # remove highlight
+                            self.highlight_signal.emit(length, index, "white")
+                        else:
+                            if optional == "plain":
+                                command = param
+                            else:  # optional == "expression"
+                                try:
+                                    command = eval(param)
+                                except:
+                                    # error highlight
+                                    self.highlight_signal.emit(length, index, "red")
+                                    raise Exception(f"command exception: trying to perform ({param.strip()})")
+                            suffix = shared.single_send_widget.single_send_calculate(command)
+                            if suffix == "NULL":
                                 # error highlight
                                 self.highlight_signal.emit(length, index, "red")
-                                raise Exception(f"command exception: trying to perform ({param.strip()})")
-                        else:  # plain command
-                            command = param
-                        suffix = shared.single_send_widget.single_send_calculate(command)
-                        if suffix == "NULL":
-                            # error highlight
-                            self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"suffix exception: trying to calculate suffix of ({command})")
-                        self.send_signal.emit(command, suffix, "hex")
-                        # remove highlight
-                        self.highlight_signal.emit(length, index, "white")
+                                raise Exception(f"suffix exception: trying to calculate suffix of ({command})")
+                            self.send_signal.emit(command, suffix, "hex")
+                            # remove highlight
+                            self.highlight_signal.emit(length, index, "white")
                     elif action == "message":
                         try:
                             message = eval(f"f'''{param.strip()}'''")
@@ -822,18 +837,6 @@ class AdvancedSendWidget(QWidget):
                             time.sleep(param * 60)
                         else:  # optional == "hour"
                             time.sleep(param * 3600)
-                        # remove highlight
-                        self.highlight_signal.emit(length, index, "white")
-                    elif action == "shortcut":
-                        type = shared.shortcut_table.cellWidget(param - 1, 2).text()
-                        if type == "single":
-                            command = shared.shortcut_table.cellWidget(param - 1, 4).text()
-                            suffix = shared.shortcut_table.cellWidget(param - 1, 5).text()
-                            format = shared.shortcut_table.cellWidget(param - 1, 6).text()
-                            self.send_signal.emit(command, suffix, format)
-                        else:
-                            command = eval(shared.shortcut_table.cellWidget(param - 1, 4).text())
-                            self.send(command)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "loop":
@@ -1170,12 +1173,6 @@ class AdvancedSendWidget(QWidget):
                 param_widget.setSingleStep(10)
                 param_widget.setValue(self.advanced_send_buffer[i][1])
                 param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "shortcut":
-                param_widget = QSpinBox()
-                param_widget.setRange(1, shared.shortcut_count)
-                param_widget.setSingleStep(1)
-                param_widget.setValue(self.advanced_send_buffer[i][1])
-                param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             elif self.advanced_send_buffer[i][0] == "loop":
                 param_widget = QSpinBox()
                 param_widget.setRange(1, 2147483647)
@@ -1230,7 +1227,7 @@ class AdvancedSendWidget(QWidget):
                 if item and item.widget():
                     item.widget().deleteLater()
             # create optional widget for optional param
-            if self.action_combobox.currentText() in ["input", "message", "delay"]:
+            if self.action_combobox.currentText() in ["input", "command", "message", "delay"]:
                 optional_widget = QWidget()
                 action_layout.addWidget(optional_widget)
                 optional_layout = QHBoxLayout(optional_widget)
@@ -1240,6 +1237,12 @@ class AdvancedSendWidget(QWidget):
                     optional_layout.addWidget(input_label)
                     self.input_lineedit = QLineEdit()
                     optional_layout.addWidget(self.input_lineedit)
+                elif self.action_combobox.currentText() == "command":
+                    self.command_combobox = QComboBox()
+                    self.command_combobox.addItem(QIcon("icon:plain_text.svg"), "plain")
+                    self.command_combobox.addItem(QIcon("icon:variable.svg"), "expression")
+                    self.command_combobox.addItem(QIcon("icon:document_add.svg"), "shortcut")
+                    optional_layout.addWidget(self.command_combobox)
                 elif self.action_combobox.currentText() == "message":
                     self.message_combobox = QComboBox()
                     self.message_combobox.addItem(QIcon("icon:info.svg"), "info")
@@ -1283,13 +1286,6 @@ class AdvancedSendWidget(QWidget):
                 param_layout.addWidget(self.delay_spinbox)
                 self.delay_spinbox.setFocus()
                 self.delay_spinbox.selectAll()
-            elif self.action_combobox.currentText() == "shortcut":
-                self.shortcut_spinbox = QSpinBox()
-                self.shortcut_spinbox.setRange(1, shared.shortcut_count)
-                self.shortcut_spinbox.setSingleStep(1)
-                param_layout.addWidget(self.shortcut_spinbox)
-                self.shortcut_spinbox.setFocus()
-                self.shortcut_spinbox.selectAll()
             elif self.action_combobox.currentText() == "loop":
                 self.loop_spinbox = QSpinBox()
                 self.loop_spinbox.setRange(1, 2147483647)
@@ -1336,10 +1332,9 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox.model().item(5).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:variable.svg"), "expression")
         self.action_combobox.addItem(QIcon("icon:timer.svg"), "delay")
-        self.action_combobox.addItem(QIcon("icon:document_add.svg"), "shortcut")
         # control flow action
         self.action_combobox.addItem("------------------------- Control Flow --------------------------")
-        self.action_combobox.model().item(9).setEnabled(False)
+        self.action_combobox.model().item(8).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_repeat_all.svg"), "loop")
         self.action_combobox.addItem(QIcon("icon:branch.svg"), "if")
         self.action_combobox.addItem(QIcon("icon:pause.svg"), "break")
@@ -1373,8 +1368,9 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "command":
             param = self.command_lineedit.text()
+            optional = self.command_combobox.currentText()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["command", param])
+            self.advanced_send_buffer.insert(index, ["command", param, optional])
             # add to gui
             action_label = QTableWidgetItem("command")
             self.advanced_send_table.setItem(index, 1, action_label)
@@ -1417,19 +1413,6 @@ class AdvancedSendWidget(QWidget):
             param_widget.setRange(0, 2147483647)
             param_widget.setSingleStep(10)
             param_widget.setValue(param)
-            param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "shortcut":
-            shortcut = self.shortcut_spinbox.value()
-            # add to action slot
-            self.advanced_send_buffer.insert(index, ["shortcut", shortcut])
-            # add to gui
-            action_label = QTableWidgetItem("shortcut")
-            self.advanced_send_table.setItem(index, 1, action_label)
-            param_widget = QSpinBox()
-            param_widget.setRange(1, shared.shortcut_count)
-            param_widget.setSingleStep(10)
-            param_widget.setValue(shortcut)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif self.action_combobox.currentText() == "loop":
@@ -1948,6 +1931,9 @@ class FileSendWidget(QWidget):
 
     def file_send_split(self) -> None:
         source_file_path = self.path_lineedit.text()
+        if source_file_path.endswith(".tmp"):
+            shared.serial_log_widget.log_insert("file already split", "warning")
+            return
         source_dir = os.path.dirname(source_file_path)
         chunk_size = self.chunk_size_spinbox.value()
         temp_file_fd, temp_file_path = tempfile.mkstemp(dir=source_dir, suffix=".tmp")
