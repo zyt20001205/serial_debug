@@ -33,6 +33,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "localport": "",
         "remoteipv4": "",
         "remoteport": "",
+        "masteradapter": "",
         "timeout": 0,
     },
     "log_setting": {

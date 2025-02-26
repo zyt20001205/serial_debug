@@ -63,27 +63,27 @@ class IOStatusWidget(QWidget):
 
         def run(self):
             try:
-                if shared.serial_setting["port"] == "tcp client":
+                if shared.serial_setting["port"] == "TCP client":
                     self.tcp_client = QTcpSocket()
                     self.tcp_client.connectToHost(shared.serial_setting["remoteipv4"], int(shared.serial_setting["remoteport"]))
                     shared.serial_log_widget.log_insert("connecting to server\n"
                                                         f"---------------------------------------------------------------\n"
-                                                        f"|{f'tcp client mode':^61}|\n"
+                                                        f"|{'tcp client mode':^61}|\n"
                                                         f"---------------------------------------------------------------\n"
-                                                        f"""|{f'remote ipv4':^30}|{f'{shared.serial_setting["remoteipv4"]}:{shared.serial_setting["remoteport"]}':^30}|\n"""
-                                                        f"""|{f'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
+                                                        f"""|{'remote ipv4':^30}|{f'{shared.serial_setting["remoteipv4"]}:{shared.serial_setting["remoteport"]}':^30}|\n"""
+                                                        f"""|{'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
                                                         f"---------------------------------------------------------------",
                                                         "info")
                     self.tcp_client.connected.connect(self.tcp_client_find_server)
-                elif shared.serial_setting["port"] == "tcp server":
+                elif shared.serial_setting["port"] == "TCP server":
                     self.tcp_server = QTcpServer()
                     self.tcp_server.listen(QHostAddress(shared.serial_setting["localipv4"]), int(shared.serial_setting["localport"]))
                     shared.serial_log_widget.log_insert("listening for client\n"
                                                         f"---------------------------------------------------------------\n"
-                                                        f"|{f'tcp server mode':^61}|\n"
+                                                        f"|{'tcp server mode':^61}|\n"
                                                         f"---------------------------------------------------------------\n"
-                                                        f"""|{f'local ipv4':^30}|{f'{shared.serial_setting["localipv4"]}:{shared.serial_setting["localport"]}':^30}|\n"""
-                                                        f"""|{f'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
+                                                        f"""|{'local ipv4':^30}|{f'{shared.serial_setting["localipv4"]}:{shared.serial_setting["localport"]}':^30}|\n"""
+                                                        f"""|{'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
                                                         f"---------------------------------------------------------------",
                                                         "info")
                     self.tcp_server.newConnection.connect(self.tcp_server_find_peer)
@@ -122,14 +122,14 @@ class IOStatusWidget(QWidget):
                     self.serial.readyRead.connect(lambda: self.read_timer(self.serial))
                     shared.serial_log_widget.log_insert("serial opened\n"
                                                         f"---------------------------------------------------------------\n"
-                                                        f"|{f'com mode':^61}|\n"
+                                                        f"|{'com mode':^61}|\n"
                                                         f"---------------------------------------------------------------\n"
-                                                        f"|{f'port':^30}|{shared.serial_setting['port']:^30}|\n"
-                                                        f"|{f'baudrate':^30}|{shared.serial_setting['baudrate']:^30}|\n"
-                                                        f"|{f'databits':^30}|{shared.serial_setting['databits']:^30}|\n"
-                                                        f"|{f'parity':^30}|{shared.serial_setting['parity']:^30}|\n"
-                                                        f"|{f'stopbits':^30}|{shared.serial_setting['stopbits']:^30}|\n"
-                                                        f"""|{f'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
+                                                        f"|{'port':^30}|{shared.serial_setting['port']:^30}|\n"
+                                                        f"|{'baudrate':^30}|{shared.serial_setting['baudrate']:^30}|\n"
+                                                        f"|{'databits':^30}|{shared.serial_setting['databits']:^30}|\n"
+                                                        f"|{'parity':^30}|{shared.serial_setting['parity']:^30}|\n"
+                                                        f"|{'stopbits':^30}|{shared.serial_setting['stopbits']:^30}|\n"
+                                                        f"""|{'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
                                                         f"---------------------------------------------------------------",
                                                         "info")
             except Exception as e:
@@ -155,8 +155,7 @@ class IOStatusWidget(QWidget):
             self.tcp_client.readyRead.connect(lambda: self.read_timer(self.tcp_client))
             self.tcp_client.disconnected.connect(self.tcp_client_lost_server)
             self.parent.link_icon.setPixmap(QIcon("icon:link.svg").pixmap(20, 20))
-            self.parent.local_lineedit.setText(
-                f"{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}")
+            self.parent.local_lineedit.setText(f"{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}")
             shared.serial_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
@@ -174,22 +173,35 @@ class IOStatusWidget(QWidget):
 
         def tcp_server_find_peer(self):
             peer = self.tcp_server.nextPendingConnection()
+            if self.tcp_peer:
+                peer_list = ("\n".join(f"|{'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|" for peer in self.tcp_peer)
+                             + f"\n|{'remote ipv4 (new)':^30}|<b>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</b>|\n")
+            else:
+                peer_list = f"|{'remote ipv4 (new)':^30}|<b>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</b>|\n"
             self.tcp_peer.append(peer)
             peer.readyRead.connect(lambda: self.read_timer(peer))
             peer.disconnected.connect(lambda: self.tcp_server_lost_peer(peer))
             self.server_refresh()
             shared.serial_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
-                                                f"|{f'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|\n"
+                                                f"|{'client list':^61}|\n"
+                                                f"---------------------------------------------------------------\n"
+                                                f"{peer_list}"
                                                 f"---------------------------------------------------------------", "info")
 
         def tcp_server_lost_peer(self, peer):
             self.tcp_peer.remove(peer)
-            peer.deleteLater()
+            if self.tcp_peer:
+                peer_list = ("\n".join(f"|{'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|" for peer in self.tcp_peer)
+                             + f"\n|{'remote ipv4 (lost)':^30}|<s>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</s>|\n")
+            else:
+                peer_list = f"|{'remote ipv4 (lost)':^30}|<s>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</s>|\n"
             self.server_refresh()
             shared.serial_log_widget.log_insert("connection lost\n"
                                                 f"---------------------------------------------------------------\n"
-                                                f"|{f'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|\n"
+                                                f"|{'client list':^61}|\n"
+                                                f"---------------------------------------------------------------\n"
+                                                f"{peer_list}"
                                                 f"---------------------------------------------------------------", "info")
 
         # def client_refresh(self):
@@ -234,10 +246,10 @@ class IOStatusWidget(QWidget):
 
         def stop(self):
             try:
-                if shared.serial_setting["port"] == "tcp client":
+                if shared.serial_setting["port"] == "TCP client":
                     self.tcp_client.disconnectFromHost()
                     shared.serial_log_widget.log_insert(f"disconnected from server", "info")
-                elif shared.serial_setting["port"] == "tcp server":
+                elif shared.serial_setting["port"] == "TCP server":
                     self.tcp_server.close()
                     shared.serial_log_widget.log_insert("server stopped listening", "info")
                     for peer in self.tcp_server.findChildren(QTcpSocket):
@@ -375,7 +387,7 @@ class IOStatusWidget(QWidget):
                 item = self.io_info_layout.itemAt(i)
                 if item and item.widget():
                     item.widget().hide()
-            if shared.serial_setting["port"] == "tcp client":
+            if shared.serial_setting["port"] == "TCP client":
                 self.local_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(20, 20))
                 self.local_icon.show()
                 self.local_lineedit.setText("")
@@ -386,7 +398,7 @@ class IOStatusWidget(QWidget):
                 self.remote_icon.show()
                 self.remote_lineedit.setText(f"{shared.serial_setting['remoteipv4']}:{shared.serial_setting['remoteport']}")
                 self.remote_lineedit.show()
-            elif shared.serial_setting["port"] == "tcp server":
+            elif shared.serial_setting["port"] == "TCP server":
                 self.local_icon.setPixmap(QIcon("icon:server.svg").pixmap(20, 20))
                 self.local_icon.show()
                 self.local_lineedit.setText(f"{shared.serial_setting['localipv4']}:{shared.serial_setting['localport']}")
@@ -407,7 +419,7 @@ class IOStatusWidget(QWidget):
                                           f"Parity: {shared.serial_setting['parity']}, "
                                           f"Stopbits: {shared.serial_setting['stopbits']}")
                 self.serial_label.show()
-        elif shared.serial_setting["port"] == "tcp client":
+        elif shared.serial_setting["port"] == "TCP client":
             self.local_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(20, 20))
             self.local_icon.show()
             self.local_lineedit.setText("Connecting...")
@@ -418,7 +430,7 @@ class IOStatusWidget(QWidget):
             self.remote_icon.show()
             self.remote_lineedit.setText(f"{shared.serial_setting['remoteipv4']}:{shared.serial_setting['remoteport']}")
             self.remote_lineedit.show()
-        elif shared.serial_setting["port"] == "tcp server":
+        elif shared.serial_setting["port"] == "TCP server":
             self.local_icon.setPixmap(QIcon("icon:server.svg").pixmap(20, 20))
             self.local_icon.show()
             self.local_lineedit.setText(f"{shared.serial_setting['localipv4']}:{shared.serial_setting['localport']}")
@@ -621,13 +633,13 @@ class SingleSendWidget(QWidget):
             command_formatted = command.encode("ascii")
         else:  # format == "utf-8"
             command_formatted = command.encode("utf-8")
-        if shared.serial_setting["port"] == "tcp client":
+        if shared.serial_setting["port"] == "TCP client":
             if shared.io_status_widget.local_lineedit.text() == "Connecting...":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
                 return
             else:
                 shared.io_status_widget.serial_control.tcp_client.write(command_formatted)
-        elif shared.serial_setting["port"] == "tcp server":
+        elif shared.serial_setting["port"] == "TCP server":
             if shared.io_status_widget.remote_combobox.currentData() == "none":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
                 return

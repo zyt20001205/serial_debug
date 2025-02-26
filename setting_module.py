@@ -1,5 +1,6 @@
 import socket
 
+import pysoem
 from PySide6.QtGui import QFont, QIcon, QKeySequence, QFontDatabase
 from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QPushButton, QSpinBox, QLineEdit, QVBoxLayout, QFrame, QHBoxLayout, QKeySequenceEdit, QScrollArea, \
     QMessageBox, QStackedWidget, QSizePolicy
@@ -48,6 +49,9 @@ class SettingWidget(QWidget):
         self.remoteipv4_lineedit = QLineEdit()
         self.remoteport_label = QLabel("Remote Port")
         self.remoteport_lineedit = QLineEdit()
+
+        self.masteradapter_label = QLabel("Network Adapter")
+        self.masteradapter_combobox = QComboBox()
 
         self.family_combobox = QComboBox()
         self.pointsize_spinbox = QSpinBox()
@@ -114,10 +118,12 @@ class SettingWidget(QWidget):
         def serial_setting_gui_refresh():
             if self.port_combobox.currentData() == "":
                 self.serial_dynamic_gui.setCurrentIndex(0)
-            elif self.port_combobox.currentData() == "tcp client":
+            elif self.port_combobox.currentData() == "TCP client":
                 self.serial_dynamic_gui.setCurrentIndex(2)
-            elif self.port_combobox.currentData() == "tcp server":
+            elif self.port_combobox.currentData() == "TCP server":
                 self.serial_dynamic_gui.setCurrentIndex(3)
+            elif self.port_combobox.currentData() == "EtherCAT master":
+                self.serial_dynamic_gui.setCurrentIndex(4)
             else:
                 self.serial_dynamic_gui.setCurrentIndex(1)
             current_widget = self.serial_dynamic_gui.currentWidget()
@@ -128,9 +134,9 @@ class SettingWidget(QWidget):
         def serial_view_gui_refresh():
             if self.port_combobox.currentData() == "":
                 serial_icon.setPixmap(QIcon("icon:plug_disconnected.svg").pixmap(128, 128))
-            elif self.port_combobox.currentData() == "tcp client":
+            elif self.port_combobox.currentData() == "TCP client":
                 serial_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(128, 128))
-            elif self.port_combobox.currentData() == "tcp server":
+            elif self.port_combobox.currentData() == "TCP server":
                 serial_icon.setPixmap(QIcon("icon:server.svg").pixmap(128, 128))
             else:
                 serial_icon.setPixmap(QIcon("icon:serial_port.svg").pixmap(128, 128))
@@ -154,8 +160,9 @@ class SettingWidget(QWidget):
             self.port_combobox.addItem("", "")
             for port_info in QSerialPortInfo.availablePorts():
                 self.port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
-            self.port_combobox.addItem("tcp client", "tcp client")
-            self.port_combobox.addItem("tcp server", "tcp server")
+            self.port_combobox.addItem("TCP client", "TCP client")
+            self.port_combobox.addItem("TCP server", "TCP server")
+            self.port_combobox.addItem("EtherCAT master", "EtherCAT master")
             index = self.port_combobox.findData(shared.serial_setting["port"])
             if index >= 0:
                 self.port_combobox.setCurrentIndex(index)
@@ -320,6 +327,31 @@ class SettingWidget(QWidget):
             self.localport_lineedit.setToolTip("Specifies the local port number to use for tcp communication.")
             serial_tcpserver_layout.addWidget(self.localport_lineedit, 1, 1)
 
+        def ethercat_master_gui():
+            serial_ethercatmaster_gui = QWidget()
+            serial_ethercatmaster_gui.setFixedWidth(600)
+            self.serial_dynamic_gui.addWidget(serial_ethercatmaster_gui)
+            serial_ethercatmaster_layout = QGridLayout(serial_ethercatmaster_gui)
+            serial_ethercatmaster_layout.setContentsMargins(0, 0, 0, 0)
+            serial_ethercatmaster_layout.setSpacing(10)
+            serial_ethercatmaster_layout.setColumnStretch(0, 1)
+            serial_ethercatmaster_layout.setColumnStretch(1, 1)
+
+            # network adapter selection
+            self.masteradapter_label.setFont(self.font)
+            self.masteradapter_label.setFixedSize(295, self.height)
+            serial_ethercatmaster_layout.addWidget(self.masteradapter_label, 0, 0)
+            self.masteradapter_combobox.setFont(self.font)
+            self.masteradapter_combobox.setFixedHeight(self.height)
+            adapters = pysoem.find_adapters()
+            for adapter in adapters:
+                self.masteradapter_combobox.addItem(f"{adapter.desc.decode()}", f"{adapter.name}")
+            index = self.masteradapter_combobox.findData(shared.serial_setting["masteradapter"])
+            if index >= 0:
+                self.masteradapter_combobox.setCurrentIndex(index)
+            # self.masteradapter_combobox.setToolTip("Specifies the remote ipv4 address to use for tcp communication.")
+            serial_ethercatmaster_layout.addWidget(self.masteradapter_combobox, 0, 1)
+
         serial_setting_widget = QWidget()
         self.setting_scroll_layout.addWidget(serial_setting_widget)
         serial_setting_layout = QVBoxLayout(serial_setting_widget)
@@ -355,7 +387,7 @@ class SettingWidget(QWidget):
         com_gui()
         tcp_client_gui()
         tcp_server_gui()
-
+        ethercat_master_gui()
         serial_setting_gui_refresh()
 
         # serial view widget
@@ -591,15 +623,15 @@ class SettingWidget(QWidget):
         shortcut_view_layout.addWidget(shortcut_icon)
 
         return shortcut_setting_widget
-    
+
     def setting_refresh(self):
         self.port_combobox.clear()
         self.port_combobox.addItem("", "")
         for port_info in QSerialPortInfo.availablePorts():
             self.port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
-        self.port_combobox.addItem("tcp client", "tcp client")
-        self.port_combobox.addItem("tcp server", "tcp server")
-    
+        self.port_combobox.addItem("TCP client", "TCP client")
+        self.port_combobox.addItem("TCP server", "TCP server")
+
     def setting_reset(self):
         # reset serial setting
         self.port_combobox.setCurrentIndex(0)
@@ -613,6 +645,7 @@ class SettingWidget(QWidget):
         shared.serial_setting["localport"] = ""
         shared.serial_setting["remoteipv4"] = ""
         shared.serial_setting["remoteport"] = ""
+        shared.serial_setting["masteradapter"] = ""
         shared.serial_setting["timeout"] = 0
         # save font setting
         shared.log_font["family"] = "Consolas"
@@ -655,12 +688,14 @@ class SettingWidget(QWidget):
         shared.serial_setting["port"] = self.port_combobox.currentData()
         if self.port_combobox.currentData() == "":
             pass
-        elif self.port_combobox.currentData() in ["tcp client", "tcp server"]:
+        elif self.port_combobox.currentData() in ["TCP client", "TCP server"]:
             shared.serial_setting["localipv4"] = self.localipv4_combobox.currentText()
             shared.serial_setting["localport"] = self.localport_lineedit.text()
             shared.serial_setting["remoteipv4"] = self.remoteipv4_lineedit.text()
             shared.serial_setting["remoteport"] = self.remoteport_lineedit.text()
             shared.serial_setting["timeout"] = self.timeout_spinbox.value()
+        elif self.port_combobox.currentData() == "EtherCAT master":
+            shared.serial_setting["masteradapter"] = self.masteradapter_combobox.currentData()
         else:
             shared.serial_setting["baudrate"] = self.baudrate_combobox.currentText()
             shared.serial_setting["databits"] = self.databits_combobox.currentText()
