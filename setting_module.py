@@ -136,20 +136,20 @@ class SettingWidget(QWidget):
                 serial_icon.setPixmap(QIcon("icon:plug_disconnected.svg").pixmap(128, 128))
             elif self.port_combobox.currentData() == "TCP client":
                 serial_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(128, 128))
-            elif self.port_combobox.currentData() == "TCP server":
+            elif self.port_combobox.currentData() in ["TCP server", "EtherCAT master"]:
                 serial_icon.setPixmap(QIcon("icon:server.svg").pixmap(128, 128))
             else:
                 serial_icon.setPixmap(QIcon("icon:serial_port.svg").pixmap(128, 128))
 
         def fixed_gui():
             serial_fixed_widget = QWidget()
-            serial_fixed_widget.setFixedWidth(600)
+            serial_fixed_widget.setFixedWidth(800)
             serial_param_layout.addWidget(serial_fixed_widget)
             serial_fixed_layout = QGridLayout(serial_fixed_widget)
             serial_fixed_layout.setContentsMargins(0, 0, 0, 5)
             serial_fixed_layout.setSpacing(10)
-            serial_fixed_layout.setColumnStretch(0, 1)
-            serial_fixed_layout.setColumnStretch(1, 1)
+            serial_fixed_layout.setColumnStretch(0, 2)
+            serial_fixed_layout.setColumnStretch(1, 3)
             # port selection
             port_label = QLabel("Port")
             port_label.setFont(self.font)
@@ -162,7 +162,7 @@ class SettingWidget(QWidget):
                 self.port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
             self.port_combobox.addItem("TCP client", "TCP client")
             self.port_combobox.addItem("TCP server", "TCP server")
-            self.port_combobox.addItem("EtherCAT master", "EtherCAT master")
+            # self.port_combobox.addItem("EtherCAT master", "EtherCAT master")
             index = self.port_combobox.findData(shared.serial_setting["port"])
             if index >= 0:
                 self.port_combobox.setCurrentIndex(index)
@@ -191,13 +191,13 @@ class SettingWidget(QWidget):
 
         def com_gui():
             serial_com_gui = QWidget()
-            serial_com_gui.setFixedWidth(600)
+            serial_com_gui.setFixedWidth(800)
             self.serial_dynamic_gui.addWidget(serial_com_gui)
             serial_com_layout = QGridLayout(serial_com_gui)
             serial_com_layout.setContentsMargins(0, 0, 0, 0)
             serial_com_layout.setSpacing(10)
-            serial_com_layout.setColumnStretch(0, 1)
-            serial_com_layout.setColumnStretch(1, 1)
+            serial_com_layout.setColumnStretch(0, 2)
+            serial_com_layout.setColumnStretch(1, 3)
 
             # baud rate selection
             self.baudrate_label.setFont(self.font)
@@ -206,8 +206,8 @@ class SettingWidget(QWidget):
             self.baudrate_combobox.setFont(self.font)
             self.baudrate_combobox.setFixedHeight(self.height)
             self.baudrate_combobox.addItems(
-                ["", "110", "300", "600", "1200", "2400", "4800", "9600", "14400", "19200", "38400", "56000", "57600", "115200", "128000", "230400", "256000", "460800", "500000",
-                 "512000", "600000", "750000", "921600", "1000000", "1500000", "2000000"])
+                ["", "110", "300", "800", "1200", "2400", "4800", "9800", "14400", "19200", "38400", "58000", "57800", "115200", "128000", "230400", "258000", "460800", "500000",
+                 "512000", "800000", "750000", "921800", "1000000", "1500000", "2000000"])
             self.baudrate_combobox.setCurrentText(shared.serial_setting["baudrate"])
             self.baudrate_combobox.setToolTip("Set the communication speed in bits per second(bps).\n"
                                               "Must match with the connected device's baud rate.")
@@ -258,13 +258,13 @@ class SettingWidget(QWidget):
 
         def tcp_client_gui():
             serial_tcpclient_gui = QWidget()
-            serial_tcpclient_gui.setFixedWidth(600)
+            serial_tcpclient_gui.setFixedWidth(800)
             self.serial_dynamic_gui.addWidget(serial_tcpclient_gui)
             serial_tcpclient_layout = QGridLayout(serial_tcpclient_gui)
             serial_tcpclient_layout.setContentsMargins(0, 0, 0, 0)
             serial_tcpclient_layout.setSpacing(10)
-            serial_tcpclient_layout.setColumnStretch(0, 1)
-            serial_tcpclient_layout.setColumnStretch(1, 1)
+            serial_tcpclient_layout.setColumnStretch(0, 2)
+            serial_tcpclient_layout.setColumnStretch(1, 3)
 
             # remote ip address entry
             self.remoteipv4_label.setFont(self.font)
@@ -296,13 +296,13 @@ class SettingWidget(QWidget):
                 return ip_list
 
             serial_tcpserver_gui = QWidget()
-            serial_tcpserver_gui.setFixedWidth(600)
+            serial_tcpserver_gui.setFixedWidth(800)
             self.serial_dynamic_gui.addWidget(serial_tcpserver_gui)
             serial_tcpserver_layout = QGridLayout(serial_tcpserver_gui)
             serial_tcpserver_layout.setContentsMargins(0, 0, 0, 0)
             serial_tcpserver_layout.setSpacing(10)
-            serial_tcpserver_layout.setColumnStretch(0, 1)
-            serial_tcpserver_layout.setColumnStretch(1, 1)
+            serial_tcpserver_layout.setColumnStretch(0, 2)
+            serial_tcpserver_layout.setColumnStretch(1, 3)
 
             # local ip address selection
             self.localipv4_label.setFont(self.font)
@@ -329,17 +329,17 @@ class SettingWidget(QWidget):
 
         def ethercat_master_gui():
             serial_ethercatmaster_gui = QWidget()
-            serial_ethercatmaster_gui.setFixedWidth(600)
+            serial_ethercatmaster_gui.setFixedWidth(800)
             self.serial_dynamic_gui.addWidget(serial_ethercatmaster_gui)
             serial_ethercatmaster_layout = QGridLayout(serial_ethercatmaster_gui)
             serial_ethercatmaster_layout.setContentsMargins(0, 0, 0, 0)
             serial_ethercatmaster_layout.setSpacing(10)
-            serial_ethercatmaster_layout.setColumnStretch(0, 1)
-            serial_ethercatmaster_layout.setColumnStretch(1, 1)
+            serial_ethercatmaster_layout.setColumnStretch(0, 2)
+            serial_ethercatmaster_layout.setColumnStretch(1, 3)
 
             # network adapter selection
             self.masteradapter_label.setFont(self.font)
-            self.masteradapter_label.setFixedSize(295, self.height)
+            self.masteradapter_label.setFixedHeight(self.height)
             serial_ethercatmaster_layout.addWidget(self.masteradapter_label, 0, 0)
             self.masteradapter_combobox.setFont(self.font)
             self.masteradapter_combobox.setFixedHeight(self.height)
@@ -349,7 +349,7 @@ class SettingWidget(QWidget):
             index = self.masteradapter_combobox.findData(shared.serial_setting["masteradapter"])
             if index >= 0:
                 self.masteradapter_combobox.setCurrentIndex(index)
-            # self.masteradapter_combobox.setToolTip("Specifies the remote ipv4 address to use for tcp communication.")
+            self.masteradapter_combobox.setToolTip("Selects the network adapter for EtherCAT Master communication.")
             serial_ethercatmaster_layout.addWidget(self.masteradapter_combobox, 0, 1)
 
         serial_setting_widget = QWidget()
@@ -371,14 +371,14 @@ class SettingWidget(QWidget):
         serial_layout = QHBoxLayout(serial_widget)
         # serial param widget
         serial_param_widget = QWidget()
-        serial_param_widget.setFixedWidth(600)
+        serial_param_widget.setFixedWidth(800)
         serial_layout.addWidget(serial_param_widget)
         serial_param_layout = QVBoxLayout(serial_param_widget)
         serial_param_layout.setContentsMargins(0, 0, 0, 0)
         # fixed part
         fixed_gui()
         # dynamic part
-        self.serial_dynamic_gui.setFixedWidth(600)
+        self.serial_dynamic_gui.setFixedWidth(800)
         self.serial_dynamic_gui.setStyleSheet("QStackedWidget { border: none; padding: 0px; margin: 0px; }")
         self.serial_dynamic_gui.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         serial_param_layout.addWidget(self.serial_dynamic_gui)
@@ -434,13 +434,13 @@ class SettingWidget(QWidget):
         font_layout = QHBoxLayout(font_widget)
         # font param widget
         font_param_widget = QWidget()
-        font_param_widget.setFixedWidth(600)
+        font_param_widget.setFixedWidth(800)
         font_layout.addWidget(font_param_widget)
         font_param_layout = QGridLayout(font_param_widget)
         font_param_layout.setContentsMargins(0, 0, 0, 0)
         font_param_layout.setSpacing(10)
-        font_param_layout.setColumnStretch(0, 1)
-        font_param_layout.setColumnStretch(1, 1)
+        font_param_layout.setColumnStretch(0, 2)
+        font_param_layout.setColumnStretch(1, 3)
         # family select
         family_label = QLabel("Family")
         family_label.setFont(self.font)
@@ -556,13 +556,13 @@ class SettingWidget(QWidget):
         shortcut_layout = QHBoxLayout(shortcut_widget)
         # shortcut param widget
         shortcut_param_widget = QWidget()
-        shortcut_param_widget.setFixedWidth(600)
+        shortcut_param_widget.setFixedWidth(800)
         shortcut_layout.addWidget(shortcut_param_widget)
         shortcut_param_layout = QGridLayout(shortcut_param_widget)
         shortcut_param_layout.setContentsMargins(0, 0, 0, 0)
         shortcut_param_layout.setSpacing(10)
-        shortcut_param_layout.setColumnStretch(0, 1)
-        shortcut_param_layout.setColumnStretch(1, 1)
+        shortcut_param_layout.setColumnStretch(0, 2)
+        shortcut_param_layout.setColumnStretch(1, 3)
         # save shortcut
         save_label = QLabel("Save")
         save_label.setFont(self.font)
@@ -631,6 +631,8 @@ class SettingWidget(QWidget):
             self.port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
         self.port_combobox.addItem("TCP client", "TCP client")
         self.port_combobox.addItem("TCP server", "TCP server")
+        # self.port_combobox.addItem("EtherCAT master", "EtherCAT master")
+
 
     def setting_reset(self):
         # reset serial setting

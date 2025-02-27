@@ -1,6 +1,8 @@
+import struct
 import time
 import os
 import tempfile
+import pysoem
 from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
@@ -56,6 +58,7 @@ class IOStatusWidget(QWidget):
             self.tcp_client = None
             self.tcp_server = None
             self.tcp_peer = []
+            self.ethercat_master = None
 
             self.timer = QTimer()
 
@@ -87,6 +90,36 @@ class IOStatusWidget(QWidget):
                                                         f"---------------------------------------------------------------",
                                                         "info")
                     self.tcp_server.newConnection.connect(self.tcp_server_find_peer)
+                elif shared.serial_setting["port"] == "EtherCAT master":
+                    self.ethercat_master = pysoem.Master()
+                    self.ethercat_master.open(shared.serial_setting["masteradapter"])
+                    try:
+                        # scan slaves
+                        # slave enter pre op mode
+                        num = self.ethercat_master.config_init()
+                        print(f"{num} slave(s) detected")
+                        slave = self.ethercat_master.slaves[0]
+                        print('using slave 0')
+                        # master enter pre op mode
+                        self.ethercat_master.state = pysoem.PREOP_STATE
+                        self.ethercat_master.write_state()
+                        slave.state_check(pysoem.PREOP_STATE, 50000)
+
+                        size = self.ethercat_master.config_map()
+                        print(size)
+
+                        self.ethercat_master.state = pysoem.SAFEOP_STATE
+                        self.ethercat_master.write_state()
+                        slave.state_check(pysoem.SAFEOP_STATE, 50000)
+                        print(pysoem.al_status_code_to_string(slave.al_status))
+
+                        self.ethercat_master.state = pysoem.OP_STATE
+                        self.ethercat_master.write_state()
+                        slave.state_check(pysoem.OP_STATE, 50000)
+                        print(pysoem.al_status_code_to_string(slave.al_status))
+
+                    except Exception as e:
+                        print(f'Error: {e}')
                 elif shared.serial_setting["port"] == "":
                     shared.serial_log_widget.log_insert("serial port is not configured", "warning")
                     self.parent.serial_toggle_button.setChecked(False)
@@ -257,6 +290,8 @@ class IOStatusWidget(QWidget):
                     shared.serial_log_widget.log_insert("all client disconnected", "info")
                 elif shared.serial_setting["port"] == "":
                     return
+                elif shared.serial_setting["port"] == "EtherCAT master":
+                    self.ethercat_master.close()
                 else:
                     if self.serial.isOpen():
                         self.serial.close()
