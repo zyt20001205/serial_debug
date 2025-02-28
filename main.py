@@ -68,7 +68,7 @@ if __name__ == "__main__":
     # gui draw
     main_gui()
     # layout load
-    layout_load(config)
+    layout_load()
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)

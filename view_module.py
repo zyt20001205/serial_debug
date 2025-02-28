@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import QMenu
 from PySide6.QtGui import QAction
 
+import shared
+
 
 class ViewWidget(QMenu):
     def __init__(self, show_list: list):
@@ -8,6 +10,7 @@ class ViewWidget(QMenu):
         from gui_module import serial_log_dock_widget, io_status_dock_widget, single_send_dock_widget, advanced_send_dock_widget, file_send_dock_widget, \
             command_shortcut_dock_widget, data_collect_dock_widget
         super().__init__()
+        # dock widget view checkbox
         self.serial_log_checkbox = QAction("serial log", self)
         self.serial_log_checkbox.setCheckable(True)
         self.serial_log_checkbox.triggered.connect(lambda checked: dock_update(serial_log_dock_widget, checked))
@@ -36,6 +39,12 @@ class ViewWidget(QMenu):
         self.data_collect_checkbox.setCheckable(True)
         self.data_collect_checkbox.triggered.connect(lambda checked: dock_update(data_collect_dock_widget, checked))
         self.addAction(self.data_collect_checkbox)
+        # seperator
+        self.addSeparator()
+        # restore button
+        self.restore_button = QAction("restore to default", self)
+        self.restore_button.triggered.connect(self.view_restore)
+        self.addAction(self.restore_button)
 
         self.view_init(show_list)
 
@@ -54,3 +63,15 @@ class ViewWidget(QMenu):
             self.command_shortcut_checkbox.setChecked(True)
         if "data_collect" in show_list:
             self.data_collect_checkbox.setChecked(True)
+
+    @staticmethod
+    def view_restore():
+        from gui_module import send_tab_gui, file_tab_gui, data_tab_gui, custom_tab_gui
+        if shared.layout["tab"] == "send_tab":
+            send_tab_gui(True)
+        elif shared.layout["tab"] == "file_tab":
+            file_tab_gui(True)
+        elif shared.layout["tab"] == "data_tab":
+            data_tab_gui(True)
+        else:  # shared.layout["tab"] == "custom_tab":
+            custom_tab_gui(True)

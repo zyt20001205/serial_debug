@@ -103,19 +103,38 @@ class IOStatusWidget(QWidget):
                         # master enter pre op mode
                         self.ethercat_master.state = pysoem.PREOP_STATE
                         self.ethercat_master.write_state()
-                        slave.state_check(pysoem.PREOP_STATE, 50000)
+                        if self.ethercat_master.state_check(pysoem.PREOP_STATE, 50000)==pysoem.PREOP_STATE:
+                            print("master is in preop state")
+                        else:
+                            print("master is not in preop state")
+                        if slave.state_check(pysoem.PREOP_STATE, 50000)==pysoem.PREOP_STATE:
+                            print("slave is in preop state")
+                        else:
+                            print("slave is not in preop state")
 
                         size = self.ethercat_master.config_map()
                         print(size)
 
                         self.ethercat_master.state = pysoem.SAFEOP_STATE
                         self.ethercat_master.write_state()
-                        slave.state_check(pysoem.SAFEOP_STATE, 50000)
+                        if self.ethercat_master.state_check(pysoem.SAFEOP_STATE, 50000)==pysoem.SAFEOP_STATE:
+                            print("master is in safeop state")
+                        else:
+                            print("master is not in safeop state")
+                        if slave.state_check(pysoem.SAFEOP_STATE, 50000)==pysoem.SAFEOP_STATE:
+                            print("slave is in safeop state")
+                        else:
+                            print("slave is not in safeop state")
                         print(pysoem.al_status_code_to_string(slave.al_status))
 
-                        self.ethercat_master.state = pysoem.OP_STATE
-                        self.ethercat_master.write_state()
-                        slave.state_check(pysoem.OP_STATE, 50000)
+                        if self.ethercat_master.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
+                            print("master is in op state")
+                        else:
+                            print("master is not in op state")
+                        if slave.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
+                            print("slave is in op state")
+                        else:
+                            print("slave is not in op state")
                         print(pysoem.al_status_code_to_string(slave.al_status))
 
                     except Exception as e:

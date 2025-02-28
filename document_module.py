@@ -13,7 +13,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "layout": {
         "tab": "send_tab",
         "geometry": None,
-        "state": None
+        "send_state": None,
+        "file_state": None,
+        "data_state": None,
+        "custom_state": None
     },
     "keyboard_shortcut": {
         "save": "Ctrl+S",
@@ -223,7 +226,14 @@ def config_to_shared(config):
 def shared_to_config(config):
     config["layout"] = shared.layout
     config["layout"]["geometry"] = shared.main_window.saveGeometry().data().hex()
-    config["layout"]["state"] = shared.main_window.saveState().data().hex()
+    if shared.layout["tab"] == "send_tab":
+        config["layout"]["send_state"] = shared.main_window.saveState().data().hex()
+    elif shared.layout["tab"] == "file_tab":
+        config["layout"]["file_state"] = shared.main_window.saveState().data().hex()
+    elif shared.layout["tab"] == "data_tab":
+        config["layout"]["data_state"] = shared.main_window.saveState().data().hex()
+    else:  # shared.layout["tab"] == "custom_tab":
+        config["layout"]["custom_state"] = shared.main_window.saveState().data().hex()
     config["keyboard_shortcut"] = shared.keyboard_shortcut
     config["serial_setting"] = shared.serial_setting
     config["log_setting"] = shared.log_setting
@@ -273,13 +283,22 @@ def config_save_as():
     config_file_save_as(config)
 
 
-def layout_load(config):
-    geometry = config["layout"].get("geometry", "")
-    state = config["layout"].get("state", "")
+def layout_load():
+    geometry = shared.layout["geometry"]
+    if shared.layout["tab"] == "send_tab":
+        state = shared.layout["send_state"]
+    elif shared.layout["tab"] == "file_tab":
+        state = shared.layout["file_state"]
+    elif shared.layout["tab"] == "data_tab":
+        state = shared.layout["data_state"]
+    else:  # shared.layout["tab"] == "custom_tab":
+        state = shared.layout["custom_state"]
     if geometry:
         shared.main_window.restoreGeometry(bytes.fromhex(geometry))
     if state:
         shared.main_window.restoreState(bytes.fromhex(state))
+    if geometry:
+        shared.main_window.restoreGeometry(bytes.fromhex(geometry))
 
 
 def config_save_on_closed():

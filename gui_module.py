@@ -8,13 +8,22 @@ from io_module import IOStatusWidget, SingleSendWidget, AdvancedSendWidget, File
 from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
-from document_module import config_save, config_save_as, config_file_load_from, document_gui
+from document_module import config_save, config_save_as, config_file_load_from, document_gui, layout_load
 from view_module import ViewWidget
 from setting_module import SettingWidget
 from info_module import InfoWidget
 
 toolbar: QToolBar
+send_tab: QAction
+file_tab: QAction
+data_tab: QAction
+custom_tab: QAction
 view_tab: QAction
+toolbox_tab: QAction
+document_tab: QAction
+setting_tab: QAction
+info_tab: QAction
+tab_list: list
 serial_log_dock_widget: QDockWidget
 io_status_dock_widget: QDockWidget
 single_send_dock_widget: QDockWidget
@@ -34,44 +43,68 @@ def main_gui():
     shared.main_window.addToolBar(Qt.ToolBarArea.LeftToolBarArea, toolbar)
 
     # send tab
+    global send_tab
     send_tab = QAction(QIcon("icon:send.svg"), "", shared.main_window)
-    send_tab.triggered.connect(send_tab_gui)
+    send_tab.setCheckable(True)
+    send_tab.triggered.connect(lambda: send_tab_gui(False))
     toolbar.addAction(send_tab)
     # file tab
+    global file_tab
     file_tab = QAction(QIcon("icon:document_arrow_right.svg"), "", shared.main_window)
-    file_tab.triggered.connect(file_tab_gui)
+    file_tab.setCheckable(True)
+    file_tab.triggered.connect(lambda: file_tab_gui(False))
     toolbar.addAction(file_tab)
     # data tab
+    global data_tab
     data_tab = QAction(QIcon("icon:data_pie.svg"), "", shared.main_window)
-    data_tab.triggered.connect(data_tab_gui)
+    data_tab.setCheckable(True)
+    data_tab.triggered.connect(lambda: data_tab_gui(False))
     toolbar.addAction(data_tab)
-    # toolbox tab
-    toolbox_tab = QAction(QIcon("icon:toolbox.svg"), "", shared.main_window)
-    toolbox_tab.triggered.connect(toolbox_tab_gui)
-    toolbar.addAction(toolbox_tab)
+    # custom tab
+    global custom_tab
+    custom_tab = QAction(QIcon("icon:bookmark.svg"), "", shared.main_window)
+    custom_tab.setCheckable(True)
+    custom_tab.triggered.connect(lambda: custom_tab_gui(False))
+    toolbar.addAction(custom_tab)
+
     # spacer
     spacer = QWidget()
     spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     toolbar.addWidget(spacer)
-    # seperator
-    toolbar.addSeparator()
     # view tab
     global view_tab
     view_tab = QAction(QIcon("icon:view.svg"), "", shared.main_window)
     view_tab.hovered.connect(view_tab_gui)
     toolbar.addAction(view_tab)
+    # seperator
+    toolbar.addSeparator()
+    # toolbox tab
+    global toolbox_tab
+    toolbox_tab = QAction(QIcon("icon:toolbox.svg"), "", shared.main_window)
+    toolbox_tab.setCheckable(True)
+    toolbox_tab.triggered.connect(toolbox_tab_gui)
+    toolbar.addAction(toolbox_tab)
     # document tab
+    global document_tab
     document_tab = QAction(QIcon("icon:document.svg"), "", shared.main_window)
+    document_tab.setCheckable(True)
     document_tab.triggered.connect(document_tab_gui)
     toolbar.addAction(document_tab)
     # setting tab
+    global setting_tab
     setting_tab = QAction(QIcon("icon:settings.svg"), "", shared.main_window)
+    setting_tab.setCheckable(True)
     setting_tab.triggered.connect(setting_tab_gui)
     toolbar.addAction(setting_tab)
     # info tab
+    global info_tab
     info_tab = QAction(QIcon("icon:info.svg"), "", shared.main_window)
+    info_tab.setCheckable(True)
     info_tab.triggered.connect(info_tab_gui)
     toolbar.addAction(info_tab)
+
+    global tab_list
+    tab_list = [send_tab, file_tab, data_tab, custom_tab, toolbox_tab, document_tab, setting_tab, info_tab]
 
     # widget initialization
     widget_init()
@@ -201,25 +234,33 @@ def shortcut_init():
 
 def tab_init():
     if shared.layout["tab"] == "send_tab":
-        send_tab_gui()
+        send_tab.setChecked(True)
+        send_tab_gui(False)
     elif shared.layout["tab"] == "file_tab":
-        file_tab_gui()
+        file_tab.setChecked(True)
+        file_tab_gui(False)
     elif shared.layout["tab"] == "data_tab":
-        data_tab_gui()
+        data_tab.setChecked(True)
+        data_tab_gui(False)
+    elif shared.layout["tab"] == "custom_tab":
+        custom_tab.setChecked(True)
+        custom_tab_gui(False)
     elif shared.layout["tab"] == "toolbox_tab":
+        toolbox_tab.setChecked(True)
         toolbox_tab_gui()
     elif shared.layout["tab"] == "document_tab":
+        document_tab.setChecked(True)
         document_tab_gui()
-    elif shared.layout["tab"] == "view_tab":
-        view_tab_gui()
     elif shared.layout["tab"] == "setting_tab":
+        setting_tab.setChecked(True)
         setting_tab_gui()
     else:  # shared.layout["tab"] == "info_tab"
+        info_tab.setChecked(True)
         info_tab_gui()
 
 
-def send_tab_gui():
-    tab_clear()
+def send_tab_gui(default: bool) -> None:
+    tab_clear(send_tab)
     shared.layout["tab"] = "send_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -252,9 +293,12 @@ def send_tab_gui():
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
     data_collect_dock_widget.hide()
 
+    if not default:
+        layout_load()
 
-def file_tab_gui():
-    tab_clear()
+
+def file_tab_gui(default: bool) -> None:
+    tab_clear(file_tab)
     shared.layout["tab"] = "file_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -280,9 +324,12 @@ def file_tab_gui():
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
     data_collect_dock_widget.hide()
 
+    if not default:
+        layout_load()
 
-def data_tab_gui():
-    tab_clear()
+
+def data_tab_gui(default: bool) -> None:
+    tab_clear(data_tab)
     shared.layout["tab"] = "data_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -311,9 +358,55 @@ def data_tab_gui():
     shared.main_window.resizeDocks([data_collect_dock_widget], [500], Qt.Orientation.Horizontal)
     data_collect_dock_widget.show()
 
+    if not default:
+        layout_load()
+
+
+def custom_tab_gui(default: bool) -> None:
+    tab_clear(custom_tab)
+    shared.layout["tab"] = "custom_tab"
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
+    serial_log_dock_widget.hide()
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
+    io_status_dock_widget.hide()
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
+    single_send_dock_widget.hide()
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
+    advanced_send_dock_widget.hide()
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
+    file_send_dock_widget.hide()
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
+    command_shortcut_dock_widget.hide()
+
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
+    data_collect_dock_widget.hide()
+
+    if not default:
+        layout_load()
+
+
+def view_tab_gui():
+    global view_widget
+    if shared.layout["tab"] in ["send_tab", "file_tab", "data_tab", "custom_tab"]:
+        dock_widget_list = []
+        dock_widgets = shared.main_window.findChildren(QDockWidget)
+        for dock in dock_widgets:
+            if dock.isVisible():
+                dock_widget_list.append(dock.objectName())
+        view_widget = ViewWidget(dock_widget_list)
+        action_rect = toolbar.actionGeometry(view_tab)
+        pos = toolbar.mapToGlobal(action_rect.topRight())
+        view_widget.popup(pos)
+
 
 def toolbox_tab_gui():
-    tab_clear()
+    tab_clear(toolbox_tab)
     shared.layout["tab"] = "toolbox_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -341,7 +434,7 @@ def toolbox_tab_gui():
 
 
 def document_tab_gui():
-    tab_clear()
+    tab_clear(document_tab)
     shared.layout["tab"] = "document_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -368,21 +461,8 @@ def document_tab_gui():
     shared.main_window.setCentralWidget(shared.document_widget)
 
 
-def view_tab_gui():
-    global view_widget
-    dock_widget_list = []
-    dock_widgets = shared.main_window.findChildren(QDockWidget)
-    for dock in dock_widgets:
-        if dock.isVisible():
-            dock_widget_list.append(dock.objectName())
-    view_widget = ViewWidget(dock_widget_list)
-    action_rect = toolbar.actionGeometry(view_tab)
-    pos = toolbar.mapToGlobal(action_rect.topRight())
-    view_widget.popup(pos)
-
-
 def setting_tab_gui():
-    tab_clear()
+    tab_clear(setting_tab)
     shared.layout["tab"] = "setting_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -410,7 +490,7 @@ def setting_tab_gui():
 
 
 def info_tab_gui():
-    tab_clear()
+    tab_clear(info_tab)
     shared.layout["tab"] = "info_tab"
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
@@ -437,8 +517,12 @@ def info_tab_gui():
     shared.main_window.setCentralWidget(shared.info_widget)
 
 
-def tab_clear():
-    # clear main dock
+def tab_clear(whitelist: QAction) -> None:
+    # clear toolbar
+    for tab in tab_list:
+        if tab is not whitelist:
+            tab.setChecked(False)
+    # clear main dock widgets
     dock_widgets = shared.main_window.findChildren(QDockWidget)
     for dock in dock_widgets:
         dock.hide()
@@ -447,6 +531,8 @@ def tab_clear():
     if current_widget is not None:
         current_widget.setParent(None)
     shared.main_window.setCentralWidget(None)
+    # update main window
+    shared.main_window.update()
 
 
 def dock_update(widget, checked):
