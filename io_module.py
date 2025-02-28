@@ -103,11 +103,11 @@ class IOStatusWidget(QWidget):
                         # master enter pre op mode
                         self.ethercat_master.state = pysoem.PREOP_STATE
                         self.ethercat_master.write_state()
-                        if self.ethercat_master.state_check(pysoem.PREOP_STATE, 50000)==pysoem.PREOP_STATE:
+                        if self.ethercat_master.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
                             print("master is in preop state")
                         else:
                             print("master is not in preop state")
-                        if slave.state_check(pysoem.PREOP_STATE, 50000)==pysoem.PREOP_STATE:
+                        if slave.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
                             print("slave is in preop state")
                         else:
                             print("slave is not in preop state")
@@ -117,11 +117,11 @@ class IOStatusWidget(QWidget):
 
                         self.ethercat_master.state = pysoem.SAFEOP_STATE
                         self.ethercat_master.write_state()
-                        if self.ethercat_master.state_check(pysoem.SAFEOP_STATE, 50000)==pysoem.SAFEOP_STATE:
+                        if self.ethercat_master.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
                             print("master is in safeop state")
                         else:
                             print("master is not in safeop state")
-                        if slave.state_check(pysoem.SAFEOP_STATE, 50000)==pysoem.SAFEOP_STATE:
+                        if slave.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
                             print("slave is in safeop state")
                         else:
                             print("slave is not in safeop state")
@@ -850,39 +850,41 @@ class AdvancedSendWidget(QWidget):
                     if not self.enable:
                         raise Exception("terminate exception")
                     action = buffer[index][0]
-                    param = buffer[index][1]
-                    optional = buffer[index][2] if len(buffer[index]) > 2 else None
+                    param1 = buffer[index][1] if len(buffer[index]) > 1 else None
+                    param2 = buffer[index][2] if len(buffer[index]) > 2 else None
                     if action == "input":
+                        variable = param1
+                        label = param2
                         self.mutex.lock()
-                        self.request_signal.emit(self, param, optional, self.condition)
+                        self.request_signal.emit(self, variable, label, self.condition)
                         self.condition.wait(self.mutex)
                         self.mutex.unlock()
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "command":
-                        if optional == "shortcut":
-                            param = eval(param)
-                            type = shared.shortcut_table.cellWidget(param - 1, 1).text()
+                        if param2 == "shortcut":
+                            row = eval(param1) - 1
+                            type = shared.shortcut_table.cellWidget(row, 1).text()
                             if type == "single":
-                                command = shared.shortcut_table.cellWidget(param - 1, 3).text()
-                                suffix = shared.shortcut_table.cellWidget(param - 1, 4).text()
-                                format = shared.shortcut_table.cellWidget(param - 1, 5).text()
+                                command = shared.shortcut_table.cellWidget(row, 3).text()
+                                suffix = shared.shortcut_table.cellWidget(row, 4).text()
+                                format = shared.shortcut_table.cellWidget(row, 5).text()
                                 self.send_signal.emit(command, suffix, format)
                             else:
-                                command = eval(shared.shortcut_table.cellWidget(param - 1, 3).text())
+                                command = eval(shared.shortcut_table.cellWidget(row, 3).text())
                                 self.send(command)
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
-                        else:
-                            if optional == "plain":
-                                command = param
-                            else:  # optional == "expression"
+                        else:  # not shortcut, suffix calculate required
+                            if param2 == "plain":
+                                command = param1
+                            else:  # param2 == "expression"
                                 try:
-                                    command = eval(param)
+                                    command = eval(param1)
                                 except:
                                     # error highlight
                                     self.highlight_signal.emit(length, index, "red")
-                                    raise Exception(f"command exception: trying to perform ({param.strip()})")
+                                    raise Exception(f"command exception: trying to perform ({param1.strip()})")
                             suffix = shared.single_send_widget.single_send_calculate(command)
                             if suffix == "NULL":
                                 # error highlight
@@ -893,51 +895,56 @@ class AdvancedSendWidget(QWidget):
                             self.highlight_signal.emit(length, index, "white")
                     elif action == "message":
                         try:
-                            message = eval(f"f'''{param.strip()}'''")
+                            message = eval(f"f'''{param1.strip()}'''")
                         except:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"message exception: trying to show ({param.strip()})")
-                        self.log_signal.emit(message, optional)
+                            raise Exception(f"message exception: trying to show ({param1.strip()})")
+                        level = param2
+                        self.log_signal.emit(message, level)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "messagebox":
                         try:
-                            message = eval(f"f'''{param.strip()}'''")
+                            message = eval(f"f'''{param1.strip()}'''")
                         except:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"message exception: trying to show ({param.strip()})")
+                            raise Exception(f"message exception: trying to show ({param1.strip()})")
+                        level = param2
                         self.mutex.lock()
-                        self.message_signal.emit(self, message, optional, self.condition)
+                        self.message_signal.emit(self, message, level, self.condition)
                         self.condition.wait(self.mutex)
                         self.mutex.unlock()
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "expression":
+                        expression = param1.strip()
                         try:
-                            exec(param.strip(), globals())
-                        except Exception as e:
+                            exec(expression, globals())
+                        except:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"expression exception: trying to perform ({param.strip()})")
+                            raise Exception(f"expression exception: trying to perform ({expression})")
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "delay":
-                        if optional == "ms":
-                            time.sleep(param / 1000)
-                        elif optional == "sec":
-                            time.sleep(param)
-                        elif optional == "min":
-                            time.sleep(param * 60)
+                        time = param1
+                        unit = param2
+                        if unit == "ms":
+                            time.sleep(time / 1000)
+                        elif unit == "sec":
+                            time.sleep(time)
+                        elif unit == "min":
+                            time.sleep(time * 60)
                         else:  # optional == "hour"
-                            time.sleep(param * 3600)
+                            time.sleep(time * 3600)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "loop":
-                        loop = param
+                        count = param1
                         try:
-                            for _ in range(loop):
+                            for _ in range(count):
                                 j = self.send(buffer, index + 1)
                         except Exception as e:
                             if "exception" in str(e):
@@ -952,12 +959,13 @@ class AdvancedSendWidget(QWidget):
                         self.highlight_signal.emit(length, index, "white")
                         return index
                     elif action == "if":
+                        condition = param1.strip()
                         try:
-                            boolen = eval(param)
+                            boolen = eval(condition)
                         except:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"condition exception: trying to judge ({param.strip()})")
+                            raise Exception(f"condition exception: trying to judge ({condition})")
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                         if not boolen:
@@ -991,9 +999,10 @@ class AdvancedSendWidget(QWidget):
                                     depth -= 1
                         raise Exception(index)
                     elif action == "abort":
+                        message = param1
                         # error highlight
                         self.highlight_signal.emit(length, index, "red")
-                        raise Exception(f"abort exception: {param}")
+                        raise Exception(f"abort exception: {message}")
                     else:  # action == "tail":
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
@@ -1236,74 +1245,91 @@ class AdvancedSendWidget(QWidget):
         for i in range(len(self.advanced_send_buffer)):
             # add row
             self.advanced_send_table.insertRow(i)
+            '''
+            |---------------------------------------------
+            |   action   |   param1    | param2 | param3 |
+            |---------------------------------------------      
+            |   input    |  variable   | label  |   \    |
+            |  command   | instruction |  type  |   \    |
+            |  message   |   message   | level  |   \    |
+            | messagebox |   message   | level  |   \    |
+            | expression | expression  |   \    |   \    |
+            |   delay    |    time     |  unit  |   \    | 
+            |    loop    |    count    |   \    |   \    |
+            |  endloop   |      \      |   \    |   \    |
+            |     if     |  condition  |   \    |   \    |
+            |   endif    |      \      |   \    |   \    |
+            |   break    |      \      |   \    |   \    |
+            |   abort    |   message   |   \    |   \    |
+            |    tail    |      \      |   \    |   \    |
+            ----------------------------------------------
+            '''
+            action = self.advanced_send_buffer[i][0]
+            param1 = self.advanced_send_buffer[i][1] if len(self.advanced_send_buffer[i]) > 1 else None
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.advanced_send_table.setCellWidget(i, 0, move_icon)
             # action label
-            action_label = QTableWidgetItem(self.advanced_send_buffer[i][0])
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(i, 1, action_label)
             # param widget
-            if self.advanced_send_buffer[i][0] == "input":
+            if action == "input":
                 param_widget = QComboBox()
                 param_widget.addItems(variable)
-                param_widget.setCurrentText(self.advanced_send_buffer[i][1])
+                param_widget.setCurrentText(param1)
                 param_widget.currentIndexChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "command":
+            elif action == "command":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "message":
+            elif action == "message":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "messagebox":
+            elif action == "messagebox":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "expression":
+            elif action == "expression":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "delay":
+            elif action == "delay":
                 param_widget = QSpinBox()
                 param_widget.setRange(0, 2147483647)
                 param_widget.setSingleStep(10)
-                param_widget.setValue(self.advanced_send_buffer[i][1])
+                param_widget.setValue(param1)
                 param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "loop":
+            elif action == "loop":
                 param_widget = QSpinBox()
                 param_widget.setRange(1, 2147483647)
                 param_widget.setSingleStep(1)
-                param_widget.setValue(self.advanced_send_buffer[i][1])
+                param_widget.setValue(param1)
                 param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "endloop":
+            elif action == "endloop":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
                 param_widget.setEnabled(False)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "if":
+            elif action == "if":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "endif":
+            elif action == "endif":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
                 param_widget.setEnabled(False)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "break":
+            elif action == "break":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
                 param_widget.setReadOnly(True)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif self.advanced_send_buffer[i][0] == "abort":
+            elif action == "abort":
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
+                param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            else:  # self.advanced_send_buffer[i][0] == "tail"
+            else:  # action == "tail"
                 param_widget = QLineEdit()
-                param_widget.setText(self.advanced_send_buffer[i][1])
                 param_widget.setEnabled(False)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(i, 2, param_widget)
@@ -1457,91 +1483,92 @@ class AdvancedSendWidget(QWidget):
 
     def advanced_send_buffer_insert(self, index: int) -> None:
         self.advanced_send_table.insertRow(index)
+        action = self.action_combobox.currentText()
         # move icon
         move_icon = QLabel()
         move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
         move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.advanced_send_table.setCellWidget(index, 0, move_icon)
         # action/command
-        if self.action_combobox.currentText() == "input":
-            param = self.input_combobox.currentText()
-            optional = self.input_lineedit.text()
+        if action == "input":
+            param1 = self.input_combobox.currentText()
+            param2 = self.input_lineedit.text()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["input", param, optional])
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
-            action_label = QTableWidgetItem("input")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QComboBox()
             param_widget.addItems(variable)
-            param_widget.setCurrentText(param)
+            param_widget.setCurrentText(param1)
             param_widget.currentIndexChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "command":
-            param = self.command_lineedit.text()
-            optional = self.command_combobox.currentText()
+        elif action == "command":
+            param1 = self.command_lineedit.text()
+            param2 = self.command_combobox.currentText()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["command", param, optional])
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
-            action_label = QTableWidgetItem("command")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
-            param_widget.setText(param)
+            param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "message":
-            param = self.message_lineedit.text()
-            optional = self.message_combobox.currentText()
+        elif action == "message":
+            param1 = self.message_lineedit.text()
+            param2 = self.message_combobox.currentText()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["message", param, optional])
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
-            action_label = QTableWidgetItem("message")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
-            param_widget.setText(param)
+            param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "messagebox":
-            param = self.messagebox_lineedit.text()
-            optional = self.messagebox_combobox.currentText()
+        elif action == "messagebox":
+            param1 = self.messagebox_lineedit.text()
+            param2 = self.messagebox_combobox.currentText()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["messagebox", param, optional])
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
-            action_label = QTableWidgetItem("messagebox")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
-            param_widget.setText(param)
+            param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "expression":
-            param = self.expression_lineedit.text()
+        elif action == "expression":
+            param1 = self.expression_lineedit.text()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["expression", param])
+            self.advanced_send_buffer.insert(index, [action, param1])
             # add to gui
-            action_label = QTableWidgetItem("expression")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
-            param_widget.setText(param)
+            param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "delay":
-            param = self.delay_spinbox.value()
-            optional = self.delay_combobox.currentText()
+        elif action == "delay":
+            param1 = self.delay_spinbox.value()
+            param2 = self.delay_combobox.currentText()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["delay", param, optional])
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
-            action_label = QTableWidgetItem("delay")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(0, 2147483647)
             param_widget.setSingleStep(10)
-            param_widget.setValue(param)
+            param_widget.setValue(param1)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "loop":
-            time = self.loop_spinbox.value()
+        elif action == "loop":
+            param1 = self.loop_spinbox.value()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["endloop", ""])
-            self.advanced_send_buffer.insert(index, ["loop", time])
+            self.advanced_send_buffer.insert(index, ["endloop"])
+            self.advanced_send_buffer.insert(index, [action, param1])
             # add to gui
             action_label = QTableWidgetItem("endloop")
             self.advanced_send_table.setItem(index, 1, action_label)
@@ -1558,19 +1585,19 @@ class AdvancedSendWidget(QWidget):
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.advanced_send_table.setCellWidget(index, 0, move_icon)
-            action_label = QTableWidgetItem("loop")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(1, 2147483647)
             param_widget.setSingleStep(1)
-            param_widget.setValue(time)
+            param_widget.setValue(param1)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "if":
-            condition = self.if_lineedit.text()
+        elif action == "if":
+            param1 = self.if_lineedit.text()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["endif", ""])
-            self.advanced_send_buffer.insert(index, ["if", condition])
+            self.advanced_send_buffer.insert(index, ["endif"])
+            self.advanced_send_buffer.insert(index, [action, param1])
             # add to gui
             action_label = QTableWidgetItem("endif")
             self.advanced_send_table.setItem(index, 1, action_label)
@@ -1587,30 +1614,30 @@ class AdvancedSendWidget(QWidget):
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.advanced_send_table.setCellWidget(index, 0, move_icon)
-            action_label = QTableWidgetItem("if")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
-            param_widget.setText(condition)
+            param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        elif self.action_combobox.currentText() == "break":
+        elif action == "break":
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["break", ""])
+            self.advanced_send_buffer.insert(index, [action])
             # add to gui
-            action_label = QTableWidgetItem("break")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setReadOnly(True)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
-        else:  # self.action_combobox.currentText() == "abort":
-            abort = self.abort_lineedit.text()
+        else:  # action == "abort":
+            param1 = self.abort_lineedit.text()
             # add to action slot
-            self.advanced_send_buffer.insert(index, ["abort", abort])
+            self.advanced_send_buffer.insert(index, [action, param1])
             # add to gui
-            action_label = QTableWidgetItem("abort")
+            action_label = QTableWidgetItem(action)
             self.advanced_send_table.setItem(index, 1, action_label)
             param_widget = QLineEdit()
-            param_widget.setText(abort)
+            param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         # print(self.advanced_send_buffer)
@@ -1697,7 +1724,7 @@ class AdvancedSendWidget(QWidget):
     def advanced_send_clear(self) -> None:
         for _ in range(len(self.advanced_send_buffer) - 1):
             self.advanced_send_table.removeRow(0)
-        self.advanced_send_buffer = [["tail", ""]]
+        self.advanced_send_buffer = [["tail"]]
 
     def advanced_send_save(self) -> None:
         index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count, 1)

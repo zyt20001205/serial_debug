@@ -57,7 +57,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "send_suffix": "none",
     "receive_buffersize": 0,
     "single_send_buffer": "",
-    "advanced_send_buffer": [["tail", ""]],
+    "advanced_send_buffer": [["tail"]],
     "file_send": {
         "line_delay": 0,
         "chunk_resume": "",
