@@ -722,21 +722,20 @@ class AdvancedSendWidget(QWidget):
 
         self.action_window = QWidget()
         self.action_combobox = QComboBox()
-        self.input_combobox = QComboBox()
-        self.input_lineedit = QLineEdit()
-        self.command_lineedit = QLineEdit()
-        self.command_combobox = QComboBox()
-        self.message_lineedit = QLineEdit()
-        self.message_combobox = QComboBox()
-        self.messagebox_lineedit = QLineEdit()
-        self.messagebox_combobox = QComboBox()
-        self.expression_lineedit = QLineEdit()
-        self.delay_spinbox = QSpinBox()
-        self.delay_combobox = QComboBox()
-        self.shortcut_spinbox = QSpinBox()
-        self.loop_spinbox = QSpinBox()
-        self.if_lineedit = QLineEdit()
-        self.abort_lineedit = QLineEdit()
+        self.input_param1_combobox = QComboBox()
+        self.input_param2_lineedit = QLineEdit()
+        self.command_param1_lineedit = QLineEdit()
+        self.command_param2_combobox = QComboBox()
+        self.message_param1_lineedit = QLineEdit()
+        self.message_param2_combobox = QComboBox()
+        self.messagebox_param1_lineedit = QLineEdit()
+        self.messagebox_param2_combobox = QComboBox()
+        self.expression_param1_lineedit = QLineEdit()
+        self.delay_param1_spinbox = QSpinBox()
+        self.delay_param2_combobox = QComboBox()
+        self.loop_param1_spinbox = QSpinBox()
+        self.if_param1_lineedit = QLineEdit()
+        self.abort_param1_lineedit = QLineEdit()
         # draw gui
         self.advanced_send_gui()
 
@@ -1351,94 +1350,98 @@ class AdvancedSendWidget(QWidget):
                 item = action_layout.takeAt(i)
                 if item and item.widget():
                     item.widget().deleteLater()
-            # create optional widget for optional param
-            if self.action_combobox.currentText() in ["input", "command", "message", "messagebox", "delay"]:
-                optional_widget = QWidget()
-                action_layout.addWidget(optional_widget)
-                optional_layout = QHBoxLayout(optional_widget)
-                optional_layout.setContentsMargins(0, 0, 0, 0)
-                if self.action_combobox.currentText() == "input":
-                    input_label = QLabel("input hint:")
-                    optional_layout.addWidget(input_label)
-                    self.input_lineedit = QLineEdit()
-                    optional_layout.addWidget(self.input_lineedit)
-                elif self.action_combobox.currentText() == "command":
-                    self.command_combobox = QComboBox()
-                    self.command_combobox.addItem(QIcon("icon:plain_text.svg"), "plain")
-                    self.command_combobox.addItem(QIcon("icon:variable.svg"), "expression")
-                    self.command_combobox.addItem(QIcon("icon:document_add.svg"), "shortcut")
-                    optional_layout.addWidget(self.command_combobox)
-                elif self.action_combobox.currentText() == "message":
-                    self.message_combobox = QComboBox()
-                    self.message_combobox.addItem(QIcon("icon:info.svg"), "info")
-                    self.message_combobox.addItem(QIcon("icon:warning.svg"), "warning")
-                    self.message_combobox.addItem(QIcon("icon:error.svg"), "error")
-                    optional_layout.addWidget(self.message_combobox)
-                elif self.action_combobox.currentText() == "messagebox":
-                    self.messagebox_combobox = QComboBox()
-                    self.messagebox_combobox.addItem(QIcon("icon:info.svg"), "info")
-                    self.messagebox_combobox.addItem(QIcon("icon:warning.svg"), "warning")
-                    self.messagebox_combobox.addItem(QIcon("icon:error.svg"), "error")
-                    optional_layout.addWidget(self.messagebox_combobox)
-                elif self.action_combobox.currentText() == "delay":
-                    self.delay_combobox = QComboBox()
-                    self.delay_combobox.addItems(["ms", "sec", "min", "hour"])
-                    optional_layout.addWidget(self.delay_combobox)
 
-            # create param widget for param entry
-            param_widget = QWidget()
-            action_layout.addWidget(param_widget)
-            param_layout = QHBoxLayout(param_widget)
-            param_layout.setContentsMargins(0, 0, 0, 0)
+            # param2 widget
+            param2_widget = QWidget()
+            action_layout.addWidget(param2_widget)
+            param2_layout = QHBoxLayout(param2_widget)
+            param2_layout.setContentsMargins(0, 0, 0, 0)
+            # param1 widget
+            param1_widget = QWidget()
+            action_layout.addWidget(param1_widget)
+            param1_layout = QHBoxLayout(param1_widget)
+            param1_layout.setContentsMargins(0, 0, 0, 0)
             if self.action_combobox.currentText() == "input":
+                # param1
                 input_label = QLabel("input variable:")
-                param_layout.addWidget(input_label)
-                self.input_combobox = QComboBox()
-                self.input_combobox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-                self.input_combobox.addItems(variable)
-                param_layout.addWidget(self.input_combobox)
+                param1_layout.addWidget(input_label)
+                self.input_param1_combobox = QComboBox()
+                self.input_param1_combobox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                self.input_param1_combobox.addItems(variable)
+                param1_layout.addWidget(self.input_param1_combobox)
+                # param2
+                input_label = QLabel("input hint:")
+                param2_layout.addWidget(input_label)
+                self.input_param2_lineedit = QLineEdit()
+                param2_layout.addWidget(self.input_param2_lineedit)
             elif self.action_combobox.currentText() == "command":
-                self.command_lineedit = QLineEdit()
-                param_layout.addWidget(self.command_lineedit)
-                self.command_lineedit.setFocus()
+                # param1
+                self.command_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.command_param1_lineedit)
+                self.command_param1_lineedit.setFocus()
+                # param2
+                self.command_param2_combobox = QComboBox()
+                self.command_param2_combobox.addItem(QIcon("icon:plain_text.svg"), "plain")
+                self.command_param2_combobox.addItem(QIcon("icon:variable.svg"), "expression")
+                self.command_param2_combobox.addItem(QIcon("icon:document_add.svg"), "shortcut")
+                param2_layout.addWidget(self.command_param2_combobox)
             elif self.action_combobox.currentText() == "message":
-                self.message_lineedit = QLineEdit()
-                param_layout.addWidget(self.message_lineedit)
-                self.message_lineedit.setFocus()
+                # param1
+                self.message_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.message_param1_lineedit)
+                self.message_param1_lineedit.setFocus()
+                # param2
+                self.message_param2_combobox = QComboBox()
+                self.message_param2_combobox.addItem(QIcon("icon:info.svg"), "info")
+                self.message_param2_combobox.addItem(QIcon("icon:warning.svg"), "warning")
+                self.message_param2_combobox.addItem(QIcon("icon:error.svg"), "error")
+                param2_layout.addWidget(self.message_param2_combobox)
             elif self.action_combobox.currentText() == "messagebox":
-                self.messagebox_lineedit = QLineEdit()
-                param_layout.addWidget(self.messagebox_lineedit)
-                self.messagebox_lineedit.setFocus()
+                # param1
+                self.messagebox_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.messagebox_param1_lineedit)
+                self.messagebox_param1_lineedit.setFocus()
+                # param2
+                self.messagebox_param2_combobox = QComboBox()
+                self.messagebox_param2_combobox.addItem(QIcon("icon:info.svg"), "info")
+                self.messagebox_param2_combobox.addItem(QIcon("icon:warning.svg"), "warning")
+                self.messagebox_param2_combobox.addItem(QIcon("icon:error.svg"), "error")
+                param2_layout.addWidget(self.messagebox_param2_combobox)
             elif self.action_combobox.currentText() == "expression":
-                self.expression_lineedit = QLineEdit()
-                param_layout.addWidget(self.expression_lineedit)
-                self.expression_lineedit.setFocus()
+                self.expression_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.expression_param1_lineedit)
+                self.expression_param1_lineedit.setFocus()
             elif self.action_combobox.currentText() == "delay":
-                self.delay_spinbox = QSpinBox()
-                self.delay_spinbox.setRange(0, 2147483647)
-                self.delay_spinbox.setSingleStep(10)
-                self.delay_spinbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-                param_layout.addWidget(self.delay_spinbox)
-                self.delay_spinbox.setFocus()
-                self.delay_spinbox.selectAll()
+                # param1
+                self.delay_param1_spinbox = QSpinBox()
+                self.delay_param1_spinbox.setRange(0, 2147483647)
+                self.delay_param1_spinbox.setSingleStep(10)
+                self.delay_param1_spinbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                param1_layout.addWidget(self.delay_param1_spinbox)
+                self.delay_param1_spinbox.setFocus()
+                self.delay_param1_spinbox.selectAll()
+                # param2
+                self.delay_param2_combobox = QComboBox()
+                self.delay_param2_combobox.addItems(["ms", "sec", "min", "hour"])
+                param2_layout.addWidget(self.delay_param2_combobox)
             elif self.action_combobox.currentText() == "loop":
-                self.loop_spinbox = QSpinBox()
-                self.loop_spinbox.setRange(1, 2147483647)
-                self.loop_spinbox.setSingleStep(1)
-                self.loop_spinbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-                param_layout.addWidget(self.loop_spinbox)
-                self.loop_spinbox.setFocus()
-                self.loop_spinbox.selectAll()
+                self.loop_param1_spinbox = QSpinBox()
+                self.loop_param1_spinbox.setRange(1, 2147483647)
+                self.loop_param1_spinbox.setSingleStep(1)
+                self.loop_param1_spinbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                param1_layout.addWidget(self.loop_param1_spinbox)
+                self.loop_param1_spinbox.setFocus()
+                self.loop_param1_spinbox.selectAll()
                 loop_label = QLabel("times")
-                param_layout.addWidget(loop_label)
+                param1_layout.addWidget(loop_label)
             elif self.action_combobox.currentText() == "if":
-                self.if_lineedit = QLineEdit()
-                param_layout.addWidget(self.if_lineedit)
-                self.if_lineedit.setFocus()
+                self.if_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.if_param1_lineedit)
+                self.if_param1_lineedit.setFocus()
             elif self.action_combobox.currentText() == "abort":
-                self.abort_lineedit = QLineEdit()
-                param_layout.addWidget(self.abort_lineedit)
-                self.abort_lineedit.setFocus()
+                self.abort_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.abort_param1_lineedit)
+                self.abort_param1_lineedit.setFocus()
             # create save button when action combobox isn't empty
             if self.action_combobox.currentText():
                 save_button = QPushButton("Save Action")
@@ -1491,8 +1494,8 @@ class AdvancedSendWidget(QWidget):
         self.advanced_send_table.setCellWidget(index, 0, move_icon)
         # action/command
         if action == "input":
-            param1 = self.input_combobox.currentText()
-            param2 = self.input_lineedit.text()
+            param1 = self.input_param1_combobox.currentText()
+            param2 = self.input_param2_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
@@ -1504,8 +1507,8 @@ class AdvancedSendWidget(QWidget):
             param_widget.currentIndexChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "command":
-            param1 = self.command_lineedit.text()
-            param2 = self.command_combobox.currentText()
+            param1 = self.command_param1_lineedit.text()
+            param2 = self.command_param2_combobox.currentText()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
@@ -1516,8 +1519,8 @@ class AdvancedSendWidget(QWidget):
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "message":
-            param1 = self.message_lineedit.text()
-            param2 = self.message_combobox.currentText()
+            param1 = self.message_param1_lineedit.text()
+            param2 = self.message_param2_combobox.currentText()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
@@ -1528,8 +1531,8 @@ class AdvancedSendWidget(QWidget):
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "messagebox":
-            param1 = self.messagebox_lineedit.text()
-            param2 = self.messagebox_combobox.currentText()
+            param1 = self.messagebox_param1_lineedit.text()
+            param2 = self.messagebox_param2_combobox.currentText()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
@@ -1540,7 +1543,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "expression":
-            param1 = self.expression_lineedit.text()
+            param1 = self.expression_param1_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1])
             # add to gui
@@ -1551,8 +1554,8 @@ class AdvancedSendWidget(QWidget):
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "delay":
-            param1 = self.delay_spinbox.value()
-            param2 = self.delay_combobox.currentText()
+            param1 = self.delay_param1_spinbox.value()
+            param2 = self.delay_param2_combobox.currentText()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
@@ -1565,7 +1568,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "loop":
-            param1 = self.loop_spinbox.value()
+            param1 = self.loop_param1_spinbox.value()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["endloop"])
             self.advanced_send_buffer.insert(index, [action, param1])
@@ -1594,7 +1597,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "if":
-            param1 = self.if_lineedit.text()
+            param1 = self.if_param1_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, ["endif"])
             self.advanced_send_buffer.insert(index, [action, param1])
@@ -1630,7 +1633,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.setReadOnly(True)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         else:  # action == "abort":
-            param1 = self.abort_lineedit.text()
+            param1 = self.abort_param1_lineedit.text()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1])
             # add to gui
