@@ -928,16 +928,16 @@ class AdvancedSendWidget(QWidget):
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "delay":
-                        time = param1
+                        delay = param1
                         unit = param2
                         if unit == "ms":
-                            time.sleep(time / 1000)
+                            time.sleep(delay / 1000)
                         elif unit == "sec":
-                            time.sleep(time)
+                            time.sleep(delay)
                         elif unit == "min":
-                            time.sleep(time * 60)
-                        else:  # optional == "hour"
-                            time.sleep(time * 3600)
+                            time.sleep(delay * 60)
+                        else:  # unit == "hour"
+                            time.sleep(delay * 3600)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "loop":
@@ -1039,6 +1039,7 @@ class AdvancedSendWidget(QWidget):
                         self.log_signal.emit(f"{e}", "error")
                     else:
                         self.log_signal.emit("unknown exception: please report", "error")
+                        print(e)
 
             def stop(self):
                 # clear highlight
@@ -1874,6 +1875,7 @@ class FileSendWidget(QWidget):
 
         # file status splitter
         status_splitter = QSplitter(Qt.Orientation.Horizontal)
+        status_splitter.setFixedHeight(28)
         file_send_layout.addWidget(status_splitter)
         # file path entry
         self.path_lineedit.setStyleSheet("background-color: white;")
