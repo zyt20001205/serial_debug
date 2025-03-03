@@ -522,11 +522,11 @@ def tab_clear(whitelist: QAction) -> None:
     for tab in tab_list:
         if tab is not whitelist:
             tab.setChecked(False)
-    # clear main dock widgets
+    # hide main dock widgets
     dock_widgets = shared.main_window.findChildren(QDockWidget)
     for dock in dock_widgets:
         dock.hide()
-    # clear main central widget
+    # hide main central widget
     current_widget = shared.main_window.centralWidget()
     if current_widget is not None:
         current_widget.setParent(None)

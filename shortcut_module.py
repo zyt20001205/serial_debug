@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QMimeData, QDataStream, QByteArray, QIODevice
 from PySide6.QtGui import QDrag, QIcon
-from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QLineEdit, QPushButton, QHeaderView, QLabel, QHBoxLayout, QColorDialog, QMessageBox
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QLineEdit, QPushButton, QHeaderView, QLabel, QHBoxLayout, QMessageBox
 
 import shared
 
@@ -35,7 +35,6 @@ class CommandShortcutWidget(QWidget):
 
             self.source_index = None
             self.target_index = None
-
 
         def startDrag(self, supportedActions):
             # show overlay
@@ -163,7 +162,8 @@ class CommandShortcutWidget(QWidget):
         command_shortcut_layout = QVBoxLayout(self)
 
         # command shortcut table
-        self.shortcut_table.setRowCount(shared.shortcut_count)
+        shared.shortcut_count = len(shared.command_shortcut)
+        self.shortcut_table.setRowCount(shared.shortcut_count + 1)
         self.shortcut_table.setColumnCount(7)
         self.shortcut_table.setHorizontalHeaderLabels(["", "Type", "Function", "Command", "Suffix", "Format", ""])
         header = self.shortcut_table.horizontalHeader()
@@ -177,8 +177,6 @@ class CommandShortcutWidget(QWidget):
         self.shortcut_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         command_shortcut_layout.addWidget(self.shortcut_table)
         for i in range(shared.shortcut_count):
-            # get row color
-            color = shared.command_shortcut[i]["color"]
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
@@ -187,34 +185,35 @@ class CommandShortcutWidget(QWidget):
             # type lineedit
             type_lineedit = QLineEdit()
             type_lineedit.setText(shared.command_shortcut[i]["type"])
-            type_lineedit.setStyleSheet(f"background-color: {color};")
             self.shortcut_table.setCellWidget(i, 1, type_lineedit)
             # function lineedit
             function_lineedit = QLineEdit()
             function_lineedit.setText(shared.command_shortcut[i]["function"])
-            function_lineedit.setStyleSheet(f"background-color: {color};")
             self.shortcut_table.setCellWidget(i, 2, function_lineedit)
             # command lineedit
             command_lineedit = QLineEdit()
             command_lineedit.setText(shared.command_shortcut[i]["command"])
-            command_lineedit.setStyleSheet(f"background-color: {color};")
             self.shortcut_table.setCellWidget(i, 3, command_lineedit)
             # suffix lineedit
             suffix_lineedit = QLineEdit()
             suffix_lineedit.setText(shared.command_shortcut[i]["suffix"])
-            suffix_lineedit.setStyleSheet(f"background-color: {color};")
             self.shortcut_table.setCellWidget(i, 4, suffix_lineedit)
             # format combobox
             format_combobox = QLineEdit()
             format_combobox.setText(shared.command_shortcut[i]["format"])
-            format_combobox.setStyleSheet(f"background-color: {color};")
             self.shortcut_table.setCellWidget(i, 5, format_combobox)
             # send button
             send_button = QPushButton()
             send_button.setIcon(QIcon("icon:send.svg"))
-            send_button.setStyleSheet(f"background-color: {color};")
             send_button.clicked.connect(self.command_shortcut_send)
             self.shortcut_table.setCellWidget(i, 6, send_button)
+        self.shortcut_table.setSpan(len(shared.command_shortcut), 0, 1, 7)
+        # add button
+        add_button = QPushButton()
+        add_button.setIcon(QIcon("icon:add.svg"))
+        add_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        add_button.clicked.connect(self.command_shortcut_add)
+        self.shortcut_table.setCellWidget(len(shared.command_shortcut), 0, add_button)
 
         # command shortcut control
         control_widget = QWidget()
@@ -222,13 +221,6 @@ class CommandShortcutWidget(QWidget):
         control_layout.setContentsMargins(0, 0, 0, 0)
         control_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         command_shortcut_layout.addWidget(control_widget)
-        # paint button
-        paint_button = QPushButton()
-        paint_button.setFixedWidth(26)
-        paint_button.setIcon(QIcon("icon:paint_brush.svg"))
-        paint_button.setToolTip("paint")
-        paint_button.clicked.connect(self.command_shortcut_paint)
-        control_layout.addWidget(paint_button)
         # clear button
         clear_button = QPushButton()
         clear_button.setFixedWidth(26)
@@ -236,6 +228,35 @@ class CommandShortcutWidget(QWidget):
         clear_button.setToolTip("clear")
         clear_button.clicked.connect(self.command_shortcut_clear)
         control_layout.addWidget(clear_button)
+
+    def command_shortcut_add(self):
+        self.shortcut_table.insertRow(shared.shortcut_count)
+        # move icon
+        move_icon = QLabel()
+        move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
+        move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 0, move_icon)
+        # type lineedit
+        type_lineedit = QLineEdit()
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 1, type_lineedit)
+        # function lineedit
+        function_lineedit = QLineEdit()
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 2, function_lineedit)
+        # command lineedit
+        command_lineedit = QLineEdit()
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 3, command_lineedit)
+        # suffix lineedit
+        suffix_lineedit = QLineEdit()
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 4, suffix_lineedit)
+        # format combobox
+        format_combobox = QLineEdit()
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 5, format_combobox)
+        # send button
+        send_button = QPushButton()
+        send_button.setIcon(QIcon("icon:send.svg"))
+        send_button.clicked.connect(self.command_shortcut_send)
+        self.shortcut_table.setCellWidget(shared.shortcut_count, 6, send_button)
+        shared.shortcut_count += 1
 
     def command_shortcut_send(self) -> None:
         # get widget index
@@ -260,41 +281,22 @@ class CommandShortcutWidget(QWidget):
         self.shortcut_table.cellWidget(index, 4).setText(suffix)
         self.shortcut_table.cellWidget(index, 5).setText(format)
 
-    def command_shortcut_paint(self) -> None:
-        # get paint index
-        row = self.shortcut_table.currentRow()
-        if row == -1:
-            QMessageBox.warning(shared.main_window, "Paint Shortcut", "Please select a row first.")
-        else:
-            # get paint color
-            color = QColorDialog.getColor()
-            if color.isValid():
-                color = color.name()
-                shared.command_shortcut[row]["color"] = color
-                for col in range(1, self.shortcut_table.columnCount()):
-                    self.shortcut_table.cellWidget(row, col).setStyleSheet(f"background-color: {color};")
-
     def command_shortcut_clear(self) -> None:
         # get clear index
         row = self.shortcut_table.currentRow()
         if row == -1:
             QMessageBox.warning(shared.main_window, "Clear Shortcut", "Please select a row first.")
         else:
-            # clear text
-            self.shortcut_table.cellWidget(row, 1).setText("")
-            self.shortcut_table.cellWidget(row, 2).setText("")
-            self.shortcut_table.cellWidget(row, 3).setText("")
-            self.shortcut_table.cellWidget(row, 4).setText("")
-            self.shortcut_table.cellWidget(row, 5).setText("")
-            # clear color
-            shared.command_shortcut[row]["color"] = "#ffffff"
-            for col in range(1, self.shortcut_table.columnCount()):
-                self.shortcut_table.cellWidget(row, col).setStyleSheet("background-color: white;")
+            self.shortcut_table.removeRow(row)
+            shared.shortcut_count -= 1
 
     def command_shortcut_config_save(self) -> None:
+        shared.command_shortcut.clear()
         for i in range(shared.shortcut_count):
-            shared.command_shortcut[i]["type"] = self.shortcut_table.cellWidget(i, 1).text()
-            shared.command_shortcut[i]["function"] = self.shortcut_table.cellWidget(i, 2).text()
-            shared.command_shortcut[i]["command"] = self.shortcut_table.cellWidget(i, 3).text()
-            shared.command_shortcut[i]["suffix"] = self.shortcut_table.cellWidget(i, 4).text()
-            shared.command_shortcut[i]["format"] = self.shortcut_table.cellWidget(i, 5).text()
+            shared.command_shortcut.append({
+                "type": f"{self.shortcut_table.cellWidget(i, 1).text()}",
+                "function": f"{self.shortcut_table.cellWidget(i, 2).text()}",
+                "command": f"{self.shortcut_table.cellWidget(i, 3).text()}",
+                "suffix": f"{self.shortcut_table.cellWidget(i, 4).text()}",
+                "format": f"{self.shortcut_table.cellWidget(i, 5).text()}"
+            })

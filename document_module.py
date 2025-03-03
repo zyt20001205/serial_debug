@@ -64,19 +64,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "chunk_restart": "",
         "chunk_size": 100
     },
-    "command_shortcut": [],
+    "command_shortcut": [
+        {
+            "type": "",
+            "function": "",
+            "command": "",
+            "suffix": "",
+            "format": ""
+        }
+    ],
     "data_collect": []
 }
-
-for i in range(shared.shortcut_count):
-    DEFAULT_CONFIG["command_shortcut"].append({
-        "type": "",
-        "function": "",
-        "command": "",
-        "suffix": "",
-        "format": "",
-        "color": "#ffffff"
-    })
 
 for i in range(shared.slot_count):
     DEFAULT_CONFIG["data_collect"].append({

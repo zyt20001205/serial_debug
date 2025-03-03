@@ -46,7 +46,7 @@ advanced_send_buffer = []
 file_send = None
 
 # shortcut module
-shortcut_count = 100
+shortcut_count = None
 command_shortcut = None
 
 # data module
