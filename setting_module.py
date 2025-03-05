@@ -1,6 +1,6 @@
 import socket
 
-import pysoem
+# import pysoem
 from PySide6.QtGui import QFont, QIcon, QKeySequence, QFontDatabase
 from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QPushButton, QSpinBox, QLineEdit, QVBoxLayout, QFrame, QHBoxLayout, QKeySequenceEdit, QScrollArea, \
     QMessageBox, QStackedWidget, QSizePolicy
@@ -327,30 +327,30 @@ class SettingWidget(QWidget):
             self.localport_lineedit.setToolTip("Specifies the local port number to use for tcp communication.")
             serial_tcpserver_layout.addWidget(self.localport_lineedit, 1, 1)
 
-        def ethercat_master_gui():
-            serial_ethercatmaster_gui = QWidget()
-            serial_ethercatmaster_gui.setFixedWidth(800)
-            self.serial_dynamic_gui.addWidget(serial_ethercatmaster_gui)
-            serial_ethercatmaster_layout = QGridLayout(serial_ethercatmaster_gui)
-            serial_ethercatmaster_layout.setContentsMargins(0, 0, 0, 0)
-            serial_ethercatmaster_layout.setSpacing(10)
-            serial_ethercatmaster_layout.setColumnStretch(0, 2)
-            serial_ethercatmaster_layout.setColumnStretch(1, 3)
-
-            # network adapter selection
-            self.masteradapter_label.setFont(self.font)
-            self.masteradapter_label.setFixedHeight(self.height)
-            serial_ethercatmaster_layout.addWidget(self.masteradapter_label, 0, 0)
-            self.masteradapter_combobox.setFont(self.font)
-            self.masteradapter_combobox.setFixedHeight(self.height)
-            adapters = pysoem.find_adapters()
-            for adapter in adapters:
-                self.masteradapter_combobox.addItem(f"{adapter.desc.decode()}", f"{adapter.name}")
-            index = self.masteradapter_combobox.findData(shared.serial_setting["masteradapter"])
-            if index >= 0:
-                self.masteradapter_combobox.setCurrentIndex(index)
-            self.masteradapter_combobox.setToolTip("Selects the network adapter for EtherCAT Master communication.")
-            serial_ethercatmaster_layout.addWidget(self.masteradapter_combobox, 0, 1)
+        # def ethercat_master_gui():
+        #     serial_ethercatmaster_gui = QWidget()
+        #     serial_ethercatmaster_gui.setFixedWidth(800)
+        #     self.serial_dynamic_gui.addWidget(serial_ethercatmaster_gui)
+        #     serial_ethercatmaster_layout = QGridLayout(serial_ethercatmaster_gui)
+        #     serial_ethercatmaster_layout.setContentsMargins(0, 0, 0, 0)
+        #     serial_ethercatmaster_layout.setSpacing(10)
+        #     serial_ethercatmaster_layout.setColumnStretch(0, 2)
+        #     serial_ethercatmaster_layout.setColumnStretch(1, 3)
+        #
+        #     # network adapter selection
+        #     self.masteradapter_label.setFont(self.font)
+        #     self.masteradapter_label.setFixedHeight(self.height)
+        #     serial_ethercatmaster_layout.addWidget(self.masteradapter_label, 0, 0)
+        #     self.masteradapter_combobox.setFont(self.font)
+        #     self.masteradapter_combobox.setFixedHeight(self.height)
+        #     adapters = pysoem.find_adapters()
+        #     for adapter in adapters:
+        #         self.masteradapter_combobox.addItem(f"{adapter.desc.decode()}", f"{adapter.name}")
+        #     index = self.masteradapter_combobox.findData(shared.serial_setting["masteradapter"])
+        #     if index >= 0:
+        #         self.masteradapter_combobox.setCurrentIndex(index)
+        #     self.masteradapter_combobox.setToolTip("Selects the network adapter for EtherCAT Master communication.")
+        #     serial_ethercatmaster_layout.addWidget(self.masteradapter_combobox, 0, 1)
 
         serial_setting_widget = QWidget()
         self.setting_scroll_layout.addWidget(serial_setting_widget)
@@ -387,7 +387,7 @@ class SettingWidget(QWidget):
         com_gui()
         tcp_client_gui()
         tcp_server_gui()
-        ethercat_master_gui()
+        # ethercat_master_gui()
         serial_setting_gui_refresh()
 
         # serial view widget

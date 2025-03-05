@@ -1,8 +1,7 @@
-import struct
 import time
 import os
 import tempfile
-import pysoem
+# import pysoem
 from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
@@ -90,55 +89,55 @@ class IOStatusWidget(QWidget):
                                                         f"---------------------------------------------------------------",
                                                         "info")
                     self.tcp_server.newConnection.connect(self.tcp_server_find_peer)
-                elif shared.serial_setting["port"] == "EtherCAT master":
-                    self.ethercat_master = pysoem.Master()
-                    self.ethercat_master.open(shared.serial_setting["masteradapter"])
-                    try:
-                        # scan slaves
-                        # slave enter pre op mode
-                        num = self.ethercat_master.config_init()
-                        print(f"{num} slave(s) detected")
-                        slave = self.ethercat_master.slaves[0]
-                        print('using slave 0')
-                        # master enter pre op mode
-                        self.ethercat_master.state = pysoem.PREOP_STATE
-                        self.ethercat_master.write_state()
-                        if self.ethercat_master.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
-                            print("master is in preop state")
-                        else:
-                            print("master is not in preop state")
-                        if slave.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
-                            print("slave is in preop state")
-                        else:
-                            print("slave is not in preop state")
-
-                        size = self.ethercat_master.config_map()
-                        print(size)
-
-                        self.ethercat_master.state = pysoem.SAFEOP_STATE
-                        self.ethercat_master.write_state()
-                        if self.ethercat_master.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
-                            print("master is in safeop state")
-                        else:
-                            print("master is not in safeop state")
-                        if slave.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
-                            print("slave is in safeop state")
-                        else:
-                            print("slave is not in safeop state")
-                        print(pysoem.al_status_code_to_string(slave.al_status))
-
-                        if self.ethercat_master.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
-                            print("master is in op state")
-                        else:
-                            print("master is not in op state")
-                        if slave.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
-                            print("slave is in op state")
-                        else:
-                            print("slave is not in op state")
-                        print(pysoem.al_status_code_to_string(slave.al_status))
-
-                    except Exception as e:
-                        print(f'Error: {e}')
+                # elif shared.serial_setting["port"] == "EtherCAT master":
+                #     self.ethercat_master = pysoem.Master()
+                #     self.ethercat_master.open(shared.serial_setting["masteradapter"])
+                #     try:
+                #         # scan slaves
+                #         # slave enter pre op mode
+                #         num = self.ethercat_master.config_init()
+                #         print(f"{num} slave(s) detected")
+                #         slave = self.ethercat_master.slaves[0]
+                #         print('using slave 0')
+                #         # master enter pre op mode
+                #         self.ethercat_master.state = pysoem.PREOP_STATE
+                #         self.ethercat_master.write_state()
+                #         if self.ethercat_master.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
+                #             print("master is in preop state")
+                #         else:
+                #             print("master is not in preop state")
+                #         if slave.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
+                #             print("slave is in preop state")
+                #         else:
+                #             print("slave is not in preop state")
+                #
+                #         size = self.ethercat_master.config_map()
+                #         print(size)
+                #
+                #         self.ethercat_master.state = pysoem.SAFEOP_STATE
+                #         self.ethercat_master.write_state()
+                #         if self.ethercat_master.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
+                #             print("master is in safeop state")
+                #         else:
+                #             print("master is not in safeop state")
+                #         if slave.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
+                #             print("slave is in safeop state")
+                #         else:
+                #             print("slave is not in safeop state")
+                #         print(pysoem.al_status_code_to_string(slave.al_status))
+                #
+                #         if self.ethercat_master.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
+                #             print("master is in op state")
+                #         else:
+                #             print("master is not in op state")
+                #         if slave.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
+                #             print("slave is in op state")
+                #         else:
+                #             print("slave is not in op state")
+                #         print(pysoem.al_status_code_to_string(slave.al_status))
+                #
+                #     except Exception as e:
+                #         print(f'Error: {e}')
                 elif shared.serial_setting["port"] == "":
                     shared.serial_log_widget.log_insert("serial port is not configured", "warning")
                     self.parent.serial_toggle_button.setChecked(False)
@@ -862,6 +861,10 @@ class AdvancedSendWidget(QWidget):
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "command":
                         if param2 == "shortcut":
+                            if eval(param1) > shared.shortcut_count:
+                                # error highlight
+                                self.highlight_signal.emit(length, index, "red")
+                                raise Exception(f"index exception: index out of range 1 - {shared.shortcut_count}")
                             row = eval(param1) - 1
                             type = shared.shortcut_table.cellWidget(row, 1).text()
                             if type == "single":
@@ -1026,6 +1029,8 @@ class AdvancedSendWidget(QWidget):
                         return
                         # self.log_signal.emit("advanced send manually terminated", "warning")
                     elif "command exception: " in str(e):
+                        self.log_signal.emit(f"{e}", "error")
+                    elif "index exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
                     elif "suffix exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
