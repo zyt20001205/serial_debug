@@ -1742,19 +1742,19 @@ class AdvancedSendWidget(QWidget):
                 title = shared.shortcut_table.cellWidget(index - 1, 2).text()
                 result = QMessageBox.question(shared.main_window, "Shortcut Save",
                                               f"Shortcut already exists.\nDo you want to overwrite it?\n: {title}",
-                                              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                              QMessageBox.StandardButton.No)
+                                              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
-                    shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "",
-                                                                         "")
+                    shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "", "")
                     shared.serial_log_widget.log_insert(f"advanced shortcut overwrites {index}", "info")
+                    self.advanced_send_table.clearSelection()
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("advanced shortcut overwrite cancelled", "info")
             else:
                 shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "", "")
                 shared.serial_log_widget.log_insert(f"advanced shortcut saved to {index}", "info")
+                self.advanced_send_table.clearSelection()
         else:
-            shared.serial_log_widget.log_insert("advanced shortcut save", "warning")
+            shared.serial_log_widget.log_insert("advanced shortcut save cancelled", "warning")
 
     def advanced_send_config_save(self) -> None:
         shared.advanced_send_buffer = self.advanced_send_buffer
