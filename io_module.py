@@ -7,7 +7,7 @@ from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
     QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox
-from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize
+from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
 from PySide6.QtNetwork import QHostAddress
 
 import shared
@@ -18,7 +18,7 @@ for i in range(10):
     variable_name = f"x{i}"
     globals()[variable_name] = None
     variable.append(variable_name)
-
+timer = QElapsedTimer()
 receive_buffer = b""
 
 

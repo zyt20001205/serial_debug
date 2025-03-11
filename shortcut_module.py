@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QMimeData, QDataStream, QByteArray, QIODevice
-from PySide6.QtGui import QDrag, QIcon
+from PySide6.QtGui import QKeySequence, QDrag, QIcon
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QLineEdit, QPushButton, QHeaderView, QLabel, QHBoxLayout, QMessageBox
 
 import shared
@@ -209,11 +209,12 @@ class CommandShortcutWidget(QWidget):
             self.shortcut_table.setCellWidget(i, 6, send_button)
         self.shortcut_table.setSpan(len(shared.command_shortcut), 0, 1, 7)
         # add button
-        add_button = QPushButton()
-        add_button.setIcon(QIcon("icon:add.svg"))
-        add_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        add_button.clicked.connect(self.command_shortcut_add)
-        self.shortcut_table.setCellWidget(len(shared.command_shortcut), 0, add_button)
+        insert_button = QPushButton()
+        insert_button.setIcon(QIcon("icon:add.svg"))
+        insert_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        insert_button.setShortcut(QKeySequence(Qt.Key.Key_Insert))
+        insert_button.clicked.connect(self.command_shortcut_insert)
+        self.shortcut_table.setCellWidget(len(shared.command_shortcut), 0, insert_button)
 
         # command shortcut control
         control_widget = QWidget()
@@ -229,34 +230,41 @@ class CommandShortcutWidget(QWidget):
         clear_button.clicked.connect(self.command_shortcut_clear)
         control_layout.addWidget(clear_button)
 
-    def command_shortcut_add(self):
-        self.shortcut_table.insertRow(shared.shortcut_count)
+    def command_shortcut_insert(self):
+        # get insert index
+        row = self.shortcut_table.currentRow()
+        if row == -1:
+            index = shared.shortcut_count
+        else:
+            index = row
+        self.shortcut_table.insertRow(index)
         # move icon
         move_icon = QLabel()
         move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
         move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 0, move_icon)
+        self.shortcut_table.setCellWidget(index, 0, move_icon)
         # type lineedit
         type_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 1, type_lineedit)
+        self.shortcut_table.setCellWidget(index, 1, type_lineedit)
         # function lineedit
         function_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 2, function_lineedit)
+        self.shortcut_table.setCellWidget(index, 2, function_lineedit)
         # command lineedit
         command_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 3, command_lineedit)
+        self.shortcut_table.setCellWidget(index, 3, command_lineedit)
         # suffix lineedit
         suffix_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 4, suffix_lineedit)
+        self.shortcut_table.setCellWidget(index, 4, suffix_lineedit)
         # format combobox
         format_combobox = QLineEdit()
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 5, format_combobox)
+        self.shortcut_table.setCellWidget(index, 5, format_combobox)
         # send button
         send_button = QPushButton()
         send_button.setIcon(QIcon("icon:send.svg"))
         send_button.clicked.connect(self.command_shortcut_send)
-        self.shortcut_table.setCellWidget(shared.shortcut_count, 6, send_button)
+        self.shortcut_table.setCellWidget(index, 6, send_button)
         shared.shortcut_count += 1
+        self.shortcut_table.clearSelection()
 
     def command_shortcut_send(self) -> None:
         # get widget index
@@ -289,6 +297,7 @@ class CommandShortcutWidget(QWidget):
         else:
             self.shortcut_table.removeRow(row)
             shared.shortcut_count -= 1
+            self.shortcut_table.clearSelection()
 
     def command_shortcut_config_save(self) -> None:
         shared.command_shortcut.clear()
