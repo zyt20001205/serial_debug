@@ -164,9 +164,8 @@ def config_file_load_from(file_path=None):
         with open(file_path, "r", encoding="utf-8") as file:
             config = json.load(file)
             config_to_shared(config)
-            from gui_module import widget_init, dock_init, tab_init
+            from gui_module import widget_init, tab_init
             widget_init()
-            dock_init()
             tab_init()
     except(json.JSONDecodeError, IOError) as e:
         shared.serial_log_widget.log_insert("workspace load failed", "error")

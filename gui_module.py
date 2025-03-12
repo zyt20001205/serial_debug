@@ -535,6 +535,7 @@ def tab_clear(whitelist: QAction) -> None:
     shared.main_window.update()
 
 
+
 def dock_update(widget, checked):
     if checked:
         widget.show()
