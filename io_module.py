@@ -1,5 +1,6 @@
 import time
 import os
+from datetime import datetime
 import tempfile
 # import pysoem
 from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
@@ -18,8 +19,10 @@ for i in range(10):
     variable_name = f"x{i}"
     globals()[variable_name] = None
     variable.append(variable_name)
-timer = QElapsedTimer()
+
 receive_buffer = b""
+log_buffer = []
+stopwatch_buffer = None
 
 
 class IOStatusWidget(QWidget):
@@ -357,8 +360,7 @@ class IOStatusWidget(QWidget):
         send_suffix_layout.addWidget(send_suffix_label)
         self.send_suffix_combobox.addItems(["none", "\\r\\n", "modbus crc16"])
         self.send_suffix_combobox.setCurrentText(shared.send_suffix)
-        self.send_suffix_combobox.currentIndexChanged.connect(
-            lambda: shared.single_send_widget.single_send_calculate(data=None))
+        self.send_suffix_combobox.currentIndexChanged.connect(lambda: shared.single_send_widget.single_send_calculate(data=None))
         self.send_suffix_combobox.setToolTip("A calculated value used to verify the integrity of data.")
         self.send_suffix_combobox.setFixedWidth(120)
         send_suffix_layout.addWidget(self.send_suffix_combobox)
@@ -729,9 +731,12 @@ class AdvancedSendWidget(QWidget):
         self.message_param2_combobox = QComboBox()
         self.messagebox_param1_lineedit = QLineEdit()
         self.messagebox_param2_combobox = QComboBox()
+        self.log_param1_lineedit = QLineEdit()
+        self.log_param2_combobox = QComboBox()
         self.expression_param1_lineedit = QLineEdit()
         self.delay_param1_spinbox = QSpinBox()
         self.delay_param2_combobox = QComboBox()
+        self.stopwatch_param1_combobox = QComboBox()
         self.loop_param1_spinbox = QSpinBox()
         self.if_param1_lineedit = QLineEdit()
         self.abort_param1_lineedit = QLineEdit()
@@ -749,8 +754,9 @@ class AdvancedSendWidget(QWidget):
         def new(self, thread_id: str, buffer: list) -> None:
             mutex = QMutex()
             condition = QWaitCondition()
+            stopwatch = QElapsedTimer()
 
-            thread = self.AdvancedSendThread(buffer, mutex, condition)
+            thread = self.AdvancedSendThread(buffer, mutex, condition, stopwatch)
             thread.setObjectName(thread_id)
 
             thread.highlight_signal.connect(self.table_highlight)
@@ -832,12 +838,13 @@ class AdvancedSendWidget(QWidget):
             message_signal = Signal(QThread, str, str, QWaitCondition)
             finish_signal = Signal(QThread)
 
-            def __init__(self, buffer, mutex, condition, parent=None):
+            def __init__(self, buffer, mutex, condition, stopwatch, parent=None):
                 super().__init__(parent)
                 self.enable = True
                 self.mutex = mutex
                 self.condition = condition
                 self.buffer = buffer
+                self.stopwatch = stopwatch
 
             def send(self, buffer, index=0):
                 length = len(buffer)
@@ -896,28 +903,55 @@ class AdvancedSendWidget(QWidget):
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
                     elif action == "message":
+                        message = param1.strip()
                         try:
-                            message = eval(f"f'''{param1.strip()}'''")
+                            message = eval(f"f'''{message}'''")
                         except:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"message exception: trying to show ({param1.strip()})")
+                            raise Exception(f"message exception: trying to show ({message})")
                         level = param2
                         self.log_signal.emit(message, level)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "messagebox":
+                        message = param1.strip()
                         try:
-                            message = eval(f"f'''{param1.strip()}'''")
+                            message = eval(f"f'''{message}'''")
                         except:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"message exception: trying to show ({param1.strip()})")
+                            raise Exception(f"message exception: trying to show ({message})")
                         level = param2
                         self.mutex.lock()
                         self.message_signal.emit(self, message, level, self.condition)
                         self.condition.wait(self.mutex)
                         self.mutex.unlock()
+                        # remove highlight
+                        self.highlight_signal.emit(length, index, "white")
+                    elif action == "log":
+                        global log_buffer
+                        log = param1.strip()
+                        operation = param2
+                        if operation == "append":
+                            try:
+                                log_buffer.append(eval(f"f'''{log}\n'''"))
+                            except:
+                                # error highlight
+                                self.highlight_signal.emit(length, index, "red")
+                                raise Exception(f"log exception: trying to append ({log})")
+                        else:  # operation == "export"
+                            try:
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                log_name = f"{self.objectName()}_{timestamp}.log"
+                                log_path = os.path.join(os.getcwd(), log_name)
+                                with open(log_path, 'w', encoding='utf-8', newline='\n') as f:
+                                    f.writelines(log_buffer)
+                                shared.serial_log_widget.log_insert(f"log saved to: {log_path}", "info")
+                            except Exception:
+                                shared.serial_log_widget.log_insert("log save failed", "error")
+                                QMessageBox.critical(shared.main_window, "Error", "Log save failed.")
+                            log_buffer = []
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "expression":
@@ -941,6 +975,20 @@ class AdvancedSendWidget(QWidget):
                             time.sleep(delay * 60)
                         else:  # unit == "hour"
                             time.sleep(delay * 3600)
+                        # remove highlight
+                        self.highlight_signal.emit(length, index, "white")
+                    elif action == "stopwatch":
+                        global stopwatch_buffer
+                        operation = param1
+                        if operation == "start":
+                            self.stopwatch.start()
+                            self.log_signal.emit("stopwatch start", "info")
+                        elif operation == "restart":
+                            stopwatch_buffer = self.stopwatch.restart()
+                            self.log_signal.emit(f"stopwatch restart: {stopwatch_buffer}ms", "info")
+                        else:  # operation == "elapsed":
+                            stopwatch_buffer = self.stopwatch.elapsed()
+                            self.log_signal.emit(f"stopwatch elapsed: {stopwatch_buffer}ms", "info")
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "loop":
@@ -1035,6 +1083,8 @@ class AdvancedSendWidget(QWidget):
                     elif "suffix exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
                     elif "message exception: " in str(e):
+                        self.log_signal.emit(f"{e}", "error")
+                    elif "log exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
                     elif "expression exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
@@ -1258,9 +1308,11 @@ class AdvancedSendWidget(QWidget):
             |  command   | instruction |  type  |   \    |
             |  message   |   message   | level  |   \    |
             | messagebox |   message   | level  |   \    |
+            |    log     |  operation  |  log   |   \    |
             | expression | expression  |   \    |   \    |
             |   delay    |    time     |  unit  |   \    | 
             |    loop    |    count    |   \    |   \    |
+            | stopwatch  |  operation  |   \    |   \    |
             |  endloop   |      \      |   \    |   \    |
             |     if     |  condition  |   \    |   \    |
             |   endif    |      \      |   \    |   \    |
@@ -1284,7 +1336,7 @@ class AdvancedSendWidget(QWidget):
                 param_widget = QComboBox()
                 param_widget.addItems(variable)
                 param_widget.setCurrentText(param1)
-                param_widget.currentIndexChanged.connect(self.advanced_send_buffer_refresh)
+                param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "command":
                 param_widget = QLineEdit()
                 param_widget.setText(param1)
@@ -1294,6 +1346,10 @@ class AdvancedSendWidget(QWidget):
                 param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "messagebox":
+                param_widget = QLineEdit()
+                param_widget.setText(param1)
+                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            elif action == "log":
                 param_widget = QLineEdit()
                 param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
@@ -1307,6 +1363,13 @@ class AdvancedSendWidget(QWidget):
                 param_widget.setSingleStep(10)
                 param_widget.setValue(param1)
                 param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
+            elif action == "stopwatch":
+                param_widget = QComboBox()
+                param_widget.addItem(QIcon("icon:play.svg"), "start")
+                param_widget.addItem(QIcon("icon:stop.svg"), "restart")
+                param_widget.addItem(QIcon("icon:pause.svg"), "elapsed")
+                param_widget.setCurrentText(param1)
+                param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "loop":
                 param_widget = QSpinBox()
                 param_widget.setRange(1, 2147483647)
@@ -1356,12 +1419,15 @@ class AdvancedSendWidget(QWidget):
                 item = action_layout.takeAt(i)
                 if item and item.widget():
                     item.widget().deleteLater()
+            self.action_window.updateGeometry()
+            self.action_window.adjustSize()
 
-            # param2 widget
-            param2_widget = QWidget()
-            action_layout.addWidget(param2_widget)
-            param2_layout = QHBoxLayout(param2_widget)
-            param2_layout.setContentsMargins(0, 0, 0, 0)
+            if self.action_combobox.currentText() in ["input", "command", "message", "messagebox", "log", "delay"]:
+                # param2 widget
+                param2_widget = QWidget()
+                action_layout.addWidget(param2_widget)
+                param2_layout = QHBoxLayout(param2_widget)
+                param2_layout.setContentsMargins(0, 0, 0, 0)
             # param1 widget
             param1_widget = QWidget()
             action_layout.addWidget(param1_widget)
@@ -1413,6 +1479,16 @@ class AdvancedSendWidget(QWidget):
                 self.messagebox_param2_combobox.addItem(QIcon("icon:warning.svg"), "warning")
                 self.messagebox_param2_combobox.addItem(QIcon("icon:error.svg"), "error")
                 param2_layout.addWidget(self.messagebox_param2_combobox)
+            elif self.action_combobox.currentText() == "log":
+                # param1
+                self.log_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.log_param1_lineedit)
+                self.log_param1_lineedit.setFocus()
+                # param2
+                self.log_param2_combobox = QComboBox()
+                self.log_param2_combobox.addItem(QIcon("icon:document_add.svg"), "append")
+                self.log_param2_combobox.addItem(QIcon("icon:document_save.svg"), "export")
+                param2_layout.addWidget(self.log_param2_combobox)
             elif self.action_combobox.currentText() == "expression":
                 self.expression_param1_lineedit = QLineEdit()
                 param1_layout.addWidget(self.expression_param1_lineedit)
@@ -1430,6 +1506,14 @@ class AdvancedSendWidget(QWidget):
                 self.delay_param2_combobox = QComboBox()
                 self.delay_param2_combobox.addItems(["ms", "sec", "min", "hour"])
                 param2_layout.addWidget(self.delay_param2_combobox)
+            elif self.action_combobox.currentText() == "stopwatch":
+                # param1
+                self.stopwatch_param1_combobox = QComboBox()
+                self.stopwatch_param1_combobox.addItem(QIcon("icon:play.svg"), "start")
+                self.stopwatch_param1_combobox.addItem(QIcon("icon:stop.svg"), "restart")
+                self.stopwatch_param1_combobox.addItem(QIcon("icon:pause.svg"), "elapsed")
+                param1_layout.addWidget(self.stopwatch_param1_combobox)
+                self.stopwatch_param1_combobox.setFocus()
             elif self.action_combobox.currentText() == "loop":
                 self.loop_param1_spinbox = QSpinBox()
                 self.loop_param1_spinbox.setRange(1, 2147483647)
@@ -1459,7 +1543,7 @@ class AdvancedSendWidget(QWidget):
         self.action_window.setWindowTitle("Insert Action")
         self.action_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
         self.action_window.setFixedWidth(400)
-        self.action_window.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+        self.action_window.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         action_layout = QVBoxLayout(self.action_window)
         action_layout.setSpacing(10)
 
@@ -1472,14 +1556,16 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox.addItem(QIcon("icon:arrow_export_ltr.svg"), "command")
         self.action_combobox.addItem(QIcon("icon:print.svg"), "message")
         self.action_combobox.addItem(QIcon("icon:message.svg"), "messagebox")
+        self.action_combobox.addItem(QIcon("icon:document.svg"), "log")
         # expression statement action
         self.action_combobox.addItem("--------------------------- Statement ---------------------------")
-        self.action_combobox.model().item(6).setEnabled(False)
+        self.action_combobox.model().item(7).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:variable.svg"), "expression")
         self.action_combobox.addItem(QIcon("icon:timer.svg"), "delay")
+        self.action_combobox.addItem(QIcon("icon:stopwatch.svg"), "stopwatch")
         # control flow action
         self.action_combobox.addItem("------------------------- Control Flow --------------------------")
-        self.action_combobox.model().item(9).setEnabled(False)
+        self.action_combobox.model().item(11).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_repeat_all.svg"), "loop")
         self.action_combobox.addItem(QIcon("icon:branch.svg"), "if")
         self.action_combobox.addItem(QIcon("icon:pause.svg"), "break")
@@ -1510,7 +1596,7 @@ class AdvancedSendWidget(QWidget):
             param_widget = QComboBox()
             param_widget.addItems(variable)
             param_widget.setCurrentText(param1)
-            param_widget.currentIndexChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "command":
             param1 = self.command_param1_lineedit.text()
@@ -1548,6 +1634,18 @@ class AdvancedSendWidget(QWidget):
             param_widget.setText(param1)
             param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
+        elif action == "log":
+            param1 = self.log_param1_lineedit.text()
+            param2 = self.log_param2_combobox.currentText()
+            # add to action slot
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
+            # add to gui
+            action_label = QTableWidgetItem(action)
+            self.advanced_send_table.setItem(index, 1, action_label)
+            param_widget = QLineEdit()
+            param_widget.setText(param1)
+            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "expression":
             param1 = self.expression_param1_lineedit.text()
             # add to action slot
@@ -1572,6 +1670,20 @@ class AdvancedSendWidget(QWidget):
             param_widget.setSingleStep(10)
             param_widget.setValue(param1)
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
+        elif action == "stopwatch":
+            param1 = self.stopwatch_param1_combobox.currentText()
+            # add to action slot
+            self.advanced_send_buffer.insert(index, [action, param1])
+            # add to gui
+            action_label = QTableWidgetItem(action)
+            self.advanced_send_table.setItem(index, 1, action_label)
+            param_widget = QComboBox()
+            param_widget.addItem(QIcon("icon:play.svg"), "start")
+            param_widget.addItem(QIcon("icon:stop.svg"), "restart")
+            param_widget.addItem(QIcon("icon:pause.svg"), "elapsed")
+            param_widget.setCurrentText(param1)
+            param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(index, 2, param_widget)
         elif action == "loop":
             param1 = self.loop_param1_spinbox.value()
@@ -1691,6 +1803,8 @@ class AdvancedSendWidget(QWidget):
         else:
             del self.advanced_send_buffer[row]
             self.advanced_send_table.removeRow(row)
+        # clear selection
+        self.advanced_send_table.clearSelection()
 
     def advanced_send_buffer_refresh(self, new: str | int) -> None:
         # get widget index
@@ -1698,7 +1812,7 @@ class AdvancedSendWidget(QWidget):
             if self.advanced_send_table.cellWidget(row, 2) == self.sender():
                 self.advanced_send_buffer[row][1] = new
                 break
-        # print(self.advanced_send_buffer)
+        print(self.advanced_send_buffer)
 
     def advanced_send_table_indent(self) -> None:
         indent = 0
@@ -1746,13 +1860,11 @@ class AdvancedSendWidget(QWidget):
                 if result == QMessageBox.StandardButton.Yes:
                     shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "", "")
                     shared.serial_log_widget.log_insert(f"advanced shortcut overwrites {index}", "info")
-                    self.advanced_send_table.clearSelection()
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("advanced shortcut overwrite cancelled", "info")
             else:
                 shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(self.advanced_send_buffer), "", "")
                 shared.serial_log_widget.log_insert(f"advanced shortcut saved to {index}", "info")
-                self.advanced_send_table.clearSelection()
         else:
             shared.serial_log_widget.log_insert("advanced shortcut save cancelled", "warning")
 
