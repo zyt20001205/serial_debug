@@ -66,18 +66,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "command_shortcut": [
         {
-            "type": "",
-            "function": "",
+            "type": None,
+            "function": "new",
             "command": "",
             "suffix": "",
             "format": ""
         }
     ],
-    "data_collect": [
-        {
-            "label": ""
-        }
-    ]
+    "data_collect": ["new"]
 }
 
 
@@ -242,9 +238,9 @@ def config_save():
     shared.serial_log_widget.log_config_save()
     shared.io_status_widget.io_status_config_save()
     shared.single_send_widget.single_send_config_save()
-    shared.advanced_send_widget.advanced_send_config_save()
+    # shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
-    shared.command_shortcut_widget.command_shortcut_config_save()
+    # shared.command_shortcut_widget.command_shortcut_config_save()
     # shared.data_collect_widget.data_collect_config_save()
     # load config
     config = config_file_load()
@@ -259,9 +255,9 @@ def config_save_as():
     shared.serial_log_widget.log_config_save()
     shared.io_status_widget.io_status_config_save()
     shared.single_send_widget.single_send_config_save()
-    shared.advanced_send_widget.advanced_send_config_save()
+    # shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
-    shared.command_shortcut_widget.command_shortcut_config_save()
+    # shared.command_shortcut_widget.command_shortcut_config_save()
     # shared.data_collect_widget.data_collect_config_save()
     # load config
     config = config_file_load()

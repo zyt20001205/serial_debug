@@ -19,8 +19,9 @@ class DataCollectWidget(QWidget):
         self.tab_widget = QTabWidget()
 
         self.database_tab = QWidget()
-
         self.database_layout = QVBoxLayout(self.database_tab)
+        self.database_table = self.DataViewTableWidget(self)
+
         self.data_table_tab = QWidget()
         self.data_table_layout = QVBoxLayout(self.data_table_tab)
         self.data_table = QTableWidget()
@@ -33,7 +34,6 @@ class DataCollectWidget(QWidget):
 
         self.toggle_button = QPushButton()
 
-        shared.database_table = self.DataViewTableWidget(self)
         # draw gui
         self.data_collect_gui()
 
@@ -73,20 +73,21 @@ class DataCollectWidget(QWidget):
             # manipulate shared data collect
             tmp = shared.data_collect.pop(source_index)
             shared.data_collect.insert(target_index, tmp)
+            self.blockSignals(True)
             # remove source row
-            label = QTableWidgetItem(self.item(source_index, 1).text())
-            value = QTableWidgetItem(self.item(source_index, 2).text())
+            label = self.takeItem(source_index, 1)
+            value = self.takeItem(source_index, 2)
             self.removeRow(source_index)
-            # insert new row
+            # insert target row
             self.insertRow(target_index)
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.setCellWidget(target_index, 0, move_icon)
             self.setItem(target_index, 1, label)
-            shared.database_table.blockSignals(True)
             self.setItem(target_index, 2, value)
-            shared.database_table.blockSignals(False)
+            self.blockSignals(False)
+            # print(shared.data_collect)
 
         def keyPressEvent(self, event):
             if event.key() == Qt.Key.Key_Delete:
@@ -111,36 +112,36 @@ class DataCollectWidget(QWidget):
         self.tab_widget.setTabIcon(0, QIcon("icon:database.svg"))
         # database table
         shared.data_count = len(shared.data_collect)
-        shared.database_table.setRowCount(shared.data_count)
-        shared.database_table.setColumnCount(3)
-        horizontal_header = shared.database_table.horizontalHeader()
+        self.database_table.setRowCount(shared.data_count)
+        self.database_table.setColumnCount(3)
+        horizontal_header = self.database_table.horizontalHeader()
         horizontal_header.setVisible(False)
-        shared.database_table.setColumnWidth(0, 30)
+        self.database_table.setColumnWidth(0, 30)
         horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        vertical_header = shared.database_table.verticalHeader()
+        vertical_header = self.database_table.verticalHeader()
         vertical_header.setVisible(False)
-        shared.database_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.database_layout.addWidget(shared.database_table)
+        self.database_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.database_layout.addWidget(self.database_table)
         for i in range(shared.data_count):
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            shared.database_table.setCellWidget(i, 0, move_icon)
+            self.database_table.setCellWidget(i, 0, move_icon)
             # label
             label = QTableWidgetItem(shared.data_collect[i])
-            shared.database_table.setItem(i, 1, label)
+            self.database_table.setItem(i, 1, label)
             # value
             value = QTableWidgetItem()
-            shared.database_table.setItem(i, 2, value)
+            self.database_table.setItem(i, 2, value)
             # highlight timer
             timer = QTimer()
             timer.setSingleShot(True)
             timer.timeout.connect(lambda index=i: self.data_collect_unhighlight(index))
             self.highlight_timer.append(timer)
         # cell change event
-        shared.database_table.cellChanged.connect(self.data_collect_change)
+        self.database_table.cellChanged.connect(self.data_collect_change)
 
         # data table tab
         self.data_table_layout.setContentsMargins(0, 0, 0, 0)
@@ -282,62 +283,64 @@ class DataCollectWidget(QWidget):
     #         for i in range(shared.slot_count):
     #             self.line[i].setData([], [])
 
+    def data_collect_import(self, row: int, text: str) -> None:
+        self.database_table.item(row,2).setText(text)
+
     def data_collect_insert(self) -> None:
         # get insert index
-        row = shared.database_table.currentRow()
+        row = self.database_table.currentRow()
         # data collect insert
         shared.data_collect.insert(row, "new")
-        # data view table insert
-        shared.database_table.insertRow(row)
+        # database table insert
+        self.database_table.insertRow(row)
+        self.database_table.blockSignals(True)
+
         # move icon
         move_icon = QLabel()
         move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
         move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        shared.database_table.setCellWidget(row, 0, move_icon)
+        self.database_table.setCellWidget(row, 0, move_icon)
         # label
         label = QTableWidgetItem("new")
-        shared.database_table.blockSignals(True)
-        shared.database_table.setItem(row, 1, label)
-        shared.database_table.blockSignals(False)
+        self.database_table.setItem(row, 1, label)
         # value
         value = QTableWidgetItem()
-        shared.database_table.blockSignals(True)
-        shared.database_table.setItem(row, 2, value)
-        shared.database_table.blockSignals(False)
+        self.database_table.setItem(row, 2, value)
         # highlight timer
         timer = QTimer()
         timer.setSingleShot(True)
         timer.timeout.connect(lambda: self.data_collect_unhighlight(shared.data_count))
         self.highlight_timer.append(timer)
 
+        self.database_table.blockSignals(False)
         shared.data_count += 1
+        # print(shared.data_collect)
 
     def data_collect_remove(self) -> None:
         # get remove index
-        row = shared.database_table.currentRow()
-        if isinstance(shared.database_table.cellWidget(row, 0), QPushButton):
+        row = self.database_table.currentRow()
+        if shared.data_collect == 1:
             return
         shared.data_collect.pop(row)
-        shared.database_table.removeRow(row)
+        self.database_table.removeRow(row)
+        self.highlight_timer.pop(row)
         shared.data_count -= 1
-        self.highlight_timer.pop(shared.data_count)
         # print(shared.data_collect)
 
     def data_collect_change(self, row, col) -> None:
         if col == 1:
             # save cell
-            shared.data_collect[row] = shared.database_table.item(row, 1).text()
+            shared.data_collect[row] = self.database_table.item(row, 1).text()
             # print(shared.data_collect)
         else:  # if col == 2:
             # highlight cell
-            shared.database_table.blockSignals(True)
-            shared.database_table.item(row, col).setBackground(QColor("yellow"))
-            shared.database_table.blockSignals(False)
+            self.database_table.blockSignals(True)
+            self.database_table.item(row, col).setBackground(QColor("yellow"))
+            self.database_table.blockSignals(False)
             self.highlight_timer[row].stop()
             self.highlight_timer[row].start(500)
 
-    @staticmethod
-    def data_collect_unhighlight(row) -> None:
-        shared.database_table.blockSignals(True)
-        shared.database_table.item(row, 2).setBackground(QColor("white"))
-        shared.database_table.blockSignals(False)
+    def data_collect_unhighlight(self, row) -> None:
+        self.database_table.blockSignals(True)
+        self.database_table.item(row, 2).setBackground(QColor("white"))
+        self.database_table.blockSignals(False)

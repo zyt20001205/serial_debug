@@ -27,7 +27,7 @@ send_suffix_combobox = None
 serial_toggle_button = None
 status_bar = None
 log_textedit = None
-shortcut_table = None
+
 database_table = None
 
 # gui module
