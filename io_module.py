@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDat
 from PySide6.QtNetwork import QHostAddress
 
 import shared
+from data_module import rx_buffer
 from suffix_module import modbus_crc16
 
 variable = []
@@ -20,7 +21,6 @@ for i in range(10):
     globals()[variable_name] = None
     variable.append(variable_name)
 
-receive_buffer = b""
 log_buffer = []
 stopwatch_buffer = None
 
@@ -283,18 +283,17 @@ class IOStatusWidget(QWidget):
             self.timer.start(int(shared.serial_setting["timeout"]))
 
         def read(self, device):
-            global receive_buffer
             buffer_size = self.parent.receive_buffer_spinbox.value()
             if buffer_size == 0:
                 message = device.readAll().data().strip()
                 if message:
-                    receive_buffer = message
+                    shared.rx_buffer = message
                     shared.serial_log_widget.log_insert(f"{message}", "receive")
             else:
                 while device.bytesAvailable() >= buffer_size:
                     message = device.read(buffer_size)
                     if message:
-                        receive_buffer = message
+                        shared.rx_buffer = message
                         shared.serial_log_widget.log_insert(f"{message}", "receive")
                 device.readAll()
 
@@ -688,6 +687,7 @@ class SingleSendWidget(QWidget):
             command_formatted = command.encode("ascii")
         else:  # format == "utf-8"
             command_formatted = command.encode("utf-8")
+        shared.tx_buffer = command_formatted
         if shared.serial_setting["port"] == "TCP client":
             if shared.io_status_widget.local_lineedit.text() == "Connecting...":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
@@ -727,6 +727,8 @@ class AdvancedSendWidget(QWidget):
         self.input_param2_lineedit = QLineEdit()
         self.command_param1_lineedit = QLineEdit()
         self.command_param2_combobox = QComboBox()
+        self.database_param1_lineedit = QLineEdit()
+        self.database_param2_combobox = QComboBox()
         self.message_param1_lineedit = QLineEdit()
         self.message_param2_combobox = QComboBox()
         self.messagebox_param1_lineedit = QLineEdit()
@@ -847,8 +849,17 @@ class AdvancedSendWidget(QWidget):
                 self.stopwatch = stopwatch
 
             def send(self, buffer, index=0):
+                def s_int(hex):
+                    bit_length = len(hex) * 4
+                    num = int(hex, 16)
+                    mask = (1 << bit_length) - 1
+                    return num if num <= (mask >> 1) else num | ~mask
+
                 length = len(buffer)
                 while index < length:
+                    # shared variable import
+                    tx_buffer = shared.tx_buffer
+                    rx_buffer = shared.rx_buffer
                     # highlight current index
                     self.highlight_signal.emit(length, index, "cyan")
                     # thread abort
@@ -902,6 +913,21 @@ class AdvancedSendWidget(QWidget):
                             self.send_signal.emit(command, suffix, "hex")
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
+                    elif action == "database":
+                        try:
+                            result = str(eval(param1))
+                        except:
+                            # error highlight
+                            self.highlight_signal.emit(length, index, "red")
+                            raise Exception(f"database exception: trying to perform ({result})")
+                        label = param2
+                        # get widget index
+                        for row in range(shared.data_count):
+                            if shared.database_table.item(row, 1).text() == label:
+                                shared.database_table.item(row, 2).setText(result)
+                                break
+                        # remove highlight
+                        self.highlight_signal.emit(length, index, "white")
                     elif action == "message":
                         message = param1.strip()
                         try:
@@ -1241,7 +1267,7 @@ class AdvancedSendWidget(QWidget):
         self.advanced_send_table.setHorizontalHeaderLabels(["", "Action", "Param", "Insert"])
         header = self.advanced_send_table.horizontalHeader()
         self.advanced_send_table.setColumnWidth(0, 30)
-        self.advanced_send_table.setColumnWidth(1, 100)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.advanced_send_table.setColumnWidth(3, 30)
         self.advanced_send_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -1306,6 +1332,7 @@ class AdvancedSendWidget(QWidget):
             |---------------------------------------------      
             |   input    |  variable   | label  |   \    |
             |  command   | instruction |  type  |   \    |
+            |  database  |    result   | label  |   \    |
             |  message   |   message   | level  |   \    |
             | messagebox |   message   | level  |   \    |
             |    log     |  operation  |  log   |   \    |
@@ -1338,6 +1365,10 @@ class AdvancedSendWidget(QWidget):
                 param_widget.setCurrentText(param1)
                 param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "command":
+                param_widget = QLineEdit()
+                param_widget.setText(param1)
+                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            elif action == "database":
                 param_widget = QLineEdit()
                 param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
@@ -1422,7 +1453,7 @@ class AdvancedSendWidget(QWidget):
             self.action_window.updateGeometry()
             self.action_window.adjustSize()
 
-            if self.action_combobox.currentText() in ["input", "command", "message", "messagebox", "log", "delay"]:
+            if self.action_combobox.currentText() in ["input", "command", "database", "message", "messagebox", "log", "delay"]:
                 # param2 widget
                 param2_widget = QWidget()
                 action_layout.addWidget(param2_widget)
@@ -1457,6 +1488,15 @@ class AdvancedSendWidget(QWidget):
                 self.command_param2_combobox.addItem(QIcon("icon:variable.svg"), "expression")
                 self.command_param2_combobox.addItem(QIcon("icon:document_add.svg"), "shortcut")
                 param2_layout.addWidget(self.command_param2_combobox)
+            elif self.action_combobox.currentText() == "database":
+                # param1
+                self.database_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.database_param1_lineedit)
+                self.database_param1_lineedit.setFocus()
+                # param2
+                self.database_param2_combobox = QComboBox()
+                self.database_param2_combobox.addItems(shared.data_collect)
+                param2_layout.addWidget(self.database_param2_combobox)
             elif self.action_combobox.currentText() == "message":
                 # param1
                 self.message_param1_lineedit = QLineEdit()
@@ -1554,18 +1594,19 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox.model().item(1).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_import.svg"), "input")
         self.action_combobox.addItem(QIcon("icon:arrow_export_ltr.svg"), "command")
+        self.action_combobox.addItem(QIcon("icon:database.svg"), "database")
         self.action_combobox.addItem(QIcon("icon:print.svg"), "message")
         self.action_combobox.addItem(QIcon("icon:message.svg"), "messagebox")
         self.action_combobox.addItem(QIcon("icon:document.svg"), "log")
         # expression statement action
         self.action_combobox.addItem("--------------------------- Statement ---------------------------")
-        self.action_combobox.model().item(7).setEnabled(False)
+        self.action_combobox.model().item(8).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:variable.svg"), "expression")
         self.action_combobox.addItem(QIcon("icon:timer.svg"), "delay")
         self.action_combobox.addItem(QIcon("icon:stopwatch.svg"), "stopwatch")
         # control flow action
         self.action_combobox.addItem("------------------------- Control Flow --------------------------")
-        self.action_combobox.model().item(11).setEnabled(False)
+        self.action_combobox.model().item(12).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_repeat_all.svg"), "loop")
         self.action_combobox.addItem(QIcon("icon:branch.svg"), "if")
         self.action_combobox.addItem(QIcon("icon:pause.svg"), "break")
@@ -1601,6 +1642,18 @@ class AdvancedSendWidget(QWidget):
         elif action == "command":
             param1 = self.command_param1_lineedit.text()
             param2 = self.command_param2_combobox.currentText()
+            # add to action slot
+            self.advanced_send_buffer.insert(index, [action, param1, param2])
+            # add to gui
+            action_label = QTableWidgetItem(action)
+            self.advanced_send_table.setItem(index, 1, action_label)
+            param_widget = QLineEdit()
+            param_widget.setText(param1)
+            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            self.advanced_send_table.setCellWidget(index, 2, param_widget)
+        elif action == "database":
+            param1 = self.database_param1_lineedit.text()
+            param2 = self.database_param2_combobox.currentText()
             # add to action slot
             self.advanced_send_buffer.insert(index, [action, param1, param2])
             # add to gui
@@ -1812,7 +1865,7 @@ class AdvancedSendWidget(QWidget):
             if self.advanced_send_table.cellWidget(row, 2) == self.sender():
                 self.advanced_send_buffer[row][1] = new
                 break
-        print(self.advanced_send_buffer)
+        # print(self.advanced_send_buffer)
 
     def advanced_send_table_indent(self) -> None:
         indent = 0
@@ -1935,15 +1988,14 @@ class FileSendWidget(QWidget):
                                 current_chunk += 1
                                 # file send flow control
                                 if self.parent.flow_control_groupbox.isChecked():
-                                    global receive_buffer
-                                    receive_buffer = b""
+                                    shared.rx_buffer = b""
                                     while True:
                                         if not self.enable:
                                             raise Exception
-                                        if receive_buffer == self.parent.chunk_resume_lineedit.text().encode():
+                                        if shared.rx_buffer == self.parent.chunk_resume_lineedit.text().encode():
                                             start_line = current_line
                                             break
-                                        if receive_buffer == self.parent.chunk_restart_lineedit.text().encode():
+                                        if shared.rx_buffer == self.parent.chunk_restart_lineedit.text().encode():
                                             current_line = start_line
                                             current_chunk -= 1
                                             break

@@ -73,21 +73,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "format": ""
         }
     ],
-    "data_collect": []
+    "data_collect": [
+        {
+            "label": ""
+        }
+    ]
 }
-
-for i in range(shared.slot_count):
-    DEFAULT_CONFIG["data_collect"].append({
-        "title": f"slot{i}",
-        "match_line_index": -1,
-        "match_start_index": 0,
-        "match_end_index": 0,
-        "match_content": "N/A",
-        "data_line_index": -1,
-        "data_start_index": 0,
-        "data_end_index": 0,
-        "data_format": "raw"
-    })
 
 
 def document_gui():
@@ -254,7 +245,7 @@ def config_save():
     shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
     shared.command_shortcut_widget.command_shortcut_config_save()
-    shared.data_collect_widget.data_collect_config_save()
+    # shared.data_collect_widget.data_collect_config_save()
     # load config
     config = config_file_load()
     # save shared to config
@@ -271,7 +262,7 @@ def config_save_as():
     shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
     shared.command_shortcut_widget.command_shortcut_config_save()
-    shared.data_collect_widget.data_collect_config_save()
+    # shared.data_collect_widget.data_collect_config_save()
     # load config
     config = config_file_load()
     # save shared to config

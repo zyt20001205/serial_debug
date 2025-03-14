@@ -18,6 +18,7 @@ class CommandShortcutWidget(QWidget):
         # draw gui
         self.command_shortcut_gui()
 
+
     class ShortcutTableWidget(QTableWidget):
 
         def __init__(self, parent):
@@ -135,7 +136,9 @@ class CommandShortcutWidget(QWidget):
 
         def keyPressEvent(self, event):
             if event.key() == Qt.Key.Key_Delete:
-                self.parent.command_shortcut_clear()
+                self.parent.command_shortcut_remove()
+            elif event.key()==Qt.Key.Key_Insert:
+                self.parent.command_shortcut_insert()
             else:
                 super().keyPressEvent(event)
 
@@ -163,7 +166,7 @@ class CommandShortcutWidget(QWidget):
 
         # command shortcut table
         shared.shortcut_count = len(shared.command_shortcut)
-        self.shortcut_table.setRowCount(shared.shortcut_count + 1)
+        self.shortcut_table.setRowCount(shared.shortcut_count)
         self.shortcut_table.setColumnCount(7)
         self.shortcut_table.setHorizontalHeaderLabels(["", "Type", "Function", "Command", "Suffix", "Format", ""])
         header = self.shortcut_table.horizontalHeader()
@@ -207,71 +210,48 @@ class CommandShortcutWidget(QWidget):
             send_button.setIcon(QIcon("icon:send.svg"))
             send_button.clicked.connect(self.command_shortcut_send)
             self.shortcut_table.setCellWidget(i, 6, send_button)
-        self.shortcut_table.setSpan(len(shared.command_shortcut), 0, 1, 7)
-        # add button
-        insert_button = QPushButton()
-        insert_button.setIcon(QIcon("icon:add.svg"))
-        insert_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        insert_button.setShortcut(QKeySequence(Qt.Key.Key_Insert))
-        insert_button.clicked.connect(self.command_shortcut_insert)
-        self.shortcut_table.setCellWidget(len(shared.command_shortcut), 0, insert_button)
-
-        # command shortcut control
-        control_widget = QWidget()
-        control_layout = QHBoxLayout(control_widget)
-        control_layout.setContentsMargins(0, 0, 0, 0)
-        control_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        command_shortcut_layout.addWidget(control_widget)
-        # clear button
-        clear_button = QPushButton()
-        clear_button.setFixedWidth(26)
-        clear_button.setIcon(QIcon("icon:delete.svg"))
-        clear_button.setToolTip("clear")
-        clear_button.clicked.connect(self.command_shortcut_clear)
-        control_layout.addWidget(clear_button)
 
     def command_shortcut_insert(self):
         # get insert index
         row = self.shortcut_table.currentRow()
-        if row == -1:
-            index = shared.shortcut_count
-        else:
-            index = row
-        self.shortcut_table.insertRow(index)
+        self.shortcut_table.insertRow(row)
         # move icon
         move_icon = QLabel()
         move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
         move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.shortcut_table.setCellWidget(index, 0, move_icon)
+        self.shortcut_table.setCellWidget(row, 0, move_icon)
         # type lineedit
         type_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(index, 1, type_lineedit)
+        self.shortcut_table.setCellWidget(row, 1, type_lineedit)
         # function lineedit
         function_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(index, 2, function_lineedit)
+        self.shortcut_table.setCellWidget(row, 2, function_lineedit)
         # command lineedit
         command_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(index, 3, command_lineedit)
+        self.shortcut_table.setCellWidget(row, 3, command_lineedit)
         # suffix lineedit
         suffix_lineedit = QLineEdit()
-        self.shortcut_table.setCellWidget(index, 4, suffix_lineedit)
+        self.shortcut_table.setCellWidget(row, 4, suffix_lineedit)
         # format combobox
         format_combobox = QLineEdit()
-        self.shortcut_table.setCellWidget(index, 5, format_combobox)
+        self.shortcut_table.setCellWidget(row, 5, format_combobox)
         # send button
         send_button = QPushButton()
         send_button.setIcon(QIcon("icon:send.svg"))
         send_button.clicked.connect(self.command_shortcut_send)
-        self.shortcut_table.setCellWidget(index, 6, send_button)
+        self.shortcut_table.setCellWidget(row, 6, send_button)
         shared.shortcut_count += 1
         self.shortcut_table.clearSelection()
 
     def command_shortcut_send(self) -> None:
         # get widget index
+        index = None
         for row in range(self.shortcut_table.rowCount()):
             if self.shortcut_table.cellWidget(row, 6) == self.sender():
                 index = row
                 break
+        if index is None:
+            return
         command = self.shortcut_table.cellWidget(index, 3).text()
         suffix = self.shortcut_table.cellWidget(index, 4).text()
         format = self.shortcut_table.cellWidget(index, 5).text()
@@ -289,15 +269,14 @@ class CommandShortcutWidget(QWidget):
         self.shortcut_table.cellWidget(index, 4).setText(suffix)
         self.shortcut_table.cellWidget(index, 5).setText(format)
 
-    def command_shortcut_clear(self) -> None:
-        # get clear index
+    def command_shortcut_remove(self) -> None:
+        # get remove index
         row = self.shortcut_table.currentRow()
-        if row == -1:
-            QMessageBox.warning(shared.main_window, "Clear Shortcut", "Please select a row first.")
-        else:
-            self.shortcut_table.removeRow(row)
-            shared.shortcut_count -= 1
-            self.shortcut_table.clearSelection()
+        if isinstance(shared.shortcut_table.cellWidget(row, 0), QPushButton):
+            return
+        self.shortcut_table.removeRow(row)
+        shared.shortcut_count -= 1
+        self.shortcut_table.clearSelection()
 
     def command_shortcut_config_save(self) -> None:
         shared.command_shortcut.clear()

@@ -1,5 +1,8 @@
 main_window = None
 
+rx_buffer = None
+tx_buffer = None
+
 serial_log_widget = None
 io_status_widget = None
 single_send_widget = None
@@ -25,6 +28,7 @@ serial_toggle_button = None
 status_bar = None
 log_textedit = None
 shortcut_table = None
+database_table = None
 
 # gui module
 layout = None
@@ -50,5 +54,5 @@ shortcut_count = None
 command_shortcut = None
 
 # data module
-slot_count = 10
-data_collect = []
+data_count = None
+data_collect = None
