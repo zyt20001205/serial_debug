@@ -32,6 +32,7 @@ class IOStatusWidget(QWidget):
         self.send_format_combobox = QComboBox()
         self.send_suffix_combobox = QComboBox()
         self.send_suffix_lineedit = QLineEdit()
+        self.rx_buffer_entry = QLineEdit()
         self.receive_buffer_spinbox = QSpinBox()
         self.serial_toggle_button = QPushButton()
         self.io_info_widget = QWidget()
@@ -365,22 +366,25 @@ class IOStatusWidget(QWidget):
         send_suffix_layout.addWidget(self.send_suffix_combobox)
         self.send_suffix_lineedit.setFixedWidth(40)
         send_suffix_layout.addWidget(self.send_suffix_lineedit)
-        # receive buffersize entry
-        receive_buffersize_widget = QWidget()
-        io_param_layout.addWidget(receive_buffersize_widget)
-        receive_buffersize_layout = QHBoxLayout(receive_buffersize_widget)
-        receive_buffersize_layout.setContentsMargins(0, 0, 0, 0)
-        receive_buffersize_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        receive_buffer_label = QLabel("receive buffer")
-        receive_buffer_label.setFixedWidth(80)
-        receive_buffersize_layout.addWidget(receive_buffer_label)
-        self.receive_buffer_spinbox.setRange(0, 100)
-        self.receive_buffer_spinbox.setSingleStep(1)
-        self.receive_buffer_spinbox.setFixedWidth(60)
-        self.receive_buffer_spinbox.setToolTip("0: automatic buffer size\n"
-                                               "n: set buffer size to n bytes")
-        self.receive_buffer_spinbox.setValue(shared.receive_buffersize)
-        receive_buffersize_layout.addWidget(self.receive_buffer_spinbox)
+        # rx buffer entry
+        rx_buffer_widget = QWidget()
+        # io_param_layout.addWidget(rx_buffer_widget)
+        rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
+        rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+        rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        rx_buffer_label = QLabel("rx buffer")
+        rx_buffer_label.setFixedWidth(80)
+        rx_buffer_layout.addWidget(rx_buffer_label)
+        rx_buffer_layout.addWidget(self.rx_buffer_entry)
+        # shared.rx_buffer
+
+        # self.receive_buffer_spinbox.setRange(0, 100)
+        # self.receive_buffer_spinbox.setSingleStep(1)
+        # self.receive_buffer_spinbox.setFixedWidth(60)
+        # self.receive_buffer_spinbox.setToolTip("0: automatic buffer size\n"
+        #                                        "n: set buffer size to n bytes")
+        # self.receive_buffer_spinbox.setValue(shared.receive_buffersize)
+        # rx_buffer_layout.addWidget(self.receive_buffer_spinbox)
 
         io_control_widget = QWidget()
         io_setting_layout.addWidget(io_control_widget)
@@ -515,6 +519,11 @@ class SingleSendWidget(QWidget):
         self.setAcceptDrops(True)
         # instance variables
         self.overlay = QWidget(self)
+
+        self.single_send_queue = []
+        self.single_send_timer = QTimer()
+        self.single_send_timer.setSingleShot(True)
+        self.single_send_timer.timeout.connect(self.single_send_trigger)
 
         self.single_send_textedit = self.SingleSendPlainTextEdit()
         self.single_send_button = QPushButton()
@@ -670,8 +679,7 @@ class SingleSendWidget(QWidget):
     def single_send_config_save(self) -> None:
         shared.single_send_buffer = self.single_send_textedit.toPlainText().strip()
 
-    @staticmethod
-    def single_send(command: str, suffix: str, format: str) -> None:
+    def single_send(self, command: str, suffix: str, format: str) -> None:
         # open serial first
         if not shared.io_status_widget.serial_toggle_button.isChecked():
             shared.io_status_widget.serial_toggle_button.setChecked(True)
@@ -688,25 +696,34 @@ class SingleSendWidget(QWidget):
             command_formatted = command.encode("ascii")
         else:  # format == "utf-8"
             command_formatted = command.encode("utf-8")
-        shared.tx_buffer = command_formatted
+        self.single_send_queue.append(command_formatted)
+        if not self.single_send_timer.isActive():
+            self.single_send_trigger()
+
+    def single_send_trigger(self):
+        self.single_send_timer.start(30)
+        if self.single_send_queue:
+            shared.tx_buffer = self.single_send_queue.pop()
+        else:
+            return
         if shared.serial_setting["port"] == "TCP client":
             if shared.io_status_widget.local_lineedit.text() == "Connecting...":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
                 return
             else:
-                shared.io_status_widget.serial_control.tcp_client.write(command_formatted)
+                shared.io_status_widget.serial_control.tcp_client.write(shared.tx_buffer)
         elif shared.serial_setting["port"] == "TCP server":
             if shared.io_status_widget.remote_combobox.currentData() == "none":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
                 return
             elif shared.io_status_widget.remote_combobox.currentData() == "broadcast":
                 for peer in shared.io_status_widget.serial_control.tcp_peer:
-                    peer.write(command_formatted)
+                    peer.write(shared.tx_buffer)
             else:
-                shared.io_status_widget.remote_combobox.currentData().write(command_formatted)
+                shared.io_status_widget.remote_combobox.currentData().write(shared.tx_buffer)
         else:
-            shared.io_status_widget.serial_control.serial.write(command_formatted)
-        shared.serial_log_widget.log_insert(f"{command_formatted}", "send")
+            shared.io_status_widget.serial_control.serial.write(shared.tx_buffer)
+        shared.serial_log_widget.log_insert(f"{shared.tx_buffer}", "send")
 
 
 class AdvancedSendWidget(QWidget):
@@ -926,7 +943,7 @@ class AdvancedSendWidget(QWidget):
                         # get widget index
                         for row in range(len(shared.data_collect)):
                             if shared.data_collect[row] == label:
-                                self.export_signal.emit(row,result)
+                                self.export_signal.emit(row, result)
                                 break
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
