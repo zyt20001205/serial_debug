@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDat
 from PySide6.QtNetwork import QHostAddress
 
 import shared
+from data_module import rx_buffer
 from suffix_module import modbus_crc16
 
 variable = []
@@ -290,7 +291,7 @@ class IOStatusWidget(QWidget):
                     shared.serial_log_widget.log_insert(f"{message}", "receive")
             else:
                 while device.bytesAvailable() >= buffer_size:
-                    message = device.read(buffer_size)
+                    message = device.read(buffer_size).data().strip()
                     if message:
                         shared.rx_buffer = message
                         shared.serial_log_widget.log_insert(f"{message}", "receive")
@@ -618,7 +619,7 @@ class SingleSendWidget(QWidget):
         self.single_send_textedit.setPlainText(send_buffer)
 
     def single_send_save(self) -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count, 1)
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, len(shared.command_shortcut), 1)
         row = index - 1
         if ok:
             if shared.command_shortcut[row]["type"]:
@@ -880,10 +881,10 @@ class AdvancedSendWidget(QWidget):
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "command":
                         if param2 == "shortcut":
-                            if eval(param1) > shared.shortcut_count:
+                            if eval(param1) > len(shared.command_shortcut):
                                 # error highlight
                                 self.highlight_signal.emit(length, index, "red")
-                                raise Exception(f"index exception: index out of range 1 - {shared.shortcut_count}")
+                                raise ValueError(f"index out of range 1 ~ {len(shared.command_shortcut)}")
                             row = eval(param1) - 1
                             type = shared.command_shortcut[row]["type"]
                             if type == "single":
@@ -917,13 +918,13 @@ class AdvancedSendWidget(QWidget):
                     elif action == "database":
                         try:
                             result = str(eval(param1))
-                        except:
+                        except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"database exception: trying to perform ({result})")
+                            raise ValueError(e)
                         label = param2
                         # get widget index
-                        for row in range(shared.data_count):
+                        for row in range(len(shared.data_collect)):
                             if shared.data_collect[row] == label:
                                 self.export_signal.emit(row,result)
                                 break
@@ -933,10 +934,10 @@ class AdvancedSendWidget(QWidget):
                         message = param1.strip()
                         try:
                             message = eval(f"f'''{message}'''")
-                        except:
+                        except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"message exception: trying to show ({message})")
+                            raise ValueError(e)
                         level = param2
                         self.log_signal.emit(message, level)
                         # remove highlight
@@ -945,10 +946,10 @@ class AdvancedSendWidget(QWidget):
                         message = param1.strip()
                         try:
                             message = eval(f"f'''{message}'''")
-                        except:
+                        except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"message exception: trying to show ({message})")
+                            raise ValueError(e)
                         level = param2
                         self.mutex.lock()
                         self.message_signal.emit(self, message, level, self.condition)
@@ -963,10 +964,10 @@ class AdvancedSendWidget(QWidget):
                         if operation == "append":
                             try:
                                 log_buffer.append(eval(f"f'''{log}\n'''"))
-                            except:
+                            except Exception as e:
                                 # error highlight
                                 self.highlight_signal.emit(length, index, "red")
-                                raise Exception(f"log exception: trying to append ({log})")
+                                raise ValueError(e)
                         else:  # operation == "export"
                             try:
                                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -975,7 +976,7 @@ class AdvancedSendWidget(QWidget):
                                 with open(log_path, 'w', encoding='utf-8', newline='\n') as f:
                                     f.writelines(log_buffer)
                                 shared.serial_log_widget.log_insert(f"log saved to: {log_path}", "info")
-                            except Exception:
+                            except:
                                 shared.serial_log_widget.log_insert("log save failed", "error")
                                 QMessageBox.critical(shared.main_window, "Error", "Log save failed.")
                             log_buffer = []
@@ -985,10 +986,10 @@ class AdvancedSendWidget(QWidget):
                         expression = param1.strip()
                         try:
                             exec(expression, globals())
-                        except:
+                        except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"expression exception: trying to perform ({expression})")
+                            raise ValueError(e)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "delay":
@@ -1023,6 +1024,8 @@ class AdvancedSendWidget(QWidget):
                         try:
                             for _ in range(count):
                                 j = self.send(buffer, index + 1)
+                        except ValueError as e:
+                            raise ValueError(e)
                         except Exception as e:
                             if "exception" in str(e):
                                 raise Exception(e)
@@ -1099,6 +1102,8 @@ class AdvancedSendWidget(QWidget):
                 try:
                     self.send(self.buffer)
                     self.finish_signal.emit(self)
+                except ValueError as e:
+                    self.log_signal.emit(f"{e}", "error")
                 except Exception as e:
                     if str(e) == "terminate exception":
                         return
@@ -1176,15 +1181,18 @@ class AdvancedSendWidget(QWidget):
             if isinstance(self.cellWidget(source_index, 2), QLineEdit):
                 param = QLineEdit()
                 param.setText(self.cellWidget(source_index, 2).text())
+                param.textChanged.connect(self.parent.advanced_send_buffer_refresh)
             elif isinstance(self.cellWidget(source_index, 2), QSpinBox):
                 param = QSpinBox()
                 param.setRange(self.cellWidget(source_index, 2).minimum(), self.cellWidget(source_index, 2).maximum())
                 param.setSingleStep(self.cellWidget(source_index, 2).singleStep())
                 param.setValue(self.cellWidget(source_index, 2).value())
+                param.valueChanged.connect(self.parent.advanced_send_buffer_refresh)
             elif isinstance(self.cellWidget(source_index, 2), QComboBox):
                 param = QComboBox()
-                param.setCurrentText(self.cellWidget(source_index, 2).currentText())
                 param.addItems(variable)
+                param.setCurrentText(self.cellWidget(source_index, 2).currentText())
+                param.currentTextChanged.connect(self.parent.advanced_send_buffer_refresh)
 
             self.removeRow(source_index)
             # insert target row
@@ -1888,8 +1896,9 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.removeRow(0)
         shared.advanced_send_buffer = [["tail"]]
 
-    def advanced_send_save(self) -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, shared.shortcut_count, 1)
+    @staticmethod
+    def advanced_send_save() -> None:
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, len(shared.command_shortcut), 1)
         row = index - 1
         if ok:
             if shared.command_shortcut[row]["type"]:

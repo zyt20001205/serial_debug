@@ -111,8 +111,7 @@ class DataCollectWidget(QWidget):
         self.tab_widget.addTab(self.database_tab, "database")
         self.tab_widget.setTabIcon(0, QIcon("icon:database.svg"))
         # database table
-        shared.data_count = len(shared.data_collect)
-        self.database_table.setRowCount(shared.data_count)
+        self.database_table.setRowCount(len(shared.data_collect))
         self.database_table.setColumnCount(3)
         horizontal_header = self.database_table.horizontalHeader()
         horizontal_header.setVisible(False)
@@ -123,7 +122,7 @@ class DataCollectWidget(QWidget):
         vertical_header.setVisible(False)
         self.database_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.database_layout.addWidget(self.database_table)
-        for i in range(shared.data_count):
+        for i in range(len(shared.data_collect)):
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
@@ -309,22 +308,20 @@ class DataCollectWidget(QWidget):
         # highlight timer
         timer = QTimer()
         timer.setSingleShot(True)
-        timer.timeout.connect(lambda: self.data_collect_unhighlight(shared.data_count))
+        timer.timeout.connect(lambda: self.data_collect_unhighlight(len(shared.data_collect)))
         self.highlight_timer.append(timer)
 
         self.database_table.blockSignals(False)
-        shared.data_count += 1
         # print(shared.data_collect)
 
     def data_collect_remove(self) -> None:
         # get remove index
         row = self.database_table.currentRow()
-        if shared.data_collect == 1:
+        if len(shared.data_collect) == 1:
             return
         shared.data_collect.pop(row)
         self.database_table.removeRow(row)
         self.highlight_timer.pop(row)
-        shared.data_count -= 1
         # print(shared.data_collect)
 
     def data_collect_change(self, row, col) -> None:

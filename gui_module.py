@@ -217,6 +217,16 @@ def dock_init():
     data_collect_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
 
+def dock_refresh():
+    serial_log_dock_widget.setWidget(shared.serial_log_widget)
+    io_status_dock_widget.setWidget(shared.io_status_widget)
+    single_send_dock_widget.setWidget(shared.single_send_widget)
+    advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
+    file_send_dock_widget.setWidget(shared.file_send_widget)
+    command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
+    data_collect_dock_widget.setWidget(shared.data_collect_widget)
+
+
 def shortcut_init():
     shared.save_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["save"]), shared.main_window)
     shared.save_shortcut.activated.connect(config_save)
@@ -533,7 +543,6 @@ def tab_clear(whitelist: QAction) -> None:
     shared.main_window.setCentralWidget(None)
     # update main window
     shared.main_window.update()
-
 
 
 def dock_update(widget, checked):

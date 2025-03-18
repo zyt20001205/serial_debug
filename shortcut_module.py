@@ -129,8 +129,7 @@ class CommandShortcutWidget(QWidget):
         command_shortcut_layout = QVBoxLayout(self)
 
         # command shortcut table
-        shared.shortcut_count = len(shared.command_shortcut)
-        self.shortcut_table.setRowCount(shared.shortcut_count)
+        self.shortcut_table.setRowCount(len(shared.command_shortcut))
         self.shortcut_table.setColumnCount(4)
         horizontal_header = self.shortcut_table.horizontalHeader()
         horizontal_header.setVisible(False)
@@ -140,7 +139,7 @@ class CommandShortcutWidget(QWidget):
         self.shortcut_table.setColumnWidth(3, 30)
         self.shortcut_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         command_shortcut_layout.addWidget(self.shortcut_table)
-        for i in range(shared.shortcut_count):
+        for i in range(len(shared.command_shortcut)):
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
@@ -193,17 +192,15 @@ class CommandShortcutWidget(QWidget):
         self.shortcut_table.setCellWidget(row, 3, send_button)
 
         self.shortcut_table.blockSignals(False)
-        shared.shortcut_count += 1
         # print(shared.command_shortcut)
 
     def shortcut_table_remove(self) -> None:
         # get remove index
         row = self.shortcut_table.currentRow()
-        if shared.shortcut_count == 1:
+        if len(shared.command_shortcut) == 1:
             return
         shared.command_shortcut.pop(row)
         self.shortcut_table.removeRow(row)
-        shared.shortcut_count -= 1
         # print(shared.command_shortcut)
 
     def shortcut_table_change(self, row, col) -> None:
