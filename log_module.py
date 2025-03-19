@@ -215,15 +215,6 @@ class SerialLogWidget(QWidget):
         self.lock_button.setToolTip("lock")
         self.lock_button.clicked.connect(self.log_lock)
         log_control_layout.addWidget(self.lock_button)
-        # format selection
-        self.format_combobox.setFixedWidth(100)
-        self.format_combobox.addItems(["raw", "hex", "ascii", "utf-8"])
-        self.format_combobox.setCurrentText(shared.log_setting["format"])
-        self.format_combobox.setToolTip("raw: treat the input as raw format\n"
-                                        "hex: treat the input as hexadecimal format\n"
-                                        "ascii: treat the input as ascii format\n"
-                                        "utf-8: treat the input as utf-8 format")
-        log_control_layout.addWidget(self.format_combobox)
         # wrap selection
         self.wrap_combobox.setFixedWidth(100)
         self.wrap_combobox.addItem(QIcon("icon:text_wrap.svg"), "none")
@@ -261,51 +252,29 @@ class SerialLogWidget(QWidget):
         elif level == "info":
             message = message.replace(" ", "&nbsp;").replace("\n", "<br>")
             message = f'<span style="background-color:white;">{timestamp}[Info]{message}</span>'
-        else:
-            message = eval(message)
-            if self.format_combobox.currentText() == "hex":
-                # raw to hex
-                message = message.hex().upper()
-                # "XXXX" to "XX XX"
+        elif level == "send":
+            if shared.io_setting["tx_format"] == "hex":
                 message = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
-                if "crc16" in shared.send_suffix_combobox.currentText():
-                    message_data = message[:-5]
-                    message_suffix = message[-5:]
-                else:  # none/"\r\n"
-                    message_data = message
-                    message_suffix = ""
-            elif self.format_combobox.currentText() == "ascii":
-                try:
-                    # raw to ascii
-                    message_data = message.decode("ascii")
-                    message_suffix = ""
-                except UnicodeDecodeError:
-                    # data = ''.join(chr(b) if 0 <= b < 128 else '⍰' for b in data)
-                    message = message.hex().upper()
-                    message_data = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
-                    message_suffix = ""
-                    self.log_insert("non ascii characters detected, show as hex", "warning")
-            elif self.format_combobox.currentText() == "utf-8":
-                try:
-                    # raw to utf-8
-                    message_data = message.decode("utf-8")
-                    message_suffix = ""
-                except UnicodeDecodeError:
-                    # data = ''.join(chr(b) if 0 <= b < 128 else '⍰' for b in data)
-                    message = message.hex().upper()
-                    message_data = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
-                    message_suffix = ""
-                    self.log_insert("non utf-8 characters detected, show as hex", "warning")
-            else:  # format_combobox.currentText() == "raw":
+            if "crc16" in shared.io_setting["tx_suffix"]:
+                message_data = message[:-5]
+                message_suffix = message[-5:]
+            else:  # none/"\r\n"
                 message_data = message
                 message_suffix = ""
-            if level == "send":
-                message = f'{timestamp}<span style="background-color:cyan;">-&gt;{message_data}<span style="color:orange;">{message_suffix}</span></span>'
-            else:
-                message = f'{timestamp}<span style="background-color:lightgreen;">&lt;-{message_data}<span style="color:orange;">{message_suffix}</span></span>'
-            # replace newline character "\r\n" with html newline character "<br>"
-            if self.wrap_combobox.currentText() == "crlf":
-                message = message.replace("\r\n", "<br>")
+            message = f'{timestamp}<span style="background-color:cyan;">-&gt;{message_data}<span style="color:orange;">{message_suffix}</span></span>'
+        else:
+            if shared.io_setting["rx_format"] == "hex":
+                message = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
+            if "crc16" in shared.io_setting["tx_suffix"]:
+                message_data = message[:-5]
+                message_suffix = message[-5:]
+            else:  # none/"\r\n"
+                message_data = message
+                message_suffix = ""
+            message = f'{timestamp}<span style="background-color:lightgreen;">&lt;-{message_data}<span style="color:orange;">{message_suffix}</span></span>'
+        # replace newline character "\r\n" with html newline character "<br>"
+        if self.wrap_combobox.currentText() == "crlf":
+            message = message.replace("\r\n", "<br>")
         if self.lock_button.isChecked():
             vertical_scrollbar = self.log_textedit.verticalScrollBar()
             current_value = vertical_scrollbar.value()

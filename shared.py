@@ -42,9 +42,7 @@ log_setting = None
 log_font = None
 
 # io module
-send_format = ""
-send_suffix = ""
-receive_buffersize = ""
+io_setting = None
 single_send_buffer = ""
 advanced_send_buffer = []
 file_send = None

@@ -29,11 +29,9 @@ class IOStatusWidget(QWidget):
     def __init__(self):
         super().__init__()
         # instance variables
-        self.send_format_combobox = QComboBox()
-        self.send_suffix_combobox = QComboBox()
-        self.send_suffix_lineedit = QLineEdit()
-        self.rx_buffer_entry = QLineEdit()
-        self.receive_buffer_spinbox = QSpinBox()
+        self.tx_suffix_lineedit = QLineEdit()
+        self.tx_buffer_lineedit = QLineEdit()
+        self.rx_buffer_lineedit = QLineEdit()
         self.serial_toggle_button = QPushButton()
         self.io_info_widget = QWidget()
         self.io_info_layout = QHBoxLayout(self.io_info_widget)
@@ -47,7 +45,6 @@ class IOStatusWidget(QWidget):
         self.serial_icon = QLabel()
         self.serial_label = QLabel()
 
-        shared.send_suffix_combobox = self.send_suffix_combobox
         shared.serial_toggle_button = self.serial_toggle_button
 
         self.serial_control = self.SerialControl(self)
@@ -284,18 +281,52 @@ class IOStatusWidget(QWidget):
             self.timer.start(int(shared.serial_setting["timeout"]))
 
         def read(self, device):
-            buffer_size = self.parent.receive_buffer_spinbox.value()
+            buffer_size = shared.io_setting["rx_size"]
             if buffer_size == 0:
-                message = device.readAll().data().strip()
-                if message:
-                    shared.rx_buffer = message
-                    shared.serial_log_widget.log_insert(f"{message}", "receive")
+                rx_message = device.readAll().data().strip()
+                if rx_message:
+                    # save message to shared.rx_buffer
+                    if shared.io_setting["rx_format"] == "hex":
+                        shared.rx_buffer = rx_message.hex().upper()
+                    elif shared.io_setting["rx_format"] == "ascii":
+                        try:
+                            # raw to ascii
+                            shared.rx_buffer = rx_message.decode("ascii")
+                        except UnicodeDecodeError:
+                            shared.rx_buffer = rx_message.hex().upper()
+                    else:  # shared.io_setting["rx_format"] == "utf-8":
+                        try:
+                            # raw to utf-8
+                            shared.rx_buffer = rx_message.decode("utf-8")
+                        except UnicodeDecodeError:
+                            shared.rx_buffer = rx_message.hex().upper()
+                    # change rx buffer lineedit
+                    shared.io_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                    # append log
+                    shared.serial_log_widget.log_insert(f"{shared.rx_buffer}", "receive")
             else:
                 while device.bytesAvailable() >= buffer_size:
-                    message = device.read(buffer_size).data().strip()
-                    if message:
-                        shared.rx_buffer = message
-                        shared.serial_log_widget.log_insert(f"{message}", "receive")
+                    rx_message = device.read(buffer_size).data().strip()
+                    if rx_message:
+                        # save message to shared.rx_buffer
+                        if shared.io_setting["rx_format"] == "hex":
+                            shared.rx_buffer = rx_message.hex().upper()
+                        elif shared.io_setting["rx_format"] == "ascii":
+                            try:
+                                # raw to ascii
+                                shared.rx_buffer = rx_message.decode("ascii")
+                            except UnicodeDecodeError:
+                                shared.rx_buffer = rx_message.hex().upper()
+                        else:  # shared.io_setting["rx_format"] == "utf-8":
+                            try:
+                                # raw to utf-8
+                                shared.rx_buffer = rx_message.decode("utf-8")
+                            except UnicodeDecodeError:
+                                shared.rx_buffer = rx_message.hex().upper()
+                        # change rx buffer lineedit
+                        shared.io_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        # append log
+                        shared.serial_log_widget.log_insert(f"{shared.rx_buffer}", "receive")
                 device.readAll()
 
         def stop(self):
@@ -333,58 +364,175 @@ class IOStatusWidget(QWidget):
         io_setting_layout.addWidget(io_param_widget)
         io_param_layout = QVBoxLayout(io_param_widget)
         io_param_layout.setContentsMargins(0, 0, 0, 0)
-        # send format widget
-        send_format_widget = QWidget()
-        io_param_layout.addWidget(send_format_widget)
-        send_format_layout = QHBoxLayout(send_format_widget)
-        send_format_layout.setContentsMargins(0, 0, 0, 0)
-        send_format_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        send_format_label = QLabel("send format")
-        send_format_label.setFixedWidth(80)
-        send_format_layout.addWidget(send_format_label)
-        self.send_format_combobox.setFixedWidth(60)
-        self.send_format_combobox.addItems(["hex", "ascii", "utf-8"])
-        self.send_format_combobox.setCurrentText(shared.send_format)
-        self.send_format_combobox.setToolTip("hex: treat the input as hexadecimal format\n"
-                                             "ascii: treat the input as ascii format\n"
-                                             "utf-8: treat the input as utf-8 format")
-        send_format_layout.addWidget(self.send_format_combobox)
-        # send suffix selection
-        send_suffix_widget = QWidget()
-        io_param_layout.addWidget(send_suffix_widget)
-        send_suffix_layout = QHBoxLayout(send_suffix_widget)
-        send_suffix_layout.setContentsMargins(0, 0, 0, 0)
-        send_suffix_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        send_suffix_label = QLabel("send suffix")
-        send_suffix_label.setFixedWidth(80)
-        send_suffix_layout.addWidget(send_suffix_label)
-        self.send_suffix_combobox.addItems(["none", "\\r\\n", "modbus crc16"])
-        self.send_suffix_combobox.setCurrentText(shared.send_suffix)
-        self.send_suffix_combobox.currentIndexChanged.connect(lambda: shared.single_send_widget.single_send_calculate(data=None))
-        self.send_suffix_combobox.setToolTip("A calculated value used to verify the integrity of data.")
-        self.send_suffix_combobox.setFixedWidth(120)
-        send_suffix_layout.addWidget(self.send_suffix_combobox)
-        self.send_suffix_lineedit.setFixedWidth(40)
-        send_suffix_layout.addWidget(self.send_suffix_lineedit)
+
+        def io_control_toggle() -> None:
+            if io_control_button.isChecked():
+                io_control_button.setIcon(QIcon("icon:arrow_expand.svg"))
+                io_control_button.setToolTip("hide io settings")
+                io_control_tab.show()
+            else:
+                io_control_button.setIcon(QIcon("icon:arrow_collapse.svg"))
+                io_control_button.setToolTip("show io settings")
+                io_control_tab.hide()
+
+        # io control widget
+        io_control_widget = QWidget()
+        io_param_layout.addWidget(io_control_widget)
+        io_control_layout = QHBoxLayout(io_control_widget)
+        io_control_layout.setContentsMargins(0, 0, 0, 0)
+        io_control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        io_control_label = QLabel("io control")
+        io_control_label.setFixedWidth(80)
+        io_control_layout.addWidget(io_control_label)
+        io_control_button = QPushButton()
+        io_control_button.setFixedWidth(26)
+        io_control_button.setCheckable(True)
+        io_control_button.setIcon(QIcon("icon:arrow_collapse.svg"))
+        io_control_button.setToolTip("show advanced settings")
+        io_control_button.clicked.connect(io_control_toggle)
+        io_control_layout.addWidget(io_control_button)
+
+        # io control tab
+        io_control_tab = QWidget()
+        io_control_tab.hide()
+        io_param_layout.addWidget(io_control_tab)
+        io_tab_layout = QVBoxLayout(io_control_tab)
+        io_tab_layout.setContentsMargins(0, 0, 0, 0)
+        io_tab_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # tx format widget
+        def tx_format_save(tx_format: str):
+            shared.io_setting["tx_format"] = tx_format
+
+        tx_format_widget = QWidget()
+        io_tab_layout.addWidget(tx_format_widget)
+        tx_format_layout = QHBoxLayout(tx_format_widget)
+        tx_format_layout.setContentsMargins(0, 0, 0, 0)
+        tx_format_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        tx_format_label = QLabel("tx format")
+        tx_format_label.setFixedWidth(80)
+        tx_format_layout.addWidget(tx_format_label)
+        tx_format_combobox = QComboBox()
+        tx_format_combobox.setFixedWidth(200)
+        tx_format_combobox.addItems(["hex", "ascii", "utf-8"])
+        tx_format_combobox.setCurrentText(shared.io_setting["tx_format"])
+        tx_format_combobox.setToolTip("hex: treat the input as hexadecimal format\n"
+                                      "ascii: treat the input as ascii format\n"
+                                      "utf-8: treat the input as utf-8 format")
+        tx_format_combobox.currentTextChanged.connect(tx_format_save)
+        tx_format_layout.addWidget(tx_format_combobox)
+
+        # tx suffix selection
+        def tx_suffix_save(tx_suffix: str):
+            shared.io_setting["tx_suffix"] = tx_suffix
+            shared.single_send_widget.single_send_calculate(data=None)
+
+        tx_suffix_widget = QWidget()
+        io_tab_layout.addWidget(tx_suffix_widget)
+        tx_suffix_layout = QHBoxLayout(tx_suffix_widget)
+        tx_suffix_layout.setContentsMargins(0, 0, 0, 0)
+        tx_suffix_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        tx_suffix_label = QLabel("tx suffix")
+        tx_suffix_label.setFixedWidth(80)
+        tx_suffix_layout.addWidget(tx_suffix_label)
+        tx_suffix_combobox = QComboBox()
+        tx_suffix_combobox.setFixedWidth(140)
+        tx_suffix_combobox.addItems(["none", "crlf", "modbus crc16"])
+        tx_suffix_combobox.setCurrentText(shared.io_setting["tx_suffix"])
+        tx_suffix_combobox.setToolTip("A calculated value used to verify the integrity of data.")
+        tx_suffix_combobox.currentTextChanged.connect(tx_suffix_save)
+        tx_suffix_layout.addWidget(tx_suffix_combobox)
+        self.tx_suffix_lineedit.setFixedWidth(55)
+        tx_suffix_layout.addWidget(self.tx_suffix_lineedit)
+
+        # tx interval spinbox
+        def tx_interval_save(tx_interval: int):
+            shared.io_setting["tx_interval"] = tx_interval
+
+        tx_interval_widget = QWidget()
+        io_tab_layout.addWidget(tx_interval_widget)
+        tx_interval_layout = QHBoxLayout(tx_interval_widget)
+        tx_interval_layout.setContentsMargins(0, 0, 0, 0)
+        tx_interval_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        tx_interval_label = QLabel("tx interval")
+        tx_interval_label.setFixedWidth(80)
+        tx_interval_layout.addWidget(tx_interval_label)
+        tx_interval_spinbox = QSpinBox()
+        tx_interval_spinbox.setFixedWidth(200)
+        tx_interval_spinbox.setRange(0, 1000)
+        tx_interval_spinbox.setSingleStep(1)
+        tx_interval_spinbox.setValue(shared.io_setting["tx_interval"])
+        tx_interval_spinbox.setToolTip("The minimum transmission interval(ms).")
+        tx_interval_spinbox.valueChanged.connect(tx_interval_save)
+        tx_interval_layout.addWidget(tx_interval_spinbox)
+
+        # rx format widget
+        def rx_format_save(rx_format: str):
+            shared.io_setting["rx_format"] = rx_format
+
+        rx_format_widget = QWidget()
+        io_tab_layout.addWidget(rx_format_widget)
+        rx_format_layout = QHBoxLayout(rx_format_widget)
+        rx_format_layout.setContentsMargins(0, 0, 0, 0)
+        rx_format_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        rx_format_label = QLabel("rx format")
+        rx_format_label.setFixedWidth(80)
+        rx_format_layout.addWidget(rx_format_label)
+        rx_format_combobox = QComboBox()
+        rx_format_combobox.setFixedWidth(200)
+        rx_format_combobox.addItems(["raw", "hex", "ascii", "utf-8"])
+        rx_format_combobox.setCurrentText(shared.io_setting["rx_format"])
+        rx_format_combobox.setToolTip("raw: treat the input as raw format\n"
+                                      "hex: treat the input as hexadecimal format\n"
+                                      "ascii: treat the input as ascii format\n"
+                                      "utf-8: treat the input as utf-8 format")
+        rx_format_combobox.currentTextChanged.connect(rx_format_save)
+        rx_format_layout.addWidget(rx_format_combobox)
+
+        # rx size spinbox
+        def rx_size_save(rx_size: int):
+            shared.io_setting["rx_size"] = rx_size
+
+        rx_size_widget = QWidget()
+        io_tab_layout.addWidget(rx_size_widget)
+        rx_size_layout = QHBoxLayout(rx_size_widget)
+        rx_size_layout.setContentsMargins(0, 0, 0, 0)
+        rx_size_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        rx_size_label = QLabel("rx size")
+        rx_size_label.setFixedWidth(80)
+        rx_size_layout.addWidget(rx_size_label)
+        rx_size_spinbox = QSpinBox()
+        rx_size_spinbox.setFixedWidth(200)
+        rx_size_spinbox.setRange(0, 100)
+        rx_size_spinbox.setSingleStep(1)
+        rx_size_spinbox.setValue(shared.io_setting["rx_size"])
+        rx_size_spinbox.setToolTip("0: automatic buffer size\n"
+                                   "n: set buffer size to n bytes")
+        rx_size_spinbox.valueChanged.connect(rx_size_save)
+        rx_size_layout.addWidget(rx_size_spinbox)
+
+        # tx buffer entry
+        tx_buffer_widget = QWidget()
+        io_param_layout.addWidget(tx_buffer_widget)
+        tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
+        tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+        tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        tx_buffer_label = QLabel("tx buffer")
+        tx_buffer_label.setFixedWidth(80)
+        tx_buffer_layout.addWidget(tx_buffer_label)
+        self.tx_buffer_lineedit.setFixedWidth(200)
+        tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
         # rx buffer entry
         rx_buffer_widget = QWidget()
-        # io_param_layout.addWidget(rx_buffer_widget)
+        io_param_layout.addWidget(rx_buffer_widget)
         rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
         rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
         rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         rx_buffer_label = QLabel("rx buffer")
         rx_buffer_label.setFixedWidth(80)
         rx_buffer_layout.addWidget(rx_buffer_label)
-        rx_buffer_layout.addWidget(self.rx_buffer_entry)
-        # shared.rx_buffer
-
-        # self.receive_buffer_spinbox.setRange(0, 100)
-        # self.receive_buffer_spinbox.setSingleStep(1)
-        # self.receive_buffer_spinbox.setFixedWidth(60)
-        # self.receive_buffer_spinbox.setToolTip("0: automatic buffer size\n"
-        #                                        "n: set buffer size to n bytes")
-        # self.receive_buffer_spinbox.setValue(shared.receive_buffersize)
-        # rx_buffer_layout.addWidget(self.receive_buffer_spinbox)
+        self.rx_buffer_lineedit.setFixedWidth(200)
+        rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
 
         io_control_widget = QWidget()
         io_setting_layout.addWidget(io_control_widget)
@@ -507,11 +655,6 @@ class IOStatusWidget(QWidget):
         else:
             self.serial_control.stop()
 
-    def io_status_config_save(self) -> None:
-        shared.send_format = self.send_format_combobox.currentText()
-        shared.send_suffix = self.send_suffix_combobox.currentText()
-        shared.receive_buffersize = self.receive_buffer_spinbox.value()
-
 
 class SingleSendWidget(QWidget):
     def __init__(self):
@@ -602,8 +745,8 @@ class SingleSendWidget(QWidget):
         # single send button
         self.single_send_button.setFixedWidth(26)
         self.single_send_button.setIcon(QIcon("icon:send.svg"))
-        self.single_send_button.clicked.connect(lambda: self.single_send(self.single_send_textedit.toPlainText(), shared.io_status_widget.send_suffix_lineedit.text(),
-                                                                         shared.io_status_widget.send_format_combobox.currentText()))
+        self.single_send_button.clicked.connect(lambda: self.single_send(self.single_send_textedit.toPlainText(), shared.io_status_widget.tx_suffix_lineedit.text(),
+                                                                         shared.io_setting["tx_format"]))
         self.single_send_button.setToolTip("send")
         control_layout.addWidget(self.single_send_button)
         # single save button
@@ -640,15 +783,15 @@ class SingleSendWidget(QWidget):
                 if result == QMessageBox.StandardButton.Yes:
                     shared.command_shortcut_widget.command_shortcut_save(index, "single",
                                                                          self.single_send_textedit.toPlainText(),
-                                                                         shared.io_status_widget.send_suffix_lineedit.text(),
-                                                                         shared.io_status_widget.send_format_combobox.currentText())
+                                                                         shared.io_status_widget.tx_suffix_lineedit.text(),
+                                                                         shared.io_setting["tx_format"])
                     shared.serial_log_widget.log_insert(f"single shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("single shortcut overwrite cancelled", "info")
             else:
                 shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText(),
-                                                                     shared.io_status_widget.send_suffix_lineedit.text(),
-                                                                     shared.io_status_widget.send_format_combobox.currentText())
+                                                                     shared.io_status_widget.tx_suffix_lineedit.text(),
+                                                                     shared.io_setting["tx_format"])
                 shared.serial_log_widget.log_insert(f"single shortcut saved to {index}", "info")
         else:
             shared.serial_log_widget.log_insert("single shortcut save", "warning")
@@ -662,9 +805,9 @@ class SingleSendWidget(QWidget):
             data = self.single_send_textedit.toPlainText().strip()
         else:  # advanced send calls this func
             update = False
-        if shared.io_status_widget.send_suffix_combobox.currentText() == "\\r\\n":
+        if shared.io_setting["tx_suffix"] == "crlf":
             suffix = f"0d0a"
-        elif shared.io_status_widget.send_suffix_combobox.currentText() == "modbus crc16":
+        elif shared.io_setting["tx_suffix"] == "modbus crc16":
             try:
                 data = bytes.fromhex(data)
                 suffix = f"{modbus_crc16(data):04X}"
@@ -673,7 +816,7 @@ class SingleSendWidget(QWidget):
         else:  # suffix == none
             suffix = ""
         if update:  # only update when single send calls this func
-            shared.io_status_widget.send_suffix_lineedit.setText(suffix)
+            shared.io_status_widget.tx_suffix_lineedit.setText(suffix)
         return suffix
 
     def single_send_config_save(self) -> None:
@@ -691,38 +834,57 @@ class SingleSendWidget(QWidget):
         command = command.strip()
         command += suffix
         if format == "hex":
-            command_formatted = bytes.fromhex(command)
+            tx_message = bytes.fromhex(command)
         elif format == "ascii":
-            command_formatted = command.encode("ascii")
+            tx_message = command.encode("ascii")
         else:  # format == "utf-8"
-            command_formatted = command.encode("utf-8")
-        self.single_send_queue.append(command_formatted)
+            tx_message = command.encode("utf-8")
+        self.single_send_queue.append(tx_message)
         if not self.single_send_timer.isActive():
             self.single_send_trigger()
 
     def single_send_trigger(self):
-        self.single_send_timer.start(30)
+        self.single_send_timer.start(shared.io_setting["tx_interval"])
         if self.single_send_queue:
-            shared.tx_buffer = self.single_send_queue.pop()
+            tx_message = self.single_send_queue.pop()
         else:
             return
+        # write message to serial
         if shared.serial_setting["port"] == "TCP client":
             if shared.io_status_widget.local_lineedit.text() == "Connecting...":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
                 return
             else:
-                shared.io_status_widget.serial_control.tcp_client.write(shared.tx_buffer)
+                shared.io_status_widget.serial_control.tcp_client.write(tx_message)
         elif shared.serial_setting["port"] == "TCP server":
             if shared.io_status_widget.remote_combobox.currentData() == "none":
                 shared.serial_log_widget.log_insert("no active TCP connection", "warning")
                 return
             elif shared.io_status_widget.remote_combobox.currentData() == "broadcast":
                 for peer in shared.io_status_widget.serial_control.tcp_peer:
-                    peer.write(shared.tx_buffer)
+                    peer.write(tx_message)
             else:
-                shared.io_status_widget.remote_combobox.currentData().write(shared.tx_buffer)
+                shared.io_status_widget.remote_combobox.currentData().write(tx_message)
         else:
-            shared.io_status_widget.serial_control.serial.write(shared.tx_buffer)
+            shared.io_status_widget.serial_control.serial.write(tx_message)
+        # save message to shared.tx_buffer
+        if shared.io_setting["tx_format"] == "hex":
+            shared.tx_buffer = tx_message.hex().upper()
+        elif shared.io_setting["tx_format"] == "ascii":
+            try:
+                # raw to ascii
+                shared.tx_buffer = tx_message.decode("ascii")
+            except UnicodeDecodeError:
+                shared.tx_buffer = tx_message.hex().upper()
+        else:  # shared.io_setting["tx_format"] == "utf-8":
+            try:
+                # raw to utf-8
+                shared.tx_buffer = tx_message.decode("utf-8")
+            except UnicodeDecodeError:
+                shared.tx_buffer = tx_message.hex().upper()
+        # change tx buffer lineedit
+        shared.io_status_widget.tx_buffer_lineedit.setText(shared.tx_buffer)
+        # append log
         shared.serial_log_widget.log_insert(f"{shared.tx_buffer}", "send")
 
 
