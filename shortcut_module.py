@@ -227,7 +227,7 @@ class CommandShortcutWidget(QWidget):
             shared.single_send_widget.single_send(command, suffix, format)
         else:  # type == "advanced"
             buffer = eval(command)
-            shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer)
+            shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
 
     def command_shortcut_save(self, index, type, command, suffix, format) -> None:
         row = index - 1

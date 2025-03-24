@@ -69,6 +69,10 @@ if __name__ == "__main__":
     main_gui()
     # layout load
     layout_load()
+
+
+
+
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)

@@ -78,7 +78,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "format": ""
         }
     ],
-    "data_collect": ["new"]
+    "data_collect": {
+        "database": ["new"],
+        "datatable": ["new"]
+    }
 }
 
 

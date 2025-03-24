@@ -1,7 +1,7 @@
 import csv
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
-    QMessageBox, QLabel
+    QMessageBox, QLabel, QInputDialog
 from PySide6.QtCore import Qt, QMimeData, QTimer
 import pyqtgraph as pg
 
@@ -16,16 +16,10 @@ class DataCollectWidget(QWidget):
     def __init__(self):
         super().__init__()
         # instance variables
-        self.tab_widget = QTabWidget()
-
-        self.database_tab = QWidget()
-        self.database_layout = QVBoxLayout(self.database_tab)
-        self.database_table = self.DataViewTableWidget(self)
-
-        self.data_table_tab = QWidget()
-        self.data_table_layout = QVBoxLayout(self.data_table_tab)
-        self.data_table = QTableWidget()
+        self.database = self.DatabaseWidget(self)
         self.highlight_timer = []
+
+        self.datatable = self.DatatableWidget(self)
 
         self.data_plot_tab = QWidget()
         self.data_plot_layout = QVBoxLayout(self.data_plot_tab)
@@ -37,7 +31,7 @@ class DataCollectWidget(QWidget):
         # draw gui
         self.data_collect_gui()
 
-    class DataViewTableWidget(QTableWidget):
+    class DatabaseWidget(QTableWidget):
 
         def __init__(self, parent):
             super().__init__()
@@ -71,8 +65,8 @@ class DataCollectWidget(QWidget):
             source_index = self.source_index
             target_index = self.target_index
             # manipulate shared data collect
-            tmp = shared.data_collect.pop(source_index)
-            shared.data_collect.insert(target_index, tmp)
+            tmp = shared.data_collect["database"].pop(source_index)
+            shared.data_collect["database"].insert(target_index, tmp)
             self.blockSignals(True)
             # remove source row
             label = self.takeItem(source_index, 1)
@@ -87,13 +81,32 @@ class DataCollectWidget(QWidget):
             self.setItem(target_index, 1, label)
             self.setItem(target_index, 2, value)
             self.blockSignals(False)
+
             # print(shared.data_collect)
 
         def keyPressEvent(self, event):
             if event.key() == Qt.Key.Key_Delete:
-                self.parent.data_collect_remove()
+                self.parent.database_remove()
             elif event.key() == Qt.Key.Key_Insert:
-                self.parent.data_collect_insert()
+                self.parent.database_insert()
+            elif event.key() == Qt.Key.Key_Escape:
+                self.clearSelection()
+                self.clearFocus()
+            else:
+                super().keyPressEvent(event)
+
+    class DatatableWidget(QTableWidget):
+
+        def __init__(self, parent):
+            super().__init__()
+            self.setSelectionBehavior(self.SelectionBehavior.SelectColumns)
+            self.parent = parent
+
+        def keyPressEvent(self, event):
+            if event.key() == Qt.Key.Key_Delete:
+                self.parent.datatable_remove()
+            elif event.key() == Qt.Key.Key_Insert:
+                self.parent.datatable_insert()
             elif event.key() == Qt.Key.Key_Escape:
                 self.clearSelection()
                 self.clearFocus()
@@ -104,59 +117,85 @@ class DataCollectWidget(QWidget):
         # data collect gui
         data_collect_layout = QVBoxLayout(self)
         # data collect tab widget
-        self.tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
-        data_collect_layout.addWidget(self.tab_widget)
+        tab_widget = QTabWidget()
+        tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
+        data_collect_layout.addWidget(tab_widget)
+
         # database tab
-        self.database_layout.setContentsMargins(0, 0, 0, 0)
-        self.tab_widget.addTab(self.database_tab, "database")
-        self.tab_widget.setTabIcon(0, QIcon("icon:database.svg"))
-        # database table
-        self.database_table.setRowCount(len(shared.data_collect))
-        self.database_table.setColumnCount(3)
-        horizontal_header = self.database_table.horizontalHeader()
+        database_tab = QWidget()
+        tab_widget.addTab(database_tab, "database")
+        tab_widget.setTabIcon(0, QIcon("icon:database.svg"))
+        database_layout = QVBoxLayout(database_tab)
+        database_layout.setContentsMargins(0, 0, 0, 0)
+        # database
+        self.database.setRowCount(len(shared.data_collect["database"]))
+        self.database.setColumnCount(3)
+        horizontal_header = self.database.horizontalHeader()
         horizontal_header.setVisible(False)
-        self.database_table.setColumnWidth(0, 30)
+        self.database.setColumnWidth(0, 30)
         horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        vertical_header = self.database_table.verticalHeader()
+        vertical_header = self.database.verticalHeader()
         vertical_header.setVisible(False)
-        self.database_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.database_layout.addWidget(self.database_table)
-        for i in range(len(shared.data_collect)):
+        self.database.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        database_layout.addWidget(self.database)
+        for i in range(len(shared.data_collect["database"])):
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.database_table.setCellWidget(i, 0, move_icon)
+            self.database.setCellWidget(i, 0, move_icon)
             # label
-            label = QTableWidgetItem(shared.data_collect[i])
-            self.database_table.setItem(i, 1, label)
+            label = QTableWidgetItem(shared.data_collect["database"][i])
+            self.database.setItem(i, 1, label)
             # value
             value = QTableWidgetItem()
-            self.database_table.setItem(i, 2, value)
+            self.database.setItem(i, 2, value)
             # highlight timer
             timer = QTimer()
             timer.setSingleShot(True)
-            timer.timeout.connect(lambda index=i: self.data_collect_unhighlight(index))
+            timer.timeout.connect(lambda index=i: self.database_unhighlight(index))
             self.highlight_timer.append(timer)
         # cell change event
-        self.database_table.cellChanged.connect(self.data_collect_change)
+        self.database.cellChanged.connect(self.database_change)
 
-        # data table tab
-        self.data_table_layout.setContentsMargins(0, 0, 0, 0)
-        # self.tab_widget.addTab(self.data_table_tab, "data table")
-        self.tab_widget.setTabIcon(1, QIcon("icon:table.svg"))
-        # data table
-        # self.data_table.setRowCount(max(len(col) for col in data_buffer))
-        # self.data_table.setColumnCount(shared.data_count)
-        # self.data_table.setHorizontalHeaderLabels([groupbox.title() for groupbox in self.slot_groupbox])
-        # self.data_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        # self.data_table_layout.addWidget(self.data_table)
+        # datatable tab
+        datatable_tab = QWidget()
+        tab_widget.addTab(datatable_tab, "datatable")
+        tab_widget.setTabIcon(1, QIcon("icon:table.svg"))
+        datatable_layout = QVBoxLayout(datatable_tab)
+        datatable_layout.setContentsMargins(0, 0, 0, 0)
+
+        # datatable
+        self.datatable.setColumnCount(len(shared.data_collect["datatable"]))
+        self.datatable.setHorizontalHeaderLabels(shared.data_collect["datatable"])
+        self.datatable.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        datatable_layout.addWidget(self.datatable)
+        # datatable control widget
+        datatable_control_widget = QWidget()
+        datatable_layout.addWidget(datatable_control_widget)
+        datatable_control_layout = QHBoxLayout(datatable_control_widget)
+        datatable_control_layout.setContentsMargins(0, 0, 0, 0)
+        datatable_control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        # rename button
+        rename_button = QPushButton()
+        rename_button.setFixedWidth(26)
+        rename_button.setIcon(QIcon("icon:rename.svg"))
+        rename_button.setToolTip("rename column")
+        rename_button.clicked.connect(self.datatable_rename)
+        datatable_control_layout.addWidget(rename_button)
+        # save button
+        save_button = QPushButton()
+        save_button.setFixedWidth(26)
+        save_button.setIcon(QIcon("icon:save.svg"))
+        save_button.setToolTip("save datatable")
+        save_button.clicked.connect(self.datatable_save)
+        datatable_control_layout.addWidget(save_button)
 
         # data plot tab
         self.data_plot_layout.setContentsMargins(0, 0, 0, 0)
-        # self.tab_widget.addTab(self.data_plot_tab, "data plot")
-        self.tab_widget.setTabIcon(2, QIcon("icon:line_chart.svg"))
+        # tab_widget.addTab(self.data_plot_tab, "data plot")
+        tab_widget.setTabIcon(2, QIcon("icon:line_chart.svg"))
         # data plot
         # self.data_plot_layout.addWidget(self.data_plot)
         # self.data_plot.setLabel("left", "data")
@@ -173,40 +212,6 @@ class DataCollectWidget(QWidget):
         #         symbolBrush='r'
         #     ))
 
-        # control widget
-        control_widget = QWidget()
-        control_layout = QHBoxLayout(control_widget)
-        control_layout.setContentsMargins(0, 0, 0, 0)
-        control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-        # data_collect_layout.addWidget(control_widget)
-        # toggle button
-        self.toggle_button.setCheckable(True)
-        self.toggle_button.setFixedWidth(26)
-        self.toggle_button.setIcon(QIcon("icon:play.svg"))
-        # self.toggle_button.clicked.connect(self.data_collect_toggle)
-        control_layout.addWidget(self.toggle_button)
-        # save button
-        save_button = QPushButton()
-        save_button.setFixedWidth(26)
-        save_button.setIcon(QIcon("icon:save.svg"))
-        save_button.setToolTip("save")
-        # save_button.clicked.connect(self.data_collect_save)
-        control_layout.addWidget(save_button)
-        # maximize button
-        maximize_button = QPushButton()
-        maximize_button.setFixedWidth(26)
-        maximize_button.setIcon(QIcon("icon:full_screen_maximize.svg"))
-        maximize_button.setToolTip("maximize")
-        # maximize_button.clicked.connect(self.data_collect_maximize)
-        control_layout.addWidget(maximize_button)
-        # clear button
-        clear_button = QPushButton()
-        clear_button.setFixedWidth(26)
-        clear_button.setIcon(QIcon("icon:delete.svg"))
-        clear_button.setToolTip("clear")
-        # clear_button.clicked.connect(self.data_collect_clear)
-        control_layout.addWidget(clear_button)
-
     # def data_collect_toggle(self) -> None:
     #     if self.toggle_button.isChecked():
     #         self.toggle_button.setIcon(QIcon("icon:pause.svg"))
@@ -218,7 +223,7 @@ class DataCollectWidget(QWidget):
     #         shared.serial_log_widget.log_insert("data collect end", "info")
 
     # def data_collect_save(self) -> None:
-    #     if self.tab_widget.currentIndex() == 1:
+    #     if tab_widget.currentIndex() == 1:
     #         try:
     #             indices = self.data_table.selectionModel().selectedColumns()
     #             column_indices = [index.column() for index in indices]
@@ -237,11 +242,11 @@ class DataCollectWidget(QWidget):
     #             shared.serial_log_widget.log_insert(f"data saved to: {file_path}", "info")
     #         except:
     #             shared.serial_log_widget.log_insert(f"data saved failed", "warning")
-    #     elif self.tab_widget.currentIndex() == 2:
+    #     elif tab_widget.currentIndex() == 2:
     #         QMessageBox.information(shared.main_window, "Save Plot", "Right-click on the image to perform the save operation.")
 
     # def data_collect_maximize(self) -> None:
-    #     if self.tab_widget.currentIndex() == 1:
+    #     if tab_widget.currentIndex() == 1:
     #         def table_close_event(event):
     #             self.data_table.setParent(self.data_table_tab)
     #             self.data_table_layout.addWidget(self.data_table)
@@ -256,7 +261,7 @@ class DataCollectWidget(QWidget):
     #         table_layout.addWidget(self.data_table)
     #         table_window.closeEvent = table_close_event
     #         table_window.show()
-    #     elif self.tab_widget.currentIndex() == 2:
+    #     elif tab_widget.currentIndex() == 2:
     #         def plot_close_event(event):
     #             self.data_plot.setParent(self.data_plot_tab)
     #             self.data_plot_layout.addWidget(self.data_plot)
@@ -273,71 +278,156 @@ class DataCollectWidget(QWidget):
     #         plot_window.show()
 
     # def data_collect_clear(self) -> None:
-    #     if self.tab_widget.currentIndex() == 1:
+    #     if tab_widget.currentIndex() == 1:
     #         global data_buffer
     #         data_buffer = [[] for _ in range(shared.slot_count)]
     #         self.data_table.clearContents()
     #         self.data_table.setRowCount(0)
-    #     elif self.tab_widget.currentIndex() == 2:
+    #     elif tab_widget.currentIndex() == 2:
     #         for i in range(shared.slot_count):
     #             self.line[i].setData([], [])
 
-    def data_collect_import(self, row: int, text: str) -> None:
-        self.database_table.item(row,2).setText(text)
+    def database_import(self, row: int, data: str) -> None:
+        self.database.item(row, 2).setText(data)
 
-    def data_collect_insert(self) -> None:
+    def database_insert(self) -> None:
         # get insert index
-        row = self.database_table.currentRow()
+        row = self.database.currentRow()
         # data collect insert
-        shared.data_collect.insert(row, "new")
-        # database table insert
-        self.database_table.insertRow(row)
-        self.database_table.blockSignals(True)
+        shared.data_collect["database"].insert(row, "new")
+        # database insert
+        self.database.insertRow(row)
+        self.database.blockSignals(True)
 
         # move icon
         move_icon = QLabel()
         move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
         move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.database_table.setCellWidget(row, 0, move_icon)
+        self.database.setCellWidget(row, 0, move_icon)
         # label
         label = QTableWidgetItem("new")
-        self.database_table.setItem(row, 1, label)
+        self.database.setItem(row, 1, label)
         # value
         value = QTableWidgetItem()
-        self.database_table.setItem(row, 2, value)
+        self.database.setItem(row, 2, value)
         # highlight timer
         timer = QTimer()
         timer.setSingleShot(True)
-        timer.timeout.connect(lambda: self.data_collect_unhighlight(len(shared.data_collect)))
+        timer.timeout.connect(lambda: self.database_unhighlight(len(shared.data_collect["database"])))
         self.highlight_timer.append(timer)
 
-        self.database_table.blockSignals(False)
-        # print(shared.data_collect)
+        self.database.blockSignals(False)
+        # print(shared.data_collect["database"])
 
-    def data_collect_remove(self) -> None:
+    def database_remove(self) -> None:
         # get remove index
-        row = self.database_table.currentRow()
-        if len(shared.data_collect) == 1:
+        row = self.database.currentRow()
+        if len(shared.data_collect["database"]) == 1:
             return
-        shared.data_collect.pop(row)
-        self.database_table.removeRow(row)
+        shared.data_collect["database"].pop(row)
+        self.database.removeRow(row)
         self.highlight_timer.pop(row)
-        # print(shared.data_collect)
+        # print(shared.data_collect["database"])
 
-    def data_collect_change(self, row, col) -> None:
+    def database_change(self, row, col) -> None:
         if col == 1:
             # save cell
-            shared.data_collect[row] = self.database_table.item(row, 1).text()
-            # print(shared.data_collect)
+            shared.data_collect["database"][row] = self.database.item(row, 1).text()
+            # print(shared.data_collect["database"])
         else:  # if col == 2:
             # highlight cell
-            self.database_table.blockSignals(True)
-            self.database_table.item(row, col).setBackground(QColor("yellow"))
-            self.database_table.blockSignals(False)
+            self.database.blockSignals(True)
+            self.database.item(row, col).setBackground(QColor("yellow"))
+            self.database.blockSignals(False)
             self.highlight_timer[row].stop()
             self.highlight_timer[row].start(500)
 
-    def data_collect_unhighlight(self, row) -> None:
-        self.database_table.blockSignals(True)
-        self.database_table.item(row, 2).setBackground(QColor("white"))
-        self.database_table.blockSignals(False)
+    def database_unhighlight(self, row) -> None:
+        self.database.blockSignals(True)
+        self.database.item(row, 2).setBackground(QColor("white"))
+        self.database.blockSignals(False)
+
+    def datatable_import(self, col: int, data: str) -> None:
+        row_count = self.datatable.rowCount()
+        try:
+            first_empty_row = next(
+                row for row in range(row_count)
+                if self.datatable.item(row, col) is None
+            )
+            self.datatable.setItem(first_empty_row, col, QTableWidgetItem(data))
+        except:
+            self.datatable.insertRow(row_count)
+            cell = QTableWidgetItem(data)
+            self.datatable.setItem(row_count, col, cell)
+
+    def datatable_insert(self) -> None:
+        # get insert index
+        col = self.datatable.currentColumn()
+        title, ok = QInputDialog.getText(shared.main_window, "Insert Column", "column title:")
+        if ok:
+            # data collect insert
+            shared.data_collect["datatable"].insert(col, title)
+            # datatable insert
+            self.datatable.insertColumn(col)
+            header = QTableWidgetItem(title)
+            self.datatable.setHorizontalHeaderItem(col, header)
+            # print(shared.data_collect["datatable"])
+        else:
+            shared.serial_log_widget.log_insert("datatable column insert cancelled", "warning")
+
+    def datatable_rename(self) -> None:
+        # get insert index
+        col = self.datatable.currentColumn()
+        if col == -1:
+            QMessageBox.warning(shared.main_window, "Rename Column", "Please select a column first.")
+            return
+        header = self.datatable.horizontalHeaderItem(col).text()
+        title, ok = QInputDialog.getText(shared.main_window, "Rename Column", f"{header}->")
+        if ok:
+            # data collect rename
+            shared.data_collect["datatable"][col] = title
+            # database table rename
+            header = QTableWidgetItem(title)
+            self.datatable.setHorizontalHeaderItem(col, header)
+            # print(shared.data_collect["datatable"])
+        else:
+            shared.serial_log_widget.log_insert("datatable column rename cancelled", "warning")
+
+    def datatable_remove(self) -> None:
+        # get remove index
+        col = self.datatable.currentColumn()
+        if len(shared.data_collect["datatable"]) == 1:
+            return
+        shared.data_collect["datatable"].pop(col)
+        self.datatable.removeColumn(col)
+        # print(shared.data_collect["datatable"])
+
+    def datatable_save(self) -> None:
+        try:
+            col_count = self.datatable.columnCount()
+            row_count = self.datatable.rowCount()
+            if col_count == 0 or row_count == 0:
+                QMessageBox.warning(shared.main_window, "Datatable Save", "Datatable is empty.")
+                return
+            headers = []
+            for col in range(col_count):
+                header_item = self.datatable.horizontalHeaderItem(col)
+                headers.append(header_item.text())
+            data_rows = []
+            for row in range(row_count):
+                row_data = []
+                for col in range(col_count):
+                    item = self.datatable.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data_rows.append(row_data)
+            all_rows = [headers] + data_rows
+            file_path, _ = QFileDialog.getSaveFileName(None, "Datatable Save", "", "CSV Files (*.csv);;All Files (*)")
+            if not file_path:
+                shared.serial_log_widget.log_insert("datatable save cancelled", "warning")
+                return
+            with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerows(all_rows)
+            shared.serial_log_widget.log_insert(f"datatable saved to: {file_path}", "info")
+        except:
+            shared.serial_log_widget.log_insert(f"datatable save failed", "warning")

@@ -297,7 +297,7 @@ class SerialLogWidget(QWidget):
 
     def log_save(self):
         if self.log_textedit.document().isEmpty():
-            self.log_insert("log is empty.", "warning")
+            self.log_insert("log is empty", "warning")
             return
         file_path, selected_filter = QFileDialog.getSaveFileName(shared.main_window, "Save Log to", "", "Text Files (*.txt);;HTML Files (*.html);;All Files (*)")
         if not file_path:

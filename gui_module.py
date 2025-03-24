@@ -37,6 +37,7 @@ def main_gui():
     # configure toolbar
     global toolbar
     toolbar = QToolBar("Vertical Toolbar")
+    toolbar.setObjectName("vertical_toolbar")
     toolbar.setOrientation(Qt.Orientation.Vertical)
     # toolbar.setMovable(True)
     toolbar.setIconSize(QSize(32, 32))
@@ -276,17 +277,14 @@ def send_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.show()
 
-    io_status_dock_widget.setMinimumWidth(450)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
     shared.main_window.resizeDocks([io_status_dock_widget], [450], Qt.Orientation.Horizontal)
     io_status_dock_widget.show()
 
-    single_send_dock_widget.setMinimumWidth(450)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     shared.main_window.resizeDocks([single_send_dock_widget], [450], Qt.Orientation.Horizontal)
     single_send_dock_widget.show()
 
-    advanced_send_dock_widget.setMinimumWidth(450)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
     shared.main_window.resizeDocks([advanced_send_dock_widget], [450], Qt.Orientation.Horizontal)
     advanced_send_dock_widget.show()
@@ -294,7 +292,6 @@ def send_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
     file_send_dock_widget.hide()
 
-    command_shortcut_dock_widget.setMinimumWidth(450)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
     shared.main_window.resizeDocks([command_shortcut_dock_widget], [450], Qt.Orientation.Horizontal)
     shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
@@ -323,7 +320,6 @@ def file_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
     advanced_send_dock_widget.hide()
 
-    file_send_dock_widget.setMinimumWidth(600)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
     shared.main_window.resizeDocks([file_send_dock_widget], [600], Qt.Orientation.Horizontal)
     file_send_dock_widget.show()
@@ -357,13 +353,11 @@ def data_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
     file_send_dock_widget.hide()
 
-    command_shortcut_dock_widget.setMinimumWidth(500)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
     shared.main_window.resizeDocks([command_shortcut_dock_widget], [500], Qt.Orientation.Horizontal)
     shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
     command_shortcut_dock_widget.show()
 
-    data_collect_dock_widget.setMinimumWidth(500)
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
     shared.main_window.resizeDocks([data_collect_dock_widget], [500], Qt.Orientation.Horizontal)
     data_collect_dock_widget.show()

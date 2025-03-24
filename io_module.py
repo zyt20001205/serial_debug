@@ -1,5 +1,6 @@
 import time
 import os
+import html
 from datetime import datetime
 import tempfile
 # import pysoem
@@ -908,6 +909,8 @@ class AdvancedSendWidget(QWidget):
         self.command_param2_combobox = QComboBox()
         self.database_param1_lineedit = QLineEdit()
         self.database_param2_combobox = QComboBox()
+        self.datatable_param1_lineedit = QLineEdit()
+        self.datatable_param2_combobox = QComboBox()
         self.message_param1_lineedit = QLineEdit()
         self.message_param2_combobox = QComboBox()
         self.messagebox_param1_lineedit = QLineEdit()
@@ -932,19 +935,20 @@ class AdvancedSendWidget(QWidget):
             self.table = table
             self.combobox = combobox
 
-        def new(self, thread_id: str, buffer: list) -> None:
+        def new(self, thread_id: str, buffer: list, debug: bool) -> None:
             mutex = QMutex()
             condition = QWaitCondition()
             stopwatch = QElapsedTimer()
 
-            thread = self.AdvancedSendThread(buffer, mutex, condition, stopwatch)
+            thread = self.AdvancedSendThread(buffer, mutex, condition, stopwatch, debug)
             thread.setObjectName(thread_id)
 
             thread.highlight_signal.connect(self.table_highlight)
             thread.log_signal.connect(shared.serial_log_widget.log_insert)
             thread.send_signal.connect(shared.single_send_widget.single_send)
             thread.request_signal.connect(self.input_request)
-            thread.export_signal.connect(shared.data_collect_widget.data_collect_import)
+            thread.database_export_signal.connect(shared.data_collect_widget.database_import)
+            thread.datatable_export_signal.connect(shared.data_collect_widget.datatable_import)
             thread.message_signal.connect(self.messagebox_show)
             thread.finish_signal.connect(self.remove)
 
@@ -1017,20 +1021,28 @@ class AdvancedSendWidget(QWidget):
             log_signal = Signal(str, str)
             send_signal = Signal(str, str, str)
             request_signal = Signal(QThread, str, str, QWaitCondition)
-            export_signal = Signal(int, str)
+            database_export_signal = Signal(int, str)
+            datatable_export_signal = Signal(int, str)
             message_signal = Signal(QThread, str, str, QWaitCondition)
             finish_signal = Signal(QThread)
 
-            def __init__(self, buffer, mutex, condition, stopwatch, parent=None):
+            class ThreadTerminate(Exception):
+                pass
+
+            class ThreadReturn(Exception):
+                pass
+
+            def __init__(self, buffer, mutex, condition, stopwatch, debug, parent=None):
                 super().__init__(parent)
                 self.enable = True
                 self.mutex = mutex
                 self.condition = condition
                 self.buffer = buffer
                 self.stopwatch = stopwatch
+                self.debug = debug
 
             def send(self, buffer, index=0):
-                def s_int(hex_str: str) -> int:
+                def hex2int(hex_str: str) -> int:
                     bit_length = len(hex_str) * 4
                     num = int(hex_str, 16)
                     mask = (1 << bit_length) - 1
@@ -1045,7 +1057,7 @@ class AdvancedSendWidget(QWidget):
                     self.highlight_signal.emit(length, index, "cyan")
                     # thread abort
                     if not self.enable:
-                        raise Exception("terminate exception")
+                        raise self.ThreadTerminate
                     action = buffer[index][0]
                     param1 = buffer[index][1] if len(buffer[index]) > 1 else None
                     param2 = buffer[index][2] if len(buffer[index]) > 2 else None
@@ -1063,7 +1075,7 @@ class AdvancedSendWidget(QWidget):
                             if eval(param1) > len(shared.command_shortcut):
                                 # error highlight
                                 self.highlight_signal.emit(length, index, "red")
-                                raise ValueError(f"index out of range 1 ~ {len(shared.command_shortcut)}")
+                                raise Exception(f"index out of range 1 ~ {len(shared.command_shortcut)}")
                             row = eval(param1) - 1
                             type = shared.command_shortcut[row]["type"]
                             if type == "single":
@@ -1082,10 +1094,10 @@ class AdvancedSendWidget(QWidget):
                             else:  # param2 == "expression"
                                 try:
                                     command = eval(param1)
-                                except:
+                                except Exception as e:
                                     # error highlight
                                     self.highlight_signal.emit(length, index, "red")
-                                    raise Exception(f"command exception: trying to perform ({param1.strip()})")
+                                    raise e
                             suffix = shared.single_send_widget.single_send_calculate(command)
                             if suffix == "NULL":
                                 # error highlight
@@ -1096,19 +1108,40 @@ class AdvancedSendWidget(QWidget):
                             self.highlight_signal.emit(length, index, "white")
                     elif action == "database":
                         try:
-                            result = str(eval(param1))
+                            data = str(eval(param1))
+                            label = param2
+                            # get widget index
+                            for row in range(len(shared.data_collect["database"])):
+                                if shared.data_collect["database"][row] == label:
+                                    self.database_export_signal.emit(row, data)
+                                    break
+                            # remove highlight
+                            self.highlight_signal.emit(length, index, "white")
                         except Exception as e:
-                            # error highlight
-                            self.highlight_signal.emit(length, index, "red")
-                            raise ValueError(e)
-                        label = param2
-                        # get widget index
-                        for row in range(len(shared.data_collect)):
-                            if shared.data_collect[row] == label:
-                                self.export_signal.emit(row, result)
-                                break
-                        # remove highlight
-                        self.highlight_signal.emit(length, index, "white")
+                            if self.debug:
+                                # error highlight
+                                self.highlight_signal.emit(length, index, "red")
+                                raise e
+                            else:
+                                self.log_signal.emit(html.escape(str(e)), "warning")
+                    elif action == "datatable":
+                        try:
+                            data = str(eval(param1))
+                            label = param2
+                            # get widget index
+                            for row in range(len(shared.data_collect["datatable"])):
+                                if shared.data_collect["datatable"][row] == label:
+                                    self.datatable_export_signal.emit(row, data)
+                                    break
+                            # remove highlight
+                            self.highlight_signal.emit(length, index, "white")
+                        except Exception as e:
+                            if self.debug:
+                                # error highlight
+                                self.highlight_signal.emit(length, index, "red")
+                                raise e
+                            else:
+                                self.log_signal.emit(html.escape(str(e)), "warning")
                     elif action == "message":
                         message = param1.strip()
                         try:
@@ -1116,7 +1149,7 @@ class AdvancedSendWidget(QWidget):
                         except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise ValueError(e)
+                            raise e
                         level = param2
                         self.log_signal.emit(message, level)
                         # remove highlight
@@ -1128,7 +1161,7 @@ class AdvancedSendWidget(QWidget):
                         except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise ValueError(e)
+                            raise e
                         level = param2
                         self.mutex.lock()
                         self.message_signal.emit(self, message, level, self.condition)
@@ -1146,7 +1179,7 @@ class AdvancedSendWidget(QWidget):
                             except Exception as e:
                                 # error highlight
                                 self.highlight_signal.emit(length, index, "red")
-                                raise ValueError(e)
+                                raise e
                         else:  # operation == "export"
                             try:
                                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1168,7 +1201,7 @@ class AdvancedSendWidget(QWidget):
                         except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise ValueError(e)
+                            raise e
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "delay":
@@ -1203,13 +1236,10 @@ class AdvancedSendWidget(QWidget):
                         try:
                             for _ in range(count):
                                 j = self.send(buffer, index + 1)
-                        except ValueError as e:
-                            raise ValueError(e)
+                        except self.ThreadReturn as e:
+                            j = eval(str(e))
                         except Exception as e:
-                            if "exception" in str(e):
-                                raise Exception(e)
-                            else:
-                                j = eval(str(e))
+                            raise e
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                         index = j
@@ -1221,10 +1251,10 @@ class AdvancedSendWidget(QWidget):
                         condition = param1.strip()
                         try:
                             boolen = eval(condition)
-                        except:
+                        except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
-                            raise Exception(f"condition exception: trying to judge ({condition})")
+                            raise e
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                         if not boolen:
@@ -1256,7 +1286,7 @@ class AdvancedSendWidget(QWidget):
                                     break
                                 else:
                                     depth -= 1
-                        raise Exception(index)
+                        raise self.ThreadReturn(index)
                     elif action == "abort":
                         message = param1
                         # error highlight
@@ -1281,31 +1311,13 @@ class AdvancedSendWidget(QWidget):
                 try:
                     self.send(self.buffer)
                     self.finish_signal.emit(self)
-                except ValueError as e:
-                    self.log_signal.emit(f"{e}", "error")
+                except self.ThreadTerminate:
+                    return
                 except Exception as e:
-                    if str(e) == "terminate exception":
-                        return
-                        # self.log_signal.emit("advanced send manually terminated", "warning")
-                    elif "command exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "index exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "suffix exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "message exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "log exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "expression exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "condition exception: " in str(e):
-                        self.log_signal.emit(f"{e}", "error")
-                    elif "abort exception: " in str(e):
+                    if "abort exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
                     else:
-                        self.log_signal.emit("unknown exception: please report", "error")
-                        print(e)
+                        self.log_signal.emit(html.escape(str(e)), "error")
 
             def stop(self):
                 # clear highlight
@@ -1313,9 +1325,9 @@ class AdvancedSendWidget(QWidget):
                 for index in range(length):
                     self.highlight_signal.emit(length, index, "white")
                 # stop thread
-                self.highlight_signal.disconnect()
                 self.enable = False
                 self.wait()
+                self.deleteLater()
 
     class AdvancedSendTableWidget(QTableWidget):
 
@@ -1469,7 +1481,7 @@ class AdvancedSendWidget(QWidget):
         advanced_send_button.setFixedWidth(26)
         advanced_send_button.setIcon(QIcon("icon:send.svg"))
         advanced_send_button.setToolTip("send")
-        advanced_send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer))
+        advanced_send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer, True))
         control_layout.addWidget(advanced_send_button)
         # advanced send save button
         advanced_save_button = QPushButton()
@@ -1513,7 +1525,8 @@ class AdvancedSendWidget(QWidget):
             |---------------------------------------------      
             |   input    |  variable   | label  |   \    |
             |  command   | instruction |  type  |   \    |
-            |  database  |    result   | label  |   \    |
+            |  database  |    data     | label  |   \    |
+            | datatable  |    data     | label  |   \    |
             |  message   |   message   | level  |   \    |
             | messagebox |   message   | level  |   \    |
             |    log     |  operation  |  log   |   \    |
@@ -1550,6 +1563,10 @@ class AdvancedSendWidget(QWidget):
                 param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "database":
+                param_widget = QLineEdit()
+                param_widget.setText(param1)
+                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            elif action == "datatable":
                 param_widget = QLineEdit()
                 param_widget.setText(param1)
                 param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
@@ -1627,7 +1644,7 @@ class AdvancedSendWidget(QWidget):
             self.action_window.updateGeometry()
             self.action_window.adjustSize()
 
-            if self.action_combobox.currentText() in ["input", "command", "database", "message", "messagebox", "log", "delay"]:
+            if self.action_combobox.currentText() in ["input", "command", "database", "datatable", "message", "messagebox", "log", "delay"]:
                 # param2 widget
                 param2_widget = QWidget()
                 action_layout.addWidget(param2_widget)
@@ -1669,8 +1686,17 @@ class AdvancedSendWidget(QWidget):
                 self.database_param1_lineedit.setFocus()
                 # param2
                 self.database_param2_combobox = QComboBox()
-                self.database_param2_combobox.addItems(shared.data_collect)
+                self.database_param2_combobox.addItems(shared.data_collect["database"])
                 param2_layout.addWidget(self.database_param2_combobox)
+            elif self.action_combobox.currentText() == "datatable":
+                # param1
+                self.datatable_param1_lineedit = QLineEdit()
+                param1_layout.addWidget(self.datatable_param1_lineedit)
+                self.datatable_param1_lineedit.setFocus()
+                # param2
+                self.datatable_param2_combobox = QComboBox()
+                self.datatable_param2_combobox.addItems(shared.data_collect["datatable"])
+                param2_layout.addWidget(self.datatable_param2_combobox)
             elif self.action_combobox.currentText() == "message":
                 # param1
                 self.message_param1_lineedit = QLineEdit()
@@ -1769,18 +1795,19 @@ class AdvancedSendWidget(QWidget):
         self.action_combobox.addItem(QIcon("icon:arrow_import.svg"), "input")
         self.action_combobox.addItem(QIcon("icon:arrow_export_ltr.svg"), "command")
         self.action_combobox.addItem(QIcon("icon:database.svg"), "database")
+        self.action_combobox.addItem(QIcon("icon:table.svg"), "datatable")
         self.action_combobox.addItem(QIcon("icon:print.svg"), "message")
         self.action_combobox.addItem(QIcon("icon:message.svg"), "messagebox")
         self.action_combobox.addItem(QIcon("icon:document.svg"), "log")
         # expression statement action
         self.action_combobox.addItem("--------------------------- Statement ---------------------------")
-        self.action_combobox.model().item(8).setEnabled(False)
+        self.action_combobox.model().item(9).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:variable.svg"), "expression")
         self.action_combobox.addItem(QIcon("icon:timer.svg"), "delay")
         self.action_combobox.addItem(QIcon("icon:stopwatch.svg"), "stopwatch")
         # control flow action
         self.action_combobox.addItem("------------------------- Control Flow --------------------------")
-        self.action_combobox.model().item(12).setEnabled(False)
+        self.action_combobox.model().item(13).setEnabled(False)
         self.action_combobox.addItem(QIcon("icon:arrow_repeat_all.svg"), "loop")
         self.action_combobox.addItem(QIcon("icon:branch.svg"), "if")
         self.action_combobox.addItem(QIcon("icon:pause.svg"), "break")
@@ -1832,6 +1859,18 @@ class AdvancedSendWidget(QWidget):
         elif action == "database":
             param1 = self.database_param1_lineedit.text()
             param2 = self.database_param2_combobox.currentText()
+            # add to action slot
+            shared.advanced_send_buffer.insert(row, [action, param1, param2])
+            # add to gui
+            action_label = QTableWidgetItem(action)
+            self.advanced_send_table.setItem(row, 1, action_label)
+            param_widget = QLineEdit()
+            param_widget.setText(param1)
+            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            self.advanced_send_table.setCellWidget(row, 2, param_widget)
+        elif action == "datatable":
+            param1 = self.datatable_param1_lineedit.text()
+            param2 = self.datatable_param2_combobox.currentText()
             # add to action slot
             shared.advanced_send_buffer.insert(row, [action, param1, param2])
             # add to gui
