@@ -1,6 +1,7 @@
 main_window = None
 
 rx_buffer = None
+rx_buffer_raw = None
 tx_buffer = None
 
 serial_log_widget = None

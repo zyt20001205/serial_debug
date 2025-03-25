@@ -20,7 +20,6 @@ class SerialLogWidget(QWidget):
         self.log_textedit = QTextEdit()
         self.timestamp_button = QPushButton()
         self.lock_button = QPushButton()
-        self.format_combobox = QComboBox()
         self.wrap_combobox = QComboBox()
         self.length_spinbox = QSpinBox()
         # shared variables
@@ -370,7 +369,6 @@ class SerialLogWidget(QWidget):
         shared.log_setting = {
             "timestamp": self.timestamp_button.isChecked(),
             "lock": self.lock_button.isChecked(),
-            "format": self.format_combobox.currentText(),
             "wrap": self.wrap_combobox.currentText(),
             "length": self.length_spinbox.value()
         }

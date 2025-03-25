@@ -13,7 +13,6 @@ from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDat
 from PySide6.QtNetwork import QHostAddress
 
 import shared
-from data_module import rx_buffer
 from suffix_module import modbus_crc16
 
 variable = []
@@ -23,7 +22,7 @@ for i in range(10):
     variable.append(variable_name)
 
 log_buffer = []
-stopwatch_buffer = None
+stopwatch = None
 
 
 class IOStatusWidget(QWidget):
@@ -285,6 +284,7 @@ class IOStatusWidget(QWidget):
             buffer_size = shared.io_setting["rx_size"]
             if buffer_size == 0:
                 rx_message = device.readAll().data().strip()
+                shared.rx_buffer_raw = rx_message
                 if rx_message:
                     # save message to shared.rx_buffer
                     if shared.io_setting["rx_format"] == "hex":
@@ -308,6 +308,7 @@ class IOStatusWidget(QWidget):
             else:
                 while device.bytesAvailable() >= buffer_size:
                     rx_message = device.read(buffer_size).data().strip()
+                    shared.rx_buffer_raw = rx_message
                     if rx_message:
                         # save message to shared.rx_buffer
                         if shared.io_setting["rx_format"] == "hex":
@@ -845,7 +846,6 @@ class SingleSendWidget(QWidget):
             self.single_send_trigger()
 
     def single_send_trigger(self):
-        self.single_send_timer.start(shared.io_setting["tx_interval"])
         if self.single_send_queue:
             tx_message = self.single_send_queue.pop()
         else:
@@ -868,6 +868,8 @@ class SingleSendWidget(QWidget):
                 shared.io_status_widget.remote_combobox.currentData().write(tx_message)
         else:
             shared.io_status_widget.serial_control.serial.write(tx_message)
+        # start timer
+        self.single_send_timer.start(shared.io_setting["tx_interval"])
         # save message to shared.tx_buffer
         if shared.io_setting["tx_format"] == "hex":
             shared.tx_buffer = tx_message.hex().upper()
@@ -1093,7 +1095,7 @@ class AdvancedSendWidget(QWidget):
                                 command = param1
                             else:  # param2 == "expression"
                                 try:
-                                    command = eval(param1)
+                                    command = eval(f"f'''{param1}'''")
                                 except Exception as e:
                                     # error highlight
                                     self.highlight_signal.emit(length, index, "red")
@@ -1144,16 +1146,16 @@ class AdvancedSendWidget(QWidget):
                                 self.log_signal.emit(html.escape(str(e)), "warning")
                     elif action == "message":
                         message = param1.strip()
+                        level = param2
                         try:
                             message = eval(f"f'''{message}'''")
+                            self.log_signal.emit(message, level)
+                            # remove highlight
+                            self.highlight_signal.emit(length, index, "white")
                         except Exception as e:
                             # error highlight
                             self.highlight_signal.emit(length, index, "red")
                             raise e
-                        level = param2
-                        self.log_signal.emit(message, level)
-                        # remove highlight
-                        self.highlight_signal.emit(length, index, "white")
                     elif action == "messagebox":
                         message = param1.strip()
                         try:
@@ -1218,17 +1220,17 @@ class AdvancedSendWidget(QWidget):
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "stopwatch":
-                        global stopwatch_buffer
+                        global stopwatch
                         operation = param1
                         if operation == "start":
                             self.stopwatch.start()
                             self.log_signal.emit("stopwatch start", "info")
                         elif operation == "restart":
-                            stopwatch_buffer = self.stopwatch.restart()
-                            self.log_signal.emit(f"stopwatch restart: {stopwatch_buffer}ms", "info")
+                            stopwatch = self.stopwatch.restart()
+                            self.log_signal.emit(f"stopwatch restart: {stopwatch}ms", "info")
                         else:  # operation == "elapsed":
-                            stopwatch_buffer = self.stopwatch.elapsed()
-                            self.log_signal.emit(f"stopwatch elapsed: {stopwatch_buffer}ms", "info")
+                            stopwatch = self.stopwatch.elapsed()
+                            self.log_signal.emit(f"stopwatch elapsed: {stopwatch}ms", "info")
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "loop":
@@ -1520,27 +1522,27 @@ class AdvancedSendWidget(QWidget):
             # add row
             self.advanced_send_table.insertRow(i)
             '''
-            |---------------------------------------------
-            |   action   |   param1    | param2 | param3 |
-            |---------------------------------------------      
-            |   input    |  variable   | label  |   \    |
-            |  command   | instruction |  type  |   \    |
-            |  database  |    data     | label  |   \    |
-            | datatable  |    data     | label  |   \    |
-            |  message   |   message   | level  |   \    |
-            | messagebox |   message   | level  |   \    |
-            |    log     |  operation  |  log   |   \    |
-            | expression | expression  |   \    |   \    |
-            |   delay    |    time     |  unit  |   \    | 
-            |    loop    |    count    |   \    |   \    |
-            | stopwatch  |  operation  |   \    |   \    |
-            |  endloop   |      \      |   \    |   \    |
-            |     if     |  condition  |   \    |   \    |
-            |   endif    |      \      |   \    |   \    |
-            |   break    |      \      |   \    |   \    |
-            |   abort    |   message   |   \    |   \    |
-            |    tail    |      \      |   \    |   \    |
-            ----------------------------------------------
+            |------------------------------------------------
+            |   action   |   param1    |  param2   | param3 |
+            |------------------------------------------------      
+            |   input    |  variable   |   label   |   \    |
+            |  command   | instruction |   type    |   \    |
+            |  database  |    data     |   label   |   \    |
+            | datatable  |    data     |   label   |   \    |
+            |  message   |   message   |   level   |   \    |
+            | messagebox |   message   |   level   |   \    |
+            |    log     |     log     | operation |   \    |
+            | expression | expression  |     \     |   \    |
+            |   delay    |    time     |   unit    |   \    | 
+            |    loop    |    count    |     \     |   \    |
+            | stopwatch  |  operation  |     \     |   \    |
+            |  endloop   |      \      |     \     |   \    |
+            |     if     |  condition  |     \     |   \    |
+            |   endif    |      \      |     \     |   \    |
+            |   break    |      \      |     \     |   \    |
+            |   abort    |   message   |     \     |   \    |
+            |    tail    |      \      |     \     |   \    |
+            -------------------------------------------------
             '''
             action = shared.advanced_send_buffer[i][0]
             param1 = shared.advanced_send_buffer[i][1] if len(shared.advanced_send_buffer[i]) > 1 else None
@@ -2199,14 +2201,14 @@ class FileSendWidget(QWidget):
                                 current_chunk += 1
                                 # file send flow control
                                 if self.parent.flow_control_groupbox.isChecked():
-                                    shared.rx_buffer = b""
+                                    shared.rx_buffer_raw = b""
                                     while True:
                                         if not self.enable:
                                             raise Exception
-                                        if shared.rx_buffer == self.parent.chunk_resume_lineedit.text().encode():
+                                        if shared.rx_buffer_raw == self.parent.chunk_resume_lineedit.text().encode():
                                             start_line = current_line
                                             break
-                                        if shared.rx_buffer == self.parent.chunk_restart_lineedit.text().encode():
+                                        if shared.rx_buffer_raw == self.parent.chunk_restart_lineedit.text().encode():
                                             current_line = start_line
                                             current_chunk -= 1
                                             break
@@ -2475,7 +2477,7 @@ class FileSendWidget(QWidget):
                     self.file_format = "intel hex(invalid)"
         except UnicodeDecodeError:
             with open(file_path, "rb") as file:
-                self.file_format = "bin"
+                self.file_format = "hex"
                 address = 0
                 while True:
                     buffer = file.read(16)

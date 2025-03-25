@@ -7,7 +7,6 @@ import pyqtgraph as pg
 
 import shared
 
-# data_buffer = [[] for _ in range(shared.data_count)]
 tx_buffer = None
 rx_buffer = None
 
@@ -21,10 +20,7 @@ class DataCollectWidget(QWidget):
 
         self.datatable = self.DatatableWidget(self)
 
-        self.data_plot_tab = QWidget()
-        self.data_plot_layout = QVBoxLayout(self.data_plot_tab)
-        self.data_plot = pg.PlotWidget()
-        self.line = []
+        self.dataplot = pg.PlotWidget()
 
         self.toggle_button = QPushButton()
 
@@ -119,6 +115,7 @@ class DataCollectWidget(QWidget):
         # data collect tab widget
         tab_widget = QTabWidget()
         tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
+        tab_widget.currentChanged.connect(self.dataplot_refresh)
         data_collect_layout.addWidget(tab_widget)
 
         # database tab
@@ -165,8 +162,8 @@ class DataCollectWidget(QWidget):
         tab_widget.setTabIcon(1, QIcon("icon:table.svg"))
         datatable_layout = QVBoxLayout(datatable_tab)
         datatable_layout.setContentsMargins(0, 0, 0, 0)
-
         # datatable
+        self.datatable.setRowCount(1)
         self.datatable.setColumnCount(len(shared.data_collect["datatable"]))
         self.datatable.setHorizontalHeaderLabels(shared.data_collect["datatable"])
         self.datatable.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -191,101 +188,26 @@ class DataCollectWidget(QWidget):
         save_button.setToolTip("save datatable")
         save_button.clicked.connect(self.datatable_save)
         datatable_control_layout.addWidget(save_button)
+        # clear button
+        clear_button = QPushButton()
+        clear_button.setFixedWidth(26)
+        clear_button.setIcon(QIcon("icon:delete.svg"))
+        clear_button.setToolTip("clear datatable")
+        clear_button.clicked.connect(self.datatable_clear)
+        datatable_control_layout.addWidget(clear_button)
 
-        # data plot tab
-        self.data_plot_layout.setContentsMargins(0, 0, 0, 0)
-        # tab_widget.addTab(self.data_plot_tab, "data plot")
+        # dataplot tab
+        dataplot_tab = QWidget()
+        tab_widget.addTab(dataplot_tab, "dataplot")
         tab_widget.setTabIcon(2, QIcon("icon:line_chart.svg"))
+        dataplot_layout = QVBoxLayout(dataplot_tab)
+        dataplot_layout.setContentsMargins(0, 0, 0, 0)
         # data plot
-        # self.data_plot_layout.addWidget(self.data_plot)
-        # self.data_plot.setLabel("left", "data")
-        # self.data_plot.setLabel("bottom", "index")
-        # self.data_plot.setBackground(None)
-        # self.data_plot.showGrid(x=True, y=True)
-        # self.data_plot.getPlotItem().setContentsMargins(0, 0, 0, 5)
-        # for i in range(shared.data_count):
-        #     self.line.append(self.data_plot.plot(
-        #         [],
-        #         [],
-        #         pen=pg.mkPen(pg.intColor(i, hues=12), width=2),
-        #         symbol='o',
-        #         symbolBrush='r'
-        #     ))
-
-    # def data_collect_toggle(self) -> None:
-    #     if self.toggle_button.isChecked():
-    #         self.toggle_button.setIcon(QIcon("icon:pause.svg"))
-    #         shared.log_textedit.textChanged.connect(self.data_collect)
-    #         shared.serial_log_widget.log_insert("data collect start", "info")
-    #     else:
-    #         self.toggle_button.setIcon(QIcon("icon:play.svg"))
-    #         shared.log_textedit.textChanged.disconnect(self.data_collect)
-    #         shared.serial_log_widget.log_insert("data collect end", "info")
-
-    # def data_collect_save(self) -> None:
-    #     if tab_widget.currentIndex() == 1:
-    #         try:
-    #             indices = self.data_table.selectionModel().selectedColumns()
-    #             column_indices = [index.column() for index in indices]
-    #             selected_columns = [[self.slot_groupbox[i].title()] + data_buffer[i] for i in column_indices]
-    #             if not selected_columns:
-    #                 QMessageBox.warning(shared.main_window, "Save Table", "Please select a column for saving first.")
-    #                 return
-    #             rows = list(zip(*selected_columns))
-    #             file_path, _ = QFileDialog.getSaveFileName(None, "Save CSV File", "", "CSV Files (*.csv);;All Files (*)")
-    #             if not file_path:
-    #                 shared.serial_log_widget.log_insert("data save cancelled", "warning")
-    #                 return
-    #             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
-    #                 writer = csv.writer(csv_file)
-    #                 writer.writerows(rows)
-    #             shared.serial_log_widget.log_insert(f"data saved to: {file_path}", "info")
-    #         except:
-    #             shared.serial_log_widget.log_insert(f"data saved failed", "warning")
-    #     elif tab_widget.currentIndex() == 2:
-    #         QMessageBox.information(shared.main_window, "Save Plot", "Right-click on the image to perform the save operation.")
-
-    # def data_collect_maximize(self) -> None:
-    #     if tab_widget.currentIndex() == 1:
-    #         def table_close_event(event):
-    #             self.data_table.setParent(self.data_table_tab)
-    #             self.data_table_layout.addWidget(self.data_table)
-    #
-    #         global table_window
-    #         table_window = QWidget()
-    #         table_window.setWindowTitle("Data Table")
-    #         table_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
-    #         table_window.resize(1080, 720)
-    #         self.data_table.setParent(table_window)
-    #         table_layout = QVBoxLayout(table_window)
-    #         table_layout.addWidget(self.data_table)
-    #         table_window.closeEvent = table_close_event
-    #         table_window.show()
-    #     elif tab_widget.currentIndex() == 2:
-    #         def plot_close_event(event):
-    #             self.data_plot.setParent(self.data_plot_tab)
-    #             self.data_plot_layout.addWidget(self.data_plot)
-    #
-    #         global plot_window
-    #         plot_window = QWidget()
-    #         plot_window.setWindowTitle("Data plot")
-    #         plot_window.setWindowFlags(Qt.WindowType.Window)
-    #         plot_window.resize(1080, 720)
-    #         self.data_plot.setParent(plot_window)
-    #         plot_layout = QVBoxLayout(plot_window)
-    #         plot_layout.addWidget(self.data_plot)
-    #         plot_window.closeEvent = plot_close_event
-    #         plot_window.show()
-
-    # def data_collect_clear(self) -> None:
-    #     if tab_widget.currentIndex() == 1:
-    #         global data_buffer
-    #         data_buffer = [[] for _ in range(shared.slot_count)]
-    #         self.data_table.clearContents()
-    #         self.data_table.setRowCount(0)
-    #     elif tab_widget.currentIndex() == 2:
-    #         for i in range(shared.slot_count):
-    #             self.line[i].setData([], [])
+        dataplot_layout.addWidget(self.dataplot)
+        self.dataplot.setLabel("left", "data")
+        self.dataplot.setLabel("bottom", "index")
+        self.dataplot.setBackground(None)
+        self.dataplot.showGrid(x=True, y=True)
 
     def database_import(self, row: int, data: str) -> None:
         self.database.item(row, 2).setText(data)
@@ -375,6 +297,15 @@ class DataCollectWidget(QWidget):
         else:
             shared.serial_log_widget.log_insert("datatable column insert cancelled", "warning")
 
+    def datatable_remove(self) -> None:
+        # get remove index
+        col = self.datatable.currentColumn()
+        if len(shared.data_collect["datatable"]) == 1:
+            return
+        shared.data_collect["datatable"].pop(col)
+        self.datatable.removeColumn(col)
+        # print(shared.data_collect["datatable"])
+
     def datatable_rename(self) -> None:
         # get insert index
         col = self.datatable.currentColumn()
@@ -392,15 +323,6 @@ class DataCollectWidget(QWidget):
             # print(shared.data_collect["datatable"])
         else:
             shared.serial_log_widget.log_insert("datatable column rename cancelled", "warning")
-
-    def datatable_remove(self) -> None:
-        # get remove index
-        col = self.datatable.currentColumn()
-        if len(shared.data_collect["datatable"]) == 1:
-            return
-        shared.data_collect["datatable"].pop(col)
-        self.datatable.removeColumn(col)
-        # print(shared.data_collect["datatable"])
 
     def datatable_save(self) -> None:
         try:
@@ -431,3 +353,33 @@ class DataCollectWidget(QWidget):
             shared.serial_log_widget.log_insert(f"datatable saved to: {file_path}", "info")
         except:
             shared.serial_log_widget.log_insert(f"datatable save failed", "warning")
+
+    def datatable_clear(self) -> None:
+        self.datatable.clearContents()
+        self.datatable.setRowCount(1)
+
+    def dataplot_refresh(self, index: int) -> None:
+        if index == 2:
+            self.dataplot.clear()
+            # draw legend
+            legend = self.dataplot.addLegend(offset=(10, 10))
+            legend.setLabelTextColor('#FFFFFF')
+            legend.setBrush(pg.mkBrush(QColor(0, 0, 0, 96)))
+            for i in range(self.datatable.columnCount()):
+                header = self.datatable.horizontalHeaderItem(i)
+                legend_name = header.text()
+                data = []
+                for row in range(self.datatable.rowCount()):
+                    item = self.datatable.item(row, i)
+                    data.append(float(item.text()) if item and item.text() else 0.0)
+                curve = pg.PlotCurveItem(
+                    name=legend_name,
+                    pen=pg.mkPen(
+                        pg.intColor(index=i, hues=12),
+                        width=2
+                    )
+                )
+                curve.setData(y=data, x=list(range(len(data))))
+                self.dataplot.addItem(curve)
+
+            self.dataplot.autoRange()
