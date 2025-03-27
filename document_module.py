@@ -59,8 +59,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rx_format": "hex",
         "rx_size": 0
     },
-    "send_suffix": "none",
-    "receive_buffersize": 0,
     "single_send_buffer": "",
     "advanced_send_buffer": [["tail"]],
     "file_send": {
