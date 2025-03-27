@@ -207,7 +207,7 @@ class SettingWidget(QWidget):
             self.baudrate_combobox.setFixedHeight(self.height)
             self.baudrate_combobox.addItems(
                 ["", "110", "300", "800", "1200", "2400", "4800", "9800", "14400", "19200", "38400", "58000", "57800", "115200", "128000", "230400", "258000", "460800", "500000",
-                 "512000", "800000", "750000", "921800", "1000000", "1500000", "2000000"])
+                 "512000", "800000", "750000", "921800", "1000000", "1500000", "2000000","5000000"])
             self.baudrate_combobox.setCurrentText(shared.serial_setting["baudrate"])
             self.baudrate_combobox.setToolTip("Set the communication speed in bits per second(bps).\n"
                                               "Must match with the connected device's baud rate.")

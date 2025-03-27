@@ -9,11 +9,11 @@ from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
     QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox
-from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
+from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer, SignalInstance
 from PySide6.QtNetwork import QHostAddress
 
 import shared
-from suffix_module import modbus_crc16
+from suffix_module import crc8_maxim, crc16_modbus
 
 variable = []
 for i in range(10):
@@ -154,7 +154,7 @@ class IOStatusWidget(QWidget):
                     }
                     self.serial.setDataBits(databits_mapping.get(shared.serial_setting["databits"]))
                     parity_mapping = {
-                        "No": QSerialPort.Parity.NoParity,
+                        "None": QSerialPort.Parity.NoParity,
                         "Even": QSerialPort.Parity.EvenParity,
                         "Odd": QSerialPort.Parity.OddParity,
                         "Mark": QSerialPort.Parity.MarkParity,
@@ -439,7 +439,7 @@ class IOStatusWidget(QWidget):
         tx_suffix_layout.addWidget(tx_suffix_label)
         tx_suffix_combobox = QComboBox()
         tx_suffix_combobox.setFixedWidth(140)
-        tx_suffix_combobox.addItems(["none", "crlf", "modbus crc16"])
+        tx_suffix_combobox.addItems(["none", "crlf", "crc8 maxim", "crc16 modbus"])
         tx_suffix_combobox.setCurrentText(shared.io_setting["tx_suffix"])
         tx_suffix_combobox.setToolTip("A calculated value used to verify the integrity of data.")
         tx_suffix_combobox.currentTextChanged.connect(tx_suffix_save)
@@ -809,10 +809,16 @@ class SingleSendWidget(QWidget):
             update = False
         if shared.io_setting["tx_suffix"] == "crlf":
             suffix = f"0d0a"
-        elif shared.io_setting["tx_suffix"] == "modbus crc16":
+        elif shared.io_setting["tx_suffix"] == "crc8 maxim":
             try:
                 data = bytes.fromhex(data)
-                suffix = f"{modbus_crc16(data):04X}"
+                suffix = f"{crc8_maxim(data):02X}"
+            except:
+                suffix = "NULL"
+        elif shared.io_setting["tx_suffix"] == "crc16 modbus":
+            try:
+                data = bytes.fromhex(data)
+                suffix = f"{crc16_modbus(data):04X}"
             except:
                 suffix = "NULL"
         else:  # suffix == none
@@ -949,8 +955,8 @@ class AdvancedSendWidget(QWidget):
             thread.log_signal.connect(shared.serial_log_widget.log_insert)
             thread.send_signal.connect(shared.single_send_widget.single_send)
             thread.request_signal.connect(self.input_request)
-            thread.database_export_signal.connect(shared.data_collect_widget.database_import)
-            thread.datatable_export_signal.connect(shared.data_collect_widget.datatable_import)
+            thread.database_import_signal.connect(shared.data_collect_widget.database_import)
+            thread.datatable_import_signal.connect(shared.data_collect_widget.datatable_import)
             thread.message_signal.connect(self.messagebox_show)
             thread.finish_signal.connect(self.remove)
 
@@ -1023,8 +1029,8 @@ class AdvancedSendWidget(QWidget):
             log_signal = Signal(str, str)
             send_signal = Signal(str, str, str)
             request_signal = Signal(QThread, str, str, QWaitCondition)
-            database_export_signal = Signal(int, str)
-            datatable_export_signal = Signal(int, str)
+            database_import_signal = Signal(int, str)
+            datatable_import_signal = Signal(int, str)
             message_signal = Signal(QThread, str, str, QWaitCondition)
             finish_signal = Signal(QThread)
 
@@ -1052,9 +1058,14 @@ class AdvancedSendWidget(QWidget):
 
                 length = len(buffer)
                 while index < length:
-                    # shared variable import
+                    # tx/rx variable import
                     tx_buffer = shared.tx_buffer
                     rx_buffer = shared.rx_buffer
+                    # database variable import
+                    for row in range(len(shared.data_collect["database"])):
+                        name = shared.data_collect_widget.database.item(row, 1).text()
+                        value = shared.data_collect_widget.database.item(row, 2).text()
+                        globals()[name] = value
                     # highlight current index
                     self.highlight_signal.emit(length, index, "cyan")
                     # thread abort
@@ -1115,7 +1126,7 @@ class AdvancedSendWidget(QWidget):
                             # get widget index
                             for row in range(len(shared.data_collect["database"])):
                                 if shared.data_collect["database"][row] == label:
-                                    self.database_export_signal.emit(row, data)
+                                    self.database_import_signal.emit(row, data)
                                     break
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
@@ -1133,7 +1144,7 @@ class AdvancedSendWidget(QWidget):
                             # get widget index
                             for row in range(len(shared.data_collect["datatable"])):
                                 if shared.data_collect["datatable"][row] == label:
-                                    self.datatable_export_signal.emit(row, data)
+                                    self.datatable_import_signal.emit(row, data)
                                     break
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
