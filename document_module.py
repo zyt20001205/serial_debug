@@ -74,10 +74,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "type": None,
             "function": "new",
             "command": "",
-            }
+        }
     ],
     "data_collect": {
-        "database": ["new"],
+        "database": [{"label": "new", "link": None}],
         "datatable": ["new"]
     }
 }

@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QMimeData, QTimer
 import pyqtgraph as pg
 
 import shared
+from shared import port_log_widget
 
 tx_buffer = None
 rx_buffer = None
@@ -16,7 +17,6 @@ class DataCollectWidget(QWidget):
         super().__init__()
         # instance variables
         self.database = self.DatabaseWidget(self)
-        self.highlight_timer = []
 
         self.datatable = self.DatatableWidget(self)
 
@@ -76,6 +76,11 @@ class DataCollectWidget(QWidget):
             self.setCellWidget(target_index, 0, move_icon)
             self.setItem(target_index, 1, label)
             self.setItem(target_index, 2, value)
+            # link button
+            link_button = QPushButton()
+            link_button.setIcon(QIcon("icon:link.svg"))
+            link_button.clicked.connect(self.parent.database_link)
+            self.setCellWidget(target_index, 3, link_button)
             self.blockSignals(False)
 
             # print(shared.data_collect)
@@ -126,12 +131,13 @@ class DataCollectWidget(QWidget):
         database_layout.setContentsMargins(0, 0, 0, 0)
         # database
         self.database.setRowCount(len(shared.data_collect["database"]))
-        self.database.setColumnCount(3)
+        self.database.setColumnCount(4)
         horizontal_header = self.database.horizontalHeader()
         horizontal_header.setVisible(False)
         self.database.setColumnWidth(0, 30)
         horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.database.setColumnWidth(3, 30)
         vertical_header = self.database.verticalHeader()
         vertical_header.setVisible(False)
         self.database.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -143,16 +149,16 @@ class DataCollectWidget(QWidget):
             move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.database.setCellWidget(i, 0, move_icon)
             # label
-            label = QTableWidgetItem(shared.data_collect["database"][i])
+            label = QTableWidgetItem(shared.data_collect["database"][i]["label"])
             self.database.setItem(i, 1, label)
             # value
             value = QTableWidgetItem()
             self.database.setItem(i, 2, value)
-            # highlight timer
-            timer = QTimer()
-            timer.setSingleShot(True)
-            timer.timeout.connect(lambda index=i: self.database_unhighlight(index))
-            self.highlight_timer.append(timer)
+            # link button
+            link_button = QPushButton()
+            link_button.setIcon(QIcon("icon:link.svg"))
+            link_button.clicked.connect(self.database_link)
+            self.database.setCellWidget(i, 3, link_button)
         # cell change event
         self.database.cellChanged.connect(self.database_change)
 
@@ -178,21 +184,21 @@ class DataCollectWidget(QWidget):
         rename_button = QPushButton()
         rename_button.setFixedWidth(26)
         rename_button.setIcon(QIcon("icon:rename.svg"))
-        rename_button.setToolTip("rename column")
+        rename_button.setToolTip(self.tr("rename column"))
         rename_button.clicked.connect(self.datatable_rename)
         datatable_control_layout.addWidget(rename_button)
         # save button
         save_button = QPushButton()
         save_button.setFixedWidth(26)
         save_button.setIcon(QIcon("icon:save.svg"))
-        save_button.setToolTip("save datatable")
+        save_button.setToolTip(self.tr("save datatable"))
         save_button.clicked.connect(self.datatable_save)
         datatable_control_layout.addWidget(save_button)
         # clear button
         clear_button = QPushButton()
         clear_button.setFixedWidth(26)
         clear_button.setIcon(QIcon("icon:delete.svg"))
-        clear_button.setToolTip("clear datatable")
+        clear_button.setToolTip(self.tr("clear datatable"))
         clear_button.clicked.connect(self.datatable_clear)
         datatable_control_layout.addWidget(clear_button)
 
@@ -210,13 +216,18 @@ class DataCollectWidget(QWidget):
         self.dataplot.showGrid(x=True, y=True)
 
     def database_import(self, row: int, data: str) -> None:
+        self.database.blockSignals(True)
         self.database.item(row, 2).setText(data)
+        self.database.blockSignals(False)
 
     def database_insert(self) -> None:
         # get insert index
         row = self.database.currentRow()
         # data collect insert
-        shared.data_collect["database"].insert(row, "new")
+        shared.data_collect["database"].insert(row, {
+            "label": "new",
+            "link": None
+        })
         # database insert
         self.database.insertRow(row)
         self.database.blockSignals(True)
@@ -232,11 +243,11 @@ class DataCollectWidget(QWidget):
         # value
         value = QTableWidgetItem()
         self.database.setItem(row, 2, value)
-        # highlight timer
-        timer = QTimer()
-        timer.setSingleShot(True)
-        timer.timeout.connect(lambda: self.database_unhighlight(len(shared.data_collect["database"])))
-        self.highlight_timer.append(timer)
+        # link button
+        link_button = QPushButton()
+        link_button.setIcon(QIcon("icon:link.svg"))
+        link_button.clicked.connect(self.database_link)
+        self.database.setCellWidget(row, 3, link_button)
 
         self.database.blockSignals(False)
         # print(shared.data_collect["database"])
@@ -248,26 +259,46 @@ class DataCollectWidget(QWidget):
             return
         shared.data_collect["database"].pop(row)
         self.database.removeRow(row)
-        self.highlight_timer.pop(row)
         # print(shared.data_collect["database"])
 
     def database_change(self, row, col) -> None:
         if col == 1:
             # save cell
-            shared.data_collect["database"][row] = self.database.item(row, 1).text()
+            shared.data_collect["database"][row]["label"] = self.database.item(row, 1).text()
             # print(shared.data_collect["database"])
         else:  # if col == 2:
-            # highlight cell
-            self.database.blockSignals(True)
-            self.database.item(row, col).setBackground(QColor("yellow"))
-            self.database.blockSignals(False)
-            self.highlight_timer[row].stop()
-            self.highlight_timer[row].start(500)
+            row = -1
+            link = shared.data_collect["database"][row]["link"]
+            for i in range(len(shared.command_shortcut)):
+                if link == shared.command_shortcut[i]["function"]:
+                    row = i
+            if row == -1:
+                # error highlight
+                shared.port_log_widget.log_insert(self.tr("cannot find shortcut %s") % link, "error")
+                return
+            type = shared.command_shortcut[row]["type"]
+            function = shared.command_shortcut[row]["function"]
+            command = shared.command_shortcut[row]["command"]
+            if type == "single":
+                shared.port_status_widget.port_write(command, -1)
+            else:  # type == "advanced"
+                buffer = eval(command)
+                shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
 
-    def database_unhighlight(self, row) -> None:
-        self.database.blockSignals(True)
-        self.database.item(row, 2).setBackground(QColor("white"))
-        self.database.blockSignals(False)
+    def database_link(self) -> None:
+        # get widget index
+        index = None
+        for row in range(len(shared.data_collect["database"])):
+            if self.database.cellWidget(row, 3) == self.sender():
+                index = row
+                break
+        if index is None:
+            return
+        link, ok = QInputDialog.getText(shared.main_window, self.tr("Link To A Shortcut"), self.tr("shortcut:"), text=shared.data_collect["database"][index]["link"])
+        if ok:
+            shared.data_collect["database"][index]["link"] = link
+        else:
+            return
 
     def datatable_import(self, col: int, data: str) -> None:
         row_count = self.datatable.rowCount()

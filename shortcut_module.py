@@ -219,10 +219,8 @@ class CommandShortcutWidget(QWidget):
         type = shared.command_shortcut[index]["type"]
         function = shared.command_shortcut[index]["function"]
         command = shared.command_shortcut[index]["command"]
-        suffix = shared.command_shortcut[index]["suffix"]
-        format = shared.command_shortcut[index]["format"]
         if type == "single":
-            shared.single_send_widget.single_send(command, suffix, format)
+            shared.port_status_widget.port_write(command, -1)
         else:  # type == "advanced"
             buffer = eval(command)
             shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)

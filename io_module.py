@@ -104,16 +104,16 @@ class PortStatusWidget(QWidget):
                 self.serial_port.errorOccurred.connect(self.serial_error_handler)
                 self.serial_port.readyRead.connect(self.read_timer)
                 shared.port_log_widget.log_insert("\n---------------------------------------------------------------\n"
-                                                    f"|{'serial port':^61}|\n"
-                                                    "---------------------------------------------------------------\n"
-                                                    f"|{'portname':^30}|{self.portname:^30}|\n"
-                                                    f"|{'baudrate':^30}|{self.baudrate:^30}|\n"
-                                                    f"|{'databits':^30}|{self.databits:^30}|\n"
-                                                    f"|{'parity':^30}|{self.parity:^30}|\n"
-                                                    f"|{'stopbits':^30}|{self.stopbits:^30}|\n"
-                                                    f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
-                                                    f"---------------------------------------------------------------",
-                                                    "info")
+                                                  f"|{'serial port':^61}|\n"
+                                                  "---------------------------------------------------------------\n"
+                                                  f"|{'portname':^30}|{self.portname:^30}|\n"
+                                                  f"|{'baudrate':^30}|{self.baudrate:^30}|\n"
+                                                  f"|{'databits':^30}|{self.databits:^30}|\n"
+                                                  f"|{'parity':^30}|{self.parity:^30}|\n"
+                                                  f"|{'stopbits':^30}|{self.stopbits:^30}|\n"
+                                                  f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                  f"---------------------------------------------------------------",
+                                                  "info")
             except Exception as e:
                 shared.port_log_widget.log_insert(f"{e}", "error")
 
@@ -310,13 +310,31 @@ class PortStatusWidget(QWidget):
             setting_layout = QHBoxLayout(setting_widget)
             setting_layout.setContentsMargins(0, 0, 0, 0)
             setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-            port_label = QLabel("port info")
+            port_label = QLabel(self.tr("port num"))
             setting_layout.addWidget(port_label)
-            port_lineedit = QLineEdit()
-            port_lineedit.setFixedWidth(168)
-            port_lineedit.setReadOnly(True)
-            port_lineedit.setText(self.portname)
-            setting_layout.addWidget(port_lineedit)
+
+            def port_change(index: int, new_port: str) -> None:
+                # close port first
+                if self.port_toggle_button.isChecked():
+                    self.port_toggle_button.setChecked(False)
+                    time.sleep(0.1)
+                # check if port is closed
+                if self.port_toggle_button.isChecked():
+                    return
+                self.portname = new_port
+                shared.port_setting[index]["portname"] = new_port
+                self.parent.tab_widget.setTabText(index, new_port)
+
+            port_combobox = QComboBox()
+            port_combobox.setFixedWidth(168)
+            port_combobox.addItem("", "")
+            for port_info in QSerialPortInfo.availablePorts():
+                port_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
+            index = port_combobox.findData(self.portname)
+            if index >= 0:
+                port_combobox.setCurrentIndex(index)
+            port_combobox.currentIndexChanged.connect(lambda: port_change(self.parent.tab_widget.indexOf(self), port_combobox.currentData()))
+            setting_layout.addWidget(port_combobox)
             setting_button = QPushButton()
             setting_button.setFixedWidth(26)
             setting_button.setIcon(QIcon("icon:settings.svg"))
@@ -398,13 +416,13 @@ class PortStatusWidget(QWidget):
             try:
                 self.tcp_client.connectToHost(self.remoteipv4, self.remoteport)
                 shared.port_log_widget.log_insert("connecting to server\n"
-                                                    "---------------------------------------------------------------\n"
-                                                    f"|{'tcp client':^61}|\n"
-                                                    "---------------------------------------------------------------\n"
-                                                    f"""|{'remote ipv4':^30}|{f'{self.remoteipv4}:{self.remoteport}':^30}|\n"""
-                                                    f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
-                                                    "---------------------------------------------------------------",
-                                                    "info")
+                                                  "---------------------------------------------------------------\n"
+                                                  f"|{'tcp client':^61}|\n"
+                                                  "---------------------------------------------------------------\n"
+                                                  f"""|{'remote ipv4':^30}|{f'{self.remoteipv4}:{self.remoteport}':^30}|\n"""
+                                                  f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                  "---------------------------------------------------------------",
+                                                  "info")
                 self.tcp_client.connected.connect(self.find_server)
             except Exception as e:
                 shared.port_log_widget.log_insert(f"{e}", "error")
@@ -422,18 +440,18 @@ class PortStatusWidget(QWidget):
             self.tcp_client.disconnected.connect(self.lost_server)
             self.port_lineedit.setText(f"{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}")
             shared.port_log_widget.log_insert("connection established\n"
-                                                f"---------------------------------------------------------------\n"
-                                                f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
-                                                f"---------------------------------------------------------------",
-                                                "info")
+                                              f"---------------------------------------------------------------\n"
+                                              f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
+                                              f"---------------------------------------------------------------",
+                                              "info")
 
         def lost_server(self):
             self.port_lineedit.setText("connecting to server...")
             shared.port_log_widget.log_insert("connection lost\n"
-                                                f"---------------------------------------------------------------\n"
-                                                f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
-                                                f"---------------------------------------------------------------",
-                                                "info")
+                                              f"---------------------------------------------------------------\n"
+                                              f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
+                                              f"---------------------------------------------------------------",
+                                              "info")
 
         def write(self, message: str) -> None:
             # open serial first
@@ -697,13 +715,13 @@ class PortStatusWidget(QWidget):
             try:
                 self.tcp_server.listen(QHostAddress(self.localipv4), self.localport)
                 shared.port_log_widget.log_insert("listening for client\n"
-                                                    f"---------------------------------------------------------------\n"
-                                                    f"|{'tcp server':^61}|\n"
-                                                    f"---------------------------------------------------------------\n"
-                                                    f"""|{'local ipv4':^30}|{f'{self.localipv4}:{self.localport}':^30}|\n"""
-                                                    f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
-                                                    f"---------------------------------------------------------------",
-                                                    "info")
+                                                  f"---------------------------------------------------------------\n"
+                                                  f"|{'tcp server':^61}|\n"
+                                                  f"---------------------------------------------------------------\n"
+                                                  f"""|{'local ipv4':^30}|{f'{self.localipv4}:{self.localport}':^30}|\n"""
+                                                  f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                  f"---------------------------------------------------------------",
+                                                  "info")
                 self.tcp_server.newConnection.connect(self.find_peer)
             except Exception as e:
                 shared.port_log_widget.log_insert(f"{e}", "error")
@@ -730,11 +748,11 @@ class PortStatusWidget(QWidget):
             peer.disconnected.connect(lambda: self.lost_peer(peer))
             self.peer_refresh()
             shared.port_log_widget.log_insert("connection established\n"
-                                                f"---------------------------------------------------------------\n"
-                                                f"|{'client list':^61}|\n"
-                                                f"---------------------------------------------------------------\n"
-                                                f"{peer_list}"
-                                                f"---------------------------------------------------------------", "info")
+                                              f"---------------------------------------------------------------\n"
+                                              f"|{'client list':^61}|\n"
+                                              f"---------------------------------------------------------------\n"
+                                              f"{peer_list}"
+                                              f"---------------------------------------------------------------", "info")
 
         def lost_peer(self, peer):
             self.tcp_peer.remove(peer)
@@ -745,11 +763,11 @@ class PortStatusWidget(QWidget):
                 peer_list = f"|{'remote ipv4 (lost)':^30}|<s>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</s>|\n"
             self.peer_refresh()
             shared.port_log_widget.log_insert("connection lost\n"
-                                                f"---------------------------------------------------------------\n"
-                                                f"|{'client list':^61}|\n"
-                                                f"---------------------------------------------------------------\n"
-                                                f"{peer_list}"
-                                                f"---------------------------------------------------------------", "info")
+                                              f"---------------------------------------------------------------\n"
+                                              f"|{'client list':^61}|\n"
+                                              f"---------------------------------------------------------------\n"
+                                              f"{peer_list}"
+                                              f"---------------------------------------------------------------", "info")
 
         def peer_refresh(self):
             self.peer_combobox.clear()
@@ -1391,6 +1409,8 @@ class PortStatusWidget(QWidget):
             port_name_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
         port_name_combobox.addItem("TCP client", "tcp client")
         port_name_combobox.addItem("TCP server", "tcp server")
+        if index != -1:
+            port_name_combobox.setEnabled(False)
         port_name_combobox.currentIndexChanged.connect(lambda: port_setting_refresh(port_name_combobox.currentData(), index))
         port_name_layout.addWidget(port_name_combobox, 0, 1)
         port_param_widget = QWidget()
@@ -1805,7 +1825,7 @@ class AdvancedSendWidget(QWidget):
         class AdvancedSendThread(QThread):
             highlight_signal = Signal(int, int, str)
             log_signal = Signal(str, str)
-            send_signal = Signal(str, str)
+            send_signal = Signal(str, int)
             request_signal = Signal(QThread, str, str, QWaitCondition)
             database_import_signal = Signal(int, str)
             datatable_import_signal = Signal(int, str)
@@ -1867,11 +1887,14 @@ class AdvancedSendWidget(QWidget):
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "command":
                         if param2 == "shortcut":
-                            if eval(param1) > len(shared.command_shortcut):
+                            row = -1
+                            for i in range(len(shared.command_shortcut)):
+                                if param1 == shared.command_shortcut[i]["function"]:
+                                    row = i
+                            if row == -1:
                                 # error highlight
                                 self.highlight_signal.emit(length, index, "red")
-                                raise Exception(f"index out of range 1 ~ {len(shared.command_shortcut)}")
-                            row = eval(param1) - 1
+                                raise Exception(f"cannot find shortcut {param1}")
                             type = shared.command_shortcut[row]["type"]
                             if type == "single":
                                 command = shared.command_shortcut[row]["command"]
@@ -1900,7 +1923,7 @@ class AdvancedSendWidget(QWidget):
                             label = param2
                             # get widget index
                             for row in range(len(shared.data_collect["database"])):
-                                if shared.data_collect["database"][row] == label:
+                                if shared.data_collect["database"][row]["label"] == label:
                                     self.database_import_signal.emit(row, data)
                                     break
                             # remove highlight
@@ -2947,7 +2970,7 @@ class FileSendWidget(QWidget):
 
     class FileSendThread(QThread):
         log_signal = Signal(str, str)
-        send_signal = Signal(str, str, str)
+        send_signal = Signal(str, int)
         progress_signal = Signal(int, int, str)
         clear_signal = Signal()
 
@@ -2973,7 +2996,7 @@ class FileSendWidget(QWidget):
                             raise Exception
                         line = lines[current_line].strip()
                         if line:
-                            self.send_signal.emit(line, "\r\n", "ascii")
+                            self.send_signal.emit(line, -1)
                             if line.startswith(":"):
                                 current_line += 1
                             if line == ":00000001FF":
@@ -3002,7 +3025,7 @@ class FileSendWidget(QWidget):
                         if not buffer:
                             break
                         line = buffer.hex()
-                        self.send_signal.emit(line, "", "hex")
+                        self.send_signal.emit(line, -1)
                         current_line += 1
                         self.progress_signal.emit(current_line, None, f"line({current_line}/{self.parent.file_line})")
                         QThread.msleep(self.parent.line_delay_spinbox.value())
