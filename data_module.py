@@ -120,7 +120,7 @@ class DataCollectWidget(QWidget):
 
         # database tab
         database_tab = QWidget()
-        tab_widget.addTab(database_tab, "database")
+        tab_widget.addTab(database_tab, self.tr("database"))
         tab_widget.setTabIcon(0, QIcon("icon:database.svg"))
         database_layout = QVBoxLayout(database_tab)
         database_layout.setContentsMargins(0, 0, 0, 0)
@@ -158,7 +158,7 @@ class DataCollectWidget(QWidget):
 
         # datatable tab
         datatable_tab = QWidget()
-        tab_widget.addTab(datatable_tab, "datatable")
+        tab_widget.addTab(datatable_tab, self.tr("datatable"))
         tab_widget.setTabIcon(1, QIcon("icon:table.svg"))
         datatable_layout = QVBoxLayout(datatable_tab)
         datatable_layout.setContentsMargins(0, 0, 0, 0)
@@ -198,7 +198,7 @@ class DataCollectWidget(QWidget):
 
         # dataplot tab
         dataplot_tab = QWidget()
-        tab_widget.addTab(dataplot_tab, "dataplot")
+        tab_widget.addTab(dataplot_tab, self.tr("dataplot"))
         tab_widget.setTabIcon(2, QIcon("icon:line_chart.svg"))
         dataplot_layout = QVBoxLayout(dataplot_tab)
         dataplot_layout.setContentsMargins(0, 0, 0, 0)

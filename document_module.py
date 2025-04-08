@@ -157,10 +157,10 @@ def config_file_load_from(file_path=None):
         with open(file_path, "r", encoding="utf-8") as file:
             config = json.load(file)
             config_to_shared(config)
-            from gui_module import widget_init, tab_init, dock_refresh
+            from gui_module import widget_init, tab_init, dock_init
             widget_init()
             tab_init()
-            dock_refresh()
+            dock_init()
     except(json.JSONDecodeError, IOError) as e:
         shared.port_log_widget.log_insert("workspace load failed", "error")
         QMessageBox.critical(shared.main_window, "Error", "Config load failed.")

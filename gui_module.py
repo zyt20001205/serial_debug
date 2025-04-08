@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QCoreApplication
 from PySide6.QtGui import QAction, QIcon, QShortcut, QKeySequence
 from PySide6.QtWidgets import QWidget, QSizePolicy, QToolBar, QDockWidget
 
@@ -36,7 +36,7 @@ data_collect_dock_widget: QDockWidget
 def main_gui():
     # configure toolbar
     global toolbar
-    toolbar = QToolBar("Vertical Toolbar")
+    toolbar = QToolBar()
     toolbar.setObjectName("vertical_toolbar")
     toolbar.setOrientation(Qt.Orientation.Vertical)
     # toolbar.setMovable(True)
@@ -168,64 +168,58 @@ def widget_init():
 
 
 def dock_init():
+    dock_widgets = shared.main_window.findChildren(QDockWidget)
+    for dock in dock_widgets:
+        dock.deleteLater()
+
     global port_log_dock_widget
-    port_log_dock_widget = QDockWidget("Port Log", shared.main_window)
+    port_log_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Port Log"), shared.main_window)
     port_log_dock_widget.setObjectName("port_log")
     port_log_dock_widget.setWidget(shared.port_log_widget)
     port_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     port_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global port_status_dock_widget
-    port_status_dock_widget = QDockWidget("Port Status", shared.main_window)
+    port_status_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Port Status"), shared.main_window)
     port_status_dock_widget.setObjectName("port_status")
     port_status_dock_widget.setWidget(shared.port_status_widget)
     port_status_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     port_status_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global single_send_dock_widget
-    single_send_dock_widget = QDockWidget("Single Send", shared.main_window)
+    single_send_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Single Send"), shared.main_window)
     single_send_dock_widget.setObjectName("single_send")
     single_send_dock_widget.setWidget(shared.single_send_widget)
     single_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     single_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global advanced_send_dock_widget
-    advanced_send_dock_widget = QDockWidget("Advanced Send", shared.main_window)
+    advanced_send_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Advanced Send"), shared.main_window)
     advanced_send_dock_widget.setObjectName("advanced_send")
     advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
     advanced_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     advanced_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global file_send_dock_widget
-    file_send_dock_widget = QDockWidget("File Send", shared.main_window)
+    file_send_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "File Send"), shared.main_window)
     file_send_dock_widget.setObjectName("file_send")
     file_send_dock_widget.setWidget(shared.file_send_widget)
     file_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     file_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global command_shortcut_dock_widget
-    command_shortcut_dock_widget = QDockWidget("Command Shortcut", shared.main_window)
+    command_shortcut_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Command Shortcut"), shared.main_window)
     command_shortcut_dock_widget.setObjectName("command_shortcut")
     command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
     command_shortcut_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     command_shortcut_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global data_collect_dock_widget
-    data_collect_dock_widget = QDockWidget("Data Collect", shared.main_window)
+    data_collect_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Data Collect"), shared.main_window)
     data_collect_dock_widget.setObjectName("data_collect")
     data_collect_dock_widget.setWidget(shared.data_collect_widget)
     data_collect_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     data_collect_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
-
-
-def dock_refresh():
-    port_log_dock_widget.setWidget(shared.port_log_widget)
-    port_status_dock_widget.setWidget(shared.port_status_widget)
-    single_send_dock_widget.setWidget(shared.single_send_widget)
-    advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
-    file_send_dock_widget.setWidget(shared.file_send_widget)
-    command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
-    data_collect_dock_widget.setWidget(shared.data_collect_widget)
 
 
 def shortcut_init():
