@@ -18,20 +18,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "data_state": None,
         "custom_state": None
     },
-    "keyboard_shortcut": {
-        "save": "Ctrl+S",
-        "save_as": "Ctrl+Shift+S",
-        "load": "Ctrl+L",
-        "quit": "Ctrl+Q",
-        "zoom_in": "Ctrl+]",
-        "zoom_out": "Ctrl+["
-    },
+    "language_setting": "en_US",
+
     "serial_setting": {
         "port": "",
-        "baudrate": "",
-        "databits": "",
-        "parity": "",
-        "stopbits": "",
+        "baudrate": 115200,
+        "databits": "8",
+        "parity": "None",
+        "stopbits": "1",
         "localipv4": "",
         "localport": "",
         "remoteipv4": "",
@@ -39,18 +33,26 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "masteradapter": "",
         "timeout": 0,
     },
-    "log_setting": {
-        "timestamp": True,
-        "lock": False,
-        "wrap": "none",
-        "length": 1000
-    },
-    "log_font": {
+    "font_setting": {
         "family": "Consolas",
         "pointsize": 12,
         "bold": False,
         "italic": False,
         "underline": False
+    },
+    "shortcut_setting": {
+        "save": "Ctrl+S",
+        "save_as": "Ctrl+Shift+S",
+        "load": "Ctrl+L",
+        "quit": "Ctrl+Q",
+        "zoom_in": "Ctrl+]",
+        "zoom_out": "Ctrl+["
+    },
+    "log_setting": {
+        "timestamp": True,
+        "lock": False,
+        "wrap": "none",
+        "length": 1000
     },
     "io_setting": {
         "tx_format": "hex",
@@ -72,9 +74,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "type": None,
             "function": "new",
             "command": "",
-            "suffix": "",
-            "format": ""
-        }
+            }
     ],
     "data_collect": {
         "database": ["new"],
@@ -197,11 +197,11 @@ def config_file_save_as(config):
 def config_to_shared(config):
     try:
         shared.layout = config["layout"]
-        shared.keyboard_shortcut = config["keyboard_shortcut"]
-        shared.serial_setting = config["serial_setting"]
+        shared.language_setting = config["language_setting"]
+        shared.shortcut_setting = config["shortcut_setting"]
+        shared.port_setting = config["port_setting"]
         shared.log_setting = config["log_setting"]
-        shared.log_font = config["log_font"]
-        shared.io_setting = config["io_setting"]
+        shared.font_setting = config["font_setting"]
         shared.single_send_buffer = config["single_send_buffer"]
         shared.advanced_send_buffer = config["advanced_send_buffer"]
         shared.file_send = config["file_send"]
@@ -223,11 +223,11 @@ def shared_to_config(config):
         config["layout"]["data_state"] = shared.main_window.saveState().data().hex()
     else:  # shared.layout["tab"] == "custom_tab":
         config["layout"]["custom_state"] = shared.main_window.saveState().data().hex()
-    config["keyboard_shortcut"] = shared.keyboard_shortcut
-    config["serial_setting"] = shared.serial_setting
+    config["language_setting"] = shared.language_setting
+    config["shortcut_setting"] = shared.shortcut_setting
+    config["port_setting"] = shared.port_setting
     config["log_setting"] = shared.log_setting
-    config["log_font"] = shared.log_font
-    config["io_setting"] = shared.io_setting
+    config["font_setting"] = shared.font_setting
     config["single_send_buffer"] = shared.single_send_buffer
     config["advanced_send_buffer"] = shared.advanced_send_buffer
     config["file_send"] = shared.file_send
@@ -239,7 +239,7 @@ def shared_to_config(config):
 def config_save():
     # save shared
     shared.serial_log_widget.log_config_save()
-    # shared.io_status_widget.io_status_config_save()
+    # shared.port_status_widget.port_status_config_save()
     shared.single_send_widget.single_send_config_save()
     # shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()
@@ -256,7 +256,7 @@ def config_save():
 def config_save_as():
     # save shared
     shared.serial_log_widget.log_config_save()
-    # shared.io_status_widget.io_status_config_save()
+    # shared.port_status_widget.port_status_config_save()
     shared.single_send_widget.single_send_config_save()
     # shared.advanced_send_widget.advanced_send_config_save()
     shared.file_send_widget.file_send_config_save()

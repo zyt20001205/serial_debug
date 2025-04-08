@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QWidget, QSizePolicy, QToolBar, QDockWidget
 
 import shared
 from log_module import SerialLogWidget
-from io_module import IOStatusWidget, SingleSendWidget, AdvancedSendWidget, FileSendWidget
+from io_module import PortStatusWidget, SingleSendWidget, AdvancedSendWidget, FileSendWidget
 from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
@@ -25,7 +25,7 @@ setting_tab: QAction
 info_tab: QAction
 tab_list: list
 serial_log_dock_widget: QDockWidget
-io_status_dock_widget: QDockWidget
+port_status_dock_widget: QDockWidget
 single_send_dock_widget: QDockWidget
 advanced_send_dock_widget: QDockWidget
 file_send_dock_widget: QDockWidget
@@ -128,9 +128,9 @@ def widget_init():
     serial_log_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     shared.serial_log_widget = serial_log_widget
 
-    io_status_widget = IOStatusWidget()
-    io_status_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-    shared.io_status_widget = io_status_widget
+    port_status_widget = PortStatusWidget()
+    port_status_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    shared.port_status_widget = port_status_widget
 
     single_send_widget = SingleSendWidget()
     single_send_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -175,12 +175,12 @@ def dock_init():
     serial_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     serial_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
-    global io_status_dock_widget
-    io_status_dock_widget = QDockWidget("IO Status", shared.main_window)
-    io_status_dock_widget.setObjectName("io_status")
-    io_status_dock_widget.setWidget(shared.io_status_widget)
-    io_status_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-    io_status_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    global port_status_dock_widget
+    port_status_dock_widget = QDockWidget("Port Status", shared.main_window)
+    port_status_dock_widget.setObjectName("port_status")
+    port_status_dock_widget.setWidget(shared.port_status_widget)
+    port_status_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+    port_status_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
 
     global single_send_dock_widget
     single_send_dock_widget = QDockWidget("Single Send", shared.main_window)
@@ -220,7 +220,7 @@ def dock_init():
 
 def dock_refresh():
     serial_log_dock_widget.setWidget(shared.serial_log_widget)
-    io_status_dock_widget.setWidget(shared.io_status_widget)
+    port_status_dock_widget.setWidget(shared.port_status_widget)
     single_send_dock_widget.setWidget(shared.single_send_widget)
     advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
     file_send_dock_widget.setWidget(shared.file_send_widget)
@@ -229,17 +229,17 @@ def dock_refresh():
 
 
 def shortcut_init():
-    shared.save_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["save"]), shared.main_window)
+    shared.save_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["save"]), shared.main_window)
     shared.save_shortcut.activated.connect(config_save)
-    shared.save_as_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["save_as"]), shared.main_window)
+    shared.save_as_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["save_as"]), shared.main_window)
     shared.save_as_shortcut.activated.connect(config_save_as)
-    shared.load_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["load"]), shared.main_window)
+    shared.load_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["load"]), shared.main_window)
     shared.load_shortcut.activated.connect(config_file_load_from)
-    shared.quit_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["quit"]), shared.main_window)
+    shared.quit_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["quit"]), shared.main_window)
     shared.quit_shortcut.activated.connect(shared.main_window.close)
-    shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["zoom_in"]), shared.main_window)
+    shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
     shared.zoom_in_shortcut.activated.connect(shared.serial_log_widget.log_zoom_in)
-    shared.zoom_out_shortcut = QShortcut(QKeySequence(shared.keyboard_shortcut["zoom_out"]), shared.main_window)
+    shared.zoom_out_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_out"]), shared.main_window)
     shared.zoom_out_shortcut.activated.connect(shared.serial_log_widget.log_zoom_out)
 
 
@@ -277,9 +277,9 @@ def send_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.show()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    shared.main_window.resizeDocks([io_status_dock_widget], [450], Qt.Orientation.Horizontal)
-    io_status_dock_widget.show()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    shared.main_window.resizeDocks([port_status_dock_widget], [450], Qt.Orientation.Horizontal)
+    port_status_dock_widget.show()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     shared.main_window.resizeDocks([single_send_dock_widget], [450], Qt.Orientation.Horizontal)
@@ -311,8 +311,8 @@ def file_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.show()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()
@@ -341,8 +341,8 @@ def data_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.show()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()
@@ -373,8 +373,8 @@ def custom_tab_gui(default: bool) -> None:
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.hide()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()
@@ -416,8 +416,8 @@ def toolbox_tab_gui():
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.hide()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()
@@ -444,8 +444,8 @@ def document_tab_gui():
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.hide()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()
@@ -472,8 +472,8 @@ def setting_tab_gui():
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.hide()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()
@@ -500,8 +500,8 @@ def info_tab_gui():
     shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, serial_log_dock_widget)
     serial_log_dock_widget.hide()
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, io_status_dock_widget)
-    io_status_dock_widget.hide()
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
+    port_status_dock_widget.hide()
 
     shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
     single_send_dock_widget.hide()

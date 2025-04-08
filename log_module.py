@@ -160,11 +160,11 @@ class SerialLogWidget(QWidget):
         self.log_textedit.setStyleSheet("margin: 0px;")
         # font initialization
         font = QFont()
-        font.setFamily(shared.log_font["family"])
-        font.setPointSize(shared.log_font["pointsize"])
-        font.setBold(shared.log_font["bold"])
-        font.setItalic(shared.log_font["italic"])
-        font.setUnderline(shared.log_font["underline"])
+        font.setFamily(shared.font_setting["family"])
+        font.setPointSize(shared.font_setting["pointsize"])
+        font.setBold(shared.font_setting["bold"])
+        font.setItalic(shared.font_setting["italic"])
+        font.setUnderline(shared.font_setting["underline"])
         self.log_textedit.setFont(font)
         # wrap initialization
         if shared.log_setting["wrap"] == "none":
@@ -252,25 +252,18 @@ class SerialLogWidget(QWidget):
             message = message.replace(" ", "&nbsp;").replace("\n", "<br>")
             message = f'<span style="background-color:white;">{timestamp}[Info]{message}</span>'
         elif level == "send":
-            if shared.io_setting["tx_format"] == "hex":
-                message = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
-            if "crc16" in shared.io_setting["tx_suffix"]:
-                message_data = message[:-5]
-                message_suffix = message[-5:]
-            else:  # none/"\r\n"
-                message_data = message
-                message_suffix = ""
-            message = f'{timestamp}<span style="background-color:cyan;">-&gt;{message_data}<span style="color:orange;">{message_suffix}</span></span>'
+            message = f'{timestamp}<span style="background-color:cyan;">{message}</span>'
         else:
-            if shared.io_setting["rx_format"] == "hex":
-                message = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
-            if "crc16" in shared.io_setting["tx_suffix"]:
-                message_data = message[:-5]
-                message_suffix = message[-5:]
-            else:  # none/"\r\n"
-                message_data = message
-                message_suffix = ""
-            message = f'{timestamp}<span style="background-color:lightgreen;">&lt;-{message_data}<span style="color:orange;">{message_suffix}</span></span>'
+            # if shared.io_setting["rx_format"] == "hex":
+            #     message = " ".join(message[i:i + 2] for i in range(0, len(message), 2))
+            # if "crc16" in shared.io_setting["tx_suffix"]:
+            #     message_data = message[:-5]
+            #     message_suffix = message[-5:]
+            # else:  # none/"\r\n"
+            #     message_data = message
+            #     message_suffix = ""
+            # message = f'{timestamp}<span style="background-color:lightgreen;">&lt;-{message_data}<span style="color:orange;">{message_suffix}</span></span>'
+            message = f'{timestamp}<span style="background-color:lightgreen;">{message}</span>'
         # replace newline character "\r\n" with html newline character "<br>"
         if self.wrap_combobox.currentText() == "crlf":
             message = message.replace("\r\n", "<br>")
@@ -344,13 +337,13 @@ class SerialLogWidget(QWidget):
         else:  # shared.log_setting["wrap"] == "auto"
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
 
-    def log_font(self):
+    def font_setting(self):
         font = QFont()
-        font.setFamily(shared.log_font["family"])
-        font.setPointSize(shared.log_font["pointsize"])
-        font.setBold(shared.log_font["bold"])
-        font.setItalic(shared.log_font["italic"])
-        font.setUnderline(shared.log_font["underline"])
+        font.setFamily(shared.font_setting["family"])
+        font.setPointSize(shared.font_setting["pointsize"])
+        font.setBold(shared.font_setting["bold"])
+        font.setItalic(shared.font_setting["italic"])
+        font.setUnderline(shared.font_setting["underline"])
         self.log_textedit.setFont(font)
 
     def log_zoom_in(self):
@@ -373,7 +366,7 @@ class SerialLogWidget(QWidget):
             "length": self.length_spinbox.value()
         }
         font = self.log_textedit.font()
-        shared.log_font = {
+        shared.font_setting = {
             "family": font.family(),
             "pointsize": font.pointSize(),
             "bold": font.bold(),

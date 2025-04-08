@@ -3,13 +3,14 @@ import os
 import html
 from datetime import datetime
 import tempfile
+import socket
 # import pysoem
-from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
+from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption, QIntValidator
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
-from PySide6.QtSerialPort import QSerialPort
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, QSpinBox, \
-    QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox
-from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer, SignalInstance
+from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, \
+    QSpinBox, QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox, QTabWidget, QFrame
+from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
 from PySide6.QtNetwork import QHostAddress
 
 import shared
@@ -20,210 +21,704 @@ for i in range(10):
     variable_name = f"x{i}"
     globals()[variable_name] = None
     variable.append(variable_name)
+tx_buffer = []
+rx_buffer = []
 
 log_buffer = []
 stopwatch = None
 
 
-class IOStatusWidget(QWidget):
+class PortStatusWidget(QWidget):
     def __init__(self):
         super().__init__()
-        # instance variables
-        self.tx_suffix_lineedit = QLineEdit()
-        self.tx_buffer_lineedit = QLineEdit()
-        self.rx_buffer_lineedit = QLineEdit()
-        self.serial_toggle_button = QPushButton()
-        self.io_info_widget = QWidget()
-        self.io_info_layout = QHBoxLayout(self.io_info_widget)
-        self.local_icon = QLabel()
-        self.local_lineedit = QLineEdit()
-        self.link_icon = QLabel()
-        self.remote_icon = QLabel()
-        self.remote_lineedit = QLineEdit()
-        self.remote_combobox = QComboBox()
-        self.hint_button = QPushButton("serial port is not configured, go to settings")
-        self.serial_icon = QLabel()
-        self.serial_label = QLabel()
-
-        shared.serial_toggle_button = self.serial_toggle_button
-
-        self.serial_control = self.SerialControl(self)
+        self.tab_widget = QTabWidget()
+        self.tab_list = []
         # draw gui
-        self.io_status_gui()
+        self.port_status_gui()
 
-    class SerialControl(QObject):
-        def __init__(self, parent: "IOStatusWidget"):
+    class SerialPortTab(QWidget):
+        DATABITS_MAPPING = {
+            "5": QSerialPort.DataBits.Data5,
+            "6": QSerialPort.DataBits.Data6,
+            "7": QSerialPort.DataBits.Data7,
+            "8": QSerialPort.DataBits.Data8,
+        }
+        PARITY_MAPPING = {
+            "None": QSerialPort.Parity.NoParity,
+            "Even": QSerialPort.Parity.EvenParity,
+            "Odd": QSerialPort.Parity.OddParity,
+            "Mark": QSerialPort.Parity.MarkParity,
+            "Space": QSerialPort.Parity.SpaceParity,
+        }
+        STOPBITS_MAPPING = {
+            "1": QSerialPort.StopBits.OneStop,
+            "1.5": QSerialPort.StopBits.OneAndHalfStop,
+            "2": QSerialPort.StopBits.TwoStop,
+        }
+
+        def __init__(self, parent: "PortStatusWidget", port_setting: dict):
             super().__init__()
-            self.serial = None
-            self.tcp_client = None
-            self.tcp_server = None
-            self.tcp_peer = []
-            self.ethercat_master = None
+            self.parent = parent
+            # serial port setting
+            self.serial_port = QSerialPort()
+
+            self.portname = port_setting["portname"]
+            self.baudrate = port_setting["baudrate"]
+            self.databits = self.DATABITS_MAPPING.get(port_setting["databits"])
+            self.parity = self.PARITY_MAPPING.get(port_setting["parity"])
+            self.stopbits = self.STOPBITS_MAPPING.get(port_setting["stopbits"])
+            self.timeout = port_setting["timeout"]
+
+            self.tx_buffer = None
+            self.tx_format = port_setting["tx_format"]
+            self.tx_suffix = port_setting["tx_suffix"]
+            self.tx_interval = port_setting["tx_interval"]
+
+            self.tx_queue = []
+            self.tx_timer = QTimer()
+            self.tx_timer.setSingleShot(True)
+            self.tx_timer.timeout.connect(self.write_trigger)
+
+            self.rx_buffer = None
+            self.rx_buffer_raw = None
+            self.rx_format = port_setting["rx_format"]
+            self.rx_size = port_setting["rx_size"]
 
             self.timer = QTimer()
+            # draw gui
+            self.port_toggle_button = QPushButton()
+            self.tx_buffer_lineedit = QLineEdit()
+            self.rx_buffer_lineedit = QLineEdit()
+            self.gui()
 
-            self.parent = parent
-
-        def run(self):
+        def open(self) -> None:
             try:
-                if shared.serial_setting["port"] == "TCP client":
-                    self.tcp_client = QTcpSocket()
-                    self.tcp_client.connectToHost(shared.serial_setting["remoteipv4"], int(shared.serial_setting["remoteport"]))
-                    shared.serial_log_widget.log_insert("connecting to server\n"
-                                                        f"---------------------------------------------------------------\n"
-                                                        f"|{'tcp client mode':^61}|\n"
-                                                        f"---------------------------------------------------------------\n"
-                                                        f"""|{'remote ipv4':^30}|{f'{shared.serial_setting["remoteipv4"]}:{shared.serial_setting["remoteport"]}':^30}|\n"""
-                                                        f"""|{'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
-                                                        f"---------------------------------------------------------------",
-                                                        "info")
-                    self.tcp_client.connected.connect(self.tcp_client_find_server)
-                elif shared.serial_setting["port"] == "TCP server":
-                    self.tcp_server = QTcpServer()
-                    self.tcp_server.listen(QHostAddress(shared.serial_setting["localipv4"]), int(shared.serial_setting["localport"]))
-                    shared.serial_log_widget.log_insert("listening for client\n"
-                                                        f"---------------------------------------------------------------\n"
-                                                        f"|{'tcp server mode':^61}|\n"
-                                                        f"---------------------------------------------------------------\n"
-                                                        f"""|{'local ipv4':^30}|{f'{shared.serial_setting["localipv4"]}:{shared.serial_setting["localport"]}':^30}|\n"""
-                                                        f"""|{'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
-                                                        f"---------------------------------------------------------------",
-                                                        "info")
-                    self.tcp_server.newConnection.connect(self.tcp_server_find_peer)
-                # elif shared.serial_setting["port"] == "EtherCAT master":
-                #     self.ethercat_master = pysoem.Master()
-                #     self.ethercat_master.open(shared.serial_setting["masteradapter"])
-                #     try:
-                #         # scan slaves
-                #         # slave enter pre op mode
-                #         num = self.ethercat_master.config_init()
-                #         print(f"{num} slave(s) detected")
-                #         slave = self.ethercat_master.slaves[0]
-                #         print('using slave 0')
-                #         # master enter pre op mode
-                #         self.ethercat_master.state = pysoem.PREOP_STATE
-                #         self.ethercat_master.write_state()
-                #         if self.ethercat_master.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
-                #             print("master is in preop state")
-                #         else:
-                #             print("master is not in preop state")
-                #         if slave.state_check(pysoem.PREOP_STATE, 50000) == pysoem.PREOP_STATE:
-                #             print("slave is in preop state")
-                #         else:
-                #             print("slave is not in preop state")
-                #
-                #         size = self.ethercat_master.config_map()
-                #         print(size)
-                #
-                #         self.ethercat_master.state = pysoem.SAFEOP_STATE
-                #         self.ethercat_master.write_state()
-                #         if self.ethercat_master.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
-                #             print("master is in safeop state")
-                #         else:
-                #             print("master is not in safeop state")
-                #         if slave.state_check(pysoem.SAFEOP_STATE, 50000) == pysoem.SAFEOP_STATE:
-                #             print("slave is in safeop state")
-                #         else:
-                #             print("slave is not in safeop state")
-                #         print(pysoem.al_status_code_to_string(slave.al_status))
-                #
-                #         if self.ethercat_master.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
-                #             print("master is in op state")
-                #         else:
-                #             print("master is not in op state")
-                #         if slave.state_check(pysoem.OP_STATE, 50000) == pysoem.OP_STATE:
-                #             print("slave is in op state")
-                #         else:
-                #             print("slave is not in op state")
-                #         print(pysoem.al_status_code_to_string(slave.al_status))
-                #
-                #     except Exception as e:
-                #         print(f'Error: {e}')
-                elif shared.serial_setting["port"] == "":
-                    shared.serial_log_widget.log_insert("serial port is not configured", "warning")
-                    self.parent.serial_toggle_button.setChecked(False)
-                else:
-                    self.serial = QSerialPort()
-                    self.serial.setPortName(shared.serial_setting["port"])
-                    self.serial.setBaudRate(int(shared.serial_setting["baudrate"]))
-                    databits_mapping = {
-                        "5": QSerialPort.DataBits.Data5,
-                        "6": QSerialPort.DataBits.Data6,
-                        "7": QSerialPort.DataBits.Data7,
-                        "8": QSerialPort.DataBits.Data8,
-                    }
-                    self.serial.setDataBits(databits_mapping.get(shared.serial_setting["databits"]))
-                    parity_mapping = {
-                        "None": QSerialPort.Parity.NoParity,
-                        "Even": QSerialPort.Parity.EvenParity,
-                        "Odd": QSerialPort.Parity.OddParity,
-                        "Mark": QSerialPort.Parity.MarkParity,
-                        "Space": QSerialPort.Parity.SpaceParity,
-                    }
-                    self.serial.setParity(parity_mapping.get(shared.serial_setting["parity"]))
-                    stopbits_mapping = {
-                        "1": QSerialPort.StopBits.OneStop,
-                        "1.5": QSerialPort.StopBits.OneAndHalfStop,
-                        "2": QSerialPort.StopBits.TwoStop,
-                    }
-                    self.serial.setStopBits(stopbits_mapping.get(shared.serial_setting["stopbits"]))
-                    self.serial.setFlowControl(QSerialPort.FlowControl.NoFlowControl)
-                    self.serial.open(QIODevice.OpenModeFlag.ReadWrite)
-                    self.serial_error_handler()
-                    self.serial.errorOccurred.connect(self.serial_error_handler)
-                    self.serial.readyRead.connect(lambda: self.read_timer(self.serial))
-                    shared.serial_log_widget.log_insert("serial opened\n"
-                                                        f"---------------------------------------------------------------\n"
-                                                        f"|{'com mode':^61}|\n"
-                                                        f"---------------------------------------------------------------\n"
-                                                        f"|{'port':^30}|{shared.serial_setting['port']:^30}|\n"
-                                                        f"|{'baudrate':^30}|{shared.serial_setting['baudrate']:^30}|\n"
-                                                        f"|{'databits':^30}|{shared.serial_setting['databits']:^30}|\n"
-                                                        f"|{'parity':^30}|{shared.serial_setting['parity']:^30}|\n"
-                                                        f"|{'stopbits':^30}|{shared.serial_setting['stopbits']:^30}|\n"
-                                                        f"""|{'timeout':^30}|{f'{shared.serial_setting["timeout"]}ms':^30}|\n"""
-                                                        f"---------------------------------------------------------------",
-                                                        "info")
+                self.serial_port.setPortName(self.portname)
+                self.serial_port.setBaudRate(self.baudrate)
+                self.serial_port.setDataBits(self.databits)
+                self.serial_port.setParity(self.parity)
+                self.serial_port.setStopBits(self.stopbits)
+                self.serial_port.setFlowControl(QSerialPort.FlowControl.NoFlowControl)
+                self.serial_port.open(QIODevice.OpenModeFlag.ReadWrite)
+                self.serial_error_handler()
+                self.serial_port.errorOccurred.connect(self.serial_error_handler)
+                self.serial_port.readyRead.connect(self.read_timer)
+                shared.serial_log_widget.log_insert("\n---------------------------------------------------------------\n"
+                                                    f"|{'serial port':^61}|\n"
+                                                    "---------------------------------------------------------------\n"
+                                                    f"|{'portname':^30}|{self.portname:^30}|\n"
+                                                    f"|{'baudrate':^30}|{self.baudrate:^30}|\n"
+                                                    f"|{'databits':^30}|{self.databits:^30}|\n"
+                                                    f"|{'parity':^30}|{self.parity:^30}|\n"
+                                                    f"|{'stopbits':^30}|{self.stopbits:^30}|\n"
+                                                    f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                    f"---------------------------------------------------------------",
+                                                    "info")
             except Exception as e:
                 shared.serial_log_widget.log_insert(f"{e}", "error")
 
+        def close(self) -> None:
+            try:
+                if self.serial_port.isOpen():
+                    self.serial_port.close()
+                    shared.serial_log_widget.log_insert("serial closed", "info")
+            except AttributeError:
+                shared.serial_log_widget.log_insert("serial close failed", "error")
+
         def serial_error_handler(self):
-            if self.serial.error() == QSerialPort.SerialPortError.NoError:
+            if self.serial_port.error() == QSerialPort.SerialPortError.NoError:
                 return
-            elif self.serial.error() == QSerialPort.SerialPortError.PermissionError:
-                self.parent.serial_toggle_button.setChecked(False)
+            elif self.serial_port.error() == QSerialPort.SerialPortError.PermissionError:
+                self.port_toggle_button.setChecked(False)
                 raise Exception("serial error: serial port is occupied")
-            elif self.serial.error() == QSerialPort.SerialPortError.DeviceNotFoundError:
-                self.parent.serial_toggle_button.setChecked(False)
+            elif self.serial_port.error() == QSerialPort.SerialPortError.DeviceNotFoundError:
+                self.port_toggle_button.setChecked(False)
                 raise Exception("serial error: device not found")
-            elif self.serial.error() == QSerialPort.SerialPortError.ResourceError:
-                self.parent.serial_toggle_button.setChecked(False)
+            elif self.serial_port.error() == QSerialPort.SerialPortError.ResourceError:
+                self.port_toggle_button.setChecked(False)
                 shared.serial_log_widget.log_insert("serial error: device disconnected", "error")
             else:
-                self.parent.serial_toggle_button.setChecked(False)
+                self.port_toggle_button.setChecked(False)
                 raise Exception("serial error: unknown error, please report")
 
-        def tcp_client_find_server(self):
-            self.tcp_client.readyRead.connect(lambda: self.read_timer(self.tcp_client))
-            self.tcp_client.disconnected.connect(self.tcp_client_lost_server)
-            self.parent.link_icon.setPixmap(QIcon("icon:link.svg").pixmap(20, 20))
-            self.parent.local_lineedit.setText(f"{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}")
+        def write(self, message: str) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+
+            # message strip
+            message = message.strip()
+            # suffix generate
+            if self.tx_suffix == "crlf":
+                suffix = f"0d0a"
+            elif self.tx_suffix == "crc8 maxim":
+                try:
+                    suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
+                except:
+                    suffix = "NULL"
+            elif self.tx_suffix == "crc16 modbus":
+                try:
+                    suffix = f"{crc16_modbus(bytes.fromhex(message)):04X}"
+                except:
+                    suffix = "NULL"
+            else:  # self.tx_suffix == none
+                suffix = ""
+            message += suffix
+            # message reformat
+            if self.tx_format == "hex":
+                message = bytes.fromhex(message)
+            elif self.tx_format == "ascii":
+                message = message.encode("ascii")
+            else:  # self.tx_format == "utf-8"
+                message = message.encode("utf-8")
+            self.tx_queue.append(message)
+            if not self.tx_timer.isActive():
+                self.write_trigger()
+
+        def write_trigger(self):
+            if self.tx_queue:
+                message = self.tx_queue.pop(0)
+            else:
+                return
+            # write message to serial
+            self.serial_port.write(message)
+            # start timer
+            self.tx_timer.start(self.tx_interval)
+            # save message to self.tx_buffer
+            if self.tx_format == "hex":
+                self.tx_buffer = message.hex().upper()
+            elif self.tx_format == "ascii":
+                try:
+                    # raw to ascii
+                    self.tx_buffer = message.decode("ascii")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            else:  # self.tx_format == "utf-8":
+                try:
+                    # raw to utf-8
+                    self.tx_buffer = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            # change tx buffer lineedit
+            self.tx_buffer_lineedit.setText(self.tx_buffer)
+            # append log
+            if self.tx_format == "hex":
+                message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                if "crc16" in self.tx_suffix:
+                    message_data = message[:-5]
+                    message_suffix = message[-5:]
+                else:  # none/"\r\n"
+                    message_data = message
+                    message_suffix = ""
+            else:
+                message_data = self.tx_buffer
+                message_suffix = ""
+            shared.serial_log_widget.log_insert(f"[{self.portname}]-&gt; {message_data}<span style='color:orange;'>{message_suffix}</span>", "send")
+
+        def read_timer(self) -> None:
+            self.timer.setSingleShot(True)
+            self.timer.timeout.connect(self.read)
+            self.timer.start(self.timeout)
+
+        def read(self):
+            if self.rx_size == 0:
+                rx_message = self.serial_port.readAll().data()
+                self.rx_buffer_raw = rx_message
+                if rx_message:
+                    # save message to self.rx_buffer
+                    if self.rx_format == "hex":
+                        self.rx_buffer = rx_message.hex().upper()
+                    elif self.rx_format == "ascii":
+                        try:
+                            # raw to ascii
+                            self.rx_buffer = rx_message.decode("ascii")
+                        except UnicodeDecodeError:
+                            self.rx_buffer = rx_message.hex().upper()
+                    else:  # self.rx_format == "utf-8":
+                        try:
+                            # raw to utf-8
+                            self.rx_buffer = rx_message.decode("utf-8")
+                        except UnicodeDecodeError:
+                            self.rx_buffer = rx_message.hex().upper()
+                    # change rx buffer lineedit
+                    self.rx_buffer_lineedit.setText(self.rx_buffer)
+                    # append log
+                    if self.rx_format == "hex":
+                        message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                        if "crc16" in self.tx_suffix:
+                            message_data = message[:-5]
+                            message_suffix = message[-5:]
+                        else:  # none/"\r\n"
+                            message_data = message
+                            message_suffix = ""
+                    else:
+                        message_data = self.rx_buffer
+                        message_suffix = ""
+                    shared.serial_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
+            else:
+                while self.serial_port.bytesAvailable() >= self.rx_size:
+                    rx_message = self.serial_port.read(self.rx_size).data()
+                    shared.rx_buffer_raw = rx_message
+                    if rx_message:
+                        # save message to self.rx_buffer
+                        if self.rx_format == "hex":
+                            self.rx_buffer = rx_message.hex().upper()
+                        elif self.rx_format == "ascii":
+                            try:
+                                # raw to ascii
+                                self.rx_buffer = rx_message.decode("ascii")
+                            except UnicodeDecodeError:
+                                self.rx_buffer = rx_message.hex().upper()
+                        else:  # shared.io_setting["rx_format"] == "utf-8":
+                            try:
+                                # raw to utf-8
+                                self.rx_buffer = rx_message.decode("utf-8")
+                            except UnicodeDecodeError:
+                                self.rx_buffer = rx_message.hex().upper()
+                        # change rx buffer lineedit
+                        shared.port_status_widget.rx_buffer_lineedit.setText(self.rx_buffer)
+                        # append log
+                        if self.rx_format == "hex":
+                            message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                            if "crc16" in self.tx_suffix:
+                                message_data = message[:-5]
+                                message_suffix = message[-5:]
+                            else:  # none/"\r\n"
+                                message_data = message
+                                message_suffix = ""
+                        else:
+                            message_data = self.rx_buffer
+                            message_suffix = ""
+                        shared.serial_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
+                self.serial_port.readAll()
+
+        def gui(self):
+            port_layout = QHBoxLayout(self)
+            port_layout.setContentsMargins(0, 10, 0, 0)
+            # port status
+            status_widget = QWidget()
+            port_layout.addWidget(status_widget)
+            status_layout = QVBoxLayout(status_widget)
+            status_layout.setContentsMargins(0, 0, 0, 0)
+            # setting widget
+            setting_widget = QWidget()
+            status_layout.addWidget(setting_widget)
+            setting_layout = QHBoxLayout(setting_widget)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            port_label = QLabel("port info")
+            setting_layout.addWidget(port_label)
+            port_lineedit = QLineEdit()
+            port_lineedit.setFixedWidth(168)
+            port_lineedit.setReadOnly(True)
+            port_lineedit.setText(self.portname)
+            setting_layout.addWidget(port_lineedit)
+            setting_button = QPushButton()
+            setting_button.setFixedWidth(26)
+            setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
+            setting_layout.addWidget(setting_button)
+            # tx buffer widget
+            tx_buffer_widget = QWidget()
+            status_layout.addWidget(tx_buffer_widget)
+            tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
+            tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            tx_buffer_label = QLabel("tx buffer")
+            tx_buffer_layout.addWidget(tx_buffer_label)
+            self.tx_buffer_lineedit.setFixedWidth(200)
+            tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
+            # rx buffer widget
+            rx_buffer_widget = QWidget()
+            status_layout.addWidget(rx_buffer_widget)
+            rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
+            rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            rx_buffer_label = QLabel("rx buffer")
+            rx_buffer_layout.addWidget(rx_buffer_label)
+            self.rx_buffer_lineedit.setFixedWidth(200)
+            rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
+
+            # stretch
+            port_layout.addStretch()
+
+            # port toggle button
+            def port_toggle(on: bool) -> None:
+                if on:
+                    self.open()
+                else:
+                    self.close()
+
+            self.port_toggle_button.setIcon(QIcon("icon:power.svg"))
+            self.port_toggle_button.setIconSize(QSize(80, 80))
+            self.port_toggle_button.setCheckable(True)
+            self.port_toggle_button.toggled.connect(port_toggle)
+            port_layout.addWidget(self.port_toggle_button)
+
+    class TcpClientTab(QWidget):
+        def __init__(self, parent: "PortStatusWidget", port_setting: dict):
+            super().__init__()
+            self.parent = parent
+            # tcp client setting
+            self.tcp_client = QTcpSocket()
+
+            self.portname = port_setting["portname"]
+            self.remoteipv4 = port_setting["remoteipv4"]
+            self.remoteport = int(port_setting["remoteport"])
+            self.timeout = port_setting["timeout"]
+
+            self.tx_buffer = None
+            self.tx_format = port_setting["tx_format"]
+            self.tx_suffix = port_setting["tx_suffix"]
+            self.tx_interval = port_setting["tx_interval"]
+
+            self.tx_queue = []
+            self.tx_timer = QTimer()
+            self.tx_timer.setSingleShot(True)
+            self.tx_timer.timeout.connect(self.write_trigger)
+
+            self.rx_buffer = None
+            self.rx_buffer_raw = None
+            self.rx_format = port_setting["rx_format"]
+            self.rx_size = port_setting["rx_size"]
+
+            self.timer = QTimer()
+            # draw gui
+            self.port_toggle_button = QPushButton()
+            self.port_lineedit = QLineEdit()
+            self.tx_buffer_lineedit = QLineEdit()
+            self.rx_buffer_lineedit = QLineEdit()
+            self.gui()
+
+        def open(self) -> None:
+            try:
+                self.tcp_client.connectToHost(self.remoteipv4, self.remoteport)
+                shared.serial_log_widget.log_insert("connecting to server\n"
+                                                    "---------------------------------------------------------------\n"
+                                                    f"|{'tcp client':^61}|\n"
+                                                    "---------------------------------------------------------------\n"
+                                                    f"""|{'remote ipv4':^30}|{f'{self.remoteipv4}:{self.remoteport}':^30}|\n"""
+                                                    f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                    "---------------------------------------------------------------",
+                                                    "info")
+                self.tcp_client.connected.connect(self.find_server)
+            except Exception as e:
+                shared.serial_log_widget.log_insert(f"{e}", "error")
+
+        def close(self) -> None:
+            try:
+                self.tcp_client.disconnectFromHost()
+                self.tcp_client.connected.disconnect(self.find_server)
+                shared.serial_log_widget.log_insert(f"disconnected from server", "info")
+            except AttributeError:
+                shared.serial_log_widget.log_insert("tcp client close failed", "error")
+
+        def find_server(self):
+            self.tcp_client.readyRead.connect(self.read_timer)
+            self.tcp_client.disconnected.connect(self.lost_server)
+            self.port_lineedit.setText(f"{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}")
             shared.serial_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
                                                 f"---------------------------------------------------------------",
                                                 "info")
 
-        def tcp_client_lost_server(self):
-            self.parent.link_icon.setPixmap(QIcon("icon:link_dismiss.svg").pixmap(20, 20))
-            self.parent.local_lineedit.setText("Connecting...")
+        def lost_server(self):
+            self.port_lineedit.setText("connecting to server...")
             shared.serial_log_widget.log_insert("connection lost\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
                                                 f"---------------------------------------------------------------",
                                                 "info")
 
-        def tcp_server_find_peer(self):
+        def write(self, message: str) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+
+            # message strip
+            message = message.strip()
+            # suffix generate
+            if self.tx_suffix == "crlf":
+                suffix = f"0d0a"
+            elif self.tx_suffix == "crc8 maxim":
+                try:
+                    suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
+                except:
+                    suffix = "NULL"
+            elif self.tx_suffix == "crc16 modbus":
+                try:
+                    suffix = f"{crc16_modbus(bytes.fromhex(message)):04X}"
+                except:
+                    suffix = "NULL"
+            else:  # self.tx_suffix == none
+                suffix = ""
+            message += suffix
+            # message reformat
+            if self.tx_format == "hex":
+                message = bytes.fromhex(message)
+            elif self.tx_format == "ascii":
+                message = message.encode("ascii")
+            else:  # self.tx_format == "utf-8"
+                message = message.encode("utf-8")
+            self.tx_queue.append(message)
+            if not self.tx_timer.isActive():
+                self.write_trigger()
+
+        def write_trigger(self):
+            if self.tx_queue:
+                message = self.tx_queue.pop(0)
+            else:
+                return
+            # write message to serial
+            self.tcp_client.write(message)
+            # start timer
+            self.tx_timer.start(self.tx_interval)
+            # save message to self.tx_buffer
+            if self.tx_format == "hex":
+                self.tx_buffer = message.hex().upper()
+            elif self.tx_format == "ascii":
+                try:
+                    # raw to ascii
+                    self.tx_buffer = message.decode("ascii")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            else:  # self.tx_format == "utf-8":
+                try:
+                    # raw to utf-8
+                    self.tx_buffer = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            # change tx buffer lineedit
+            self.tx_buffer_lineedit.setText(self.tx_buffer)
+            # append log
+            if self.tx_format == "hex":
+                message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                if "crc16" in self.tx_suffix:
+                    message_data = message[:-5]
+                    message_suffix = message[-5:]
+                else:  # none/"\r\n"
+                    message_data = message
+                    message_suffix = ""
+            else:
+                message_data = self.tx_buffer
+                message_suffix = ""
+            shared.serial_log_widget.log_insert(
+                f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]-&gt;[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                "send")
+
+        def read_timer(self) -> None:
+            self.timer.setSingleShot(True)
+            self.timer.timeout.connect(self.read)
+            self.timer.start(self.timeout)
+
+        def read(self):
+            if self.rx_size == 0:
+                rx_message = self.tcp_client.readAll().data()
+                self.rx_buffer_raw = rx_message
+                if rx_message:
+                    # save message to shared.rx_buffer
+                    if self.rx_format == "hex":
+                        self.rx_buffer = rx_message.hex().upper()
+                    elif self.rx_format == "ascii":
+                        try:
+                            # raw to ascii
+                            self.rx_buffer = rx_message.decode("ascii")
+                        except UnicodeDecodeError:
+                            self.rx_buffer = rx_message.hex().upper()
+                    else:  # self.rx_format == "utf-8":
+                        try:
+                            # raw to utf-8
+                            self.rx_buffer = rx_message.decode("utf-8")
+                        except UnicodeDecodeError:
+                            self.rx_buffer = rx_message.hex().upper()
+                    # change rx buffer lineedit
+                    self.rx_buffer_lineedit.setText(self.rx_buffer)
+                    # append log
+                    if self.rx_format == "hex":
+                        message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                        if "crc16" in self.tx_suffix:
+                            message_data = message[:-5]
+                            message_suffix = message[-5:]
+                        else:  # none/"\r\n"
+                            message_data = message
+                            message_suffix = ""
+                    else:
+                        message_data = self.rx_buffer
+                        message_suffix = ""
+                    shared.serial_log_widget.log_insert(
+                        f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]&lt;-[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                        "receive")
+            else:
+                while self.tcp_client.bytesAvailable() >= self.rx_size:
+                    rx_message = self.tcp_client.read(self.rx_size).data()
+                    self.rx_buffer_raw = rx_message
+                    if rx_message:
+                        # save message to shared.rx_buffer
+                        if self.rx_format == "hex":
+                            shared.rx_buffer = rx_message.hex().upper()
+                        elif self.rx_format == "ascii":
+                            try:
+                                # raw to ascii
+                                self.rx_buffer = rx_message.decode("ascii")
+                            except UnicodeDecodeError:
+                                self.rx_buffer = rx_message.hex().upper()
+                        else:  # shared.io_setting["rx_format"] == "utf-8":
+                            try:
+                                # raw to utf-8
+                                self.rx_buffer = rx_message.decode("utf-8")
+                            except UnicodeDecodeError:
+                                self.rx_buffer = rx_message.hex().upper()
+                        # change rx buffer lineedit
+                        shared.port_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        # append log
+                        if self.rx_format == "hex":
+                            message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                            if "crc16" in self.tx_suffix:
+                                message_data = message[:-5]
+                                message_suffix = message[-5:]
+                            else:  # none/"\r\n"
+                                message_data = message
+                                message_suffix = ""
+                        else:
+                            message_data = self.rx_buffer
+                            message_suffix = ""
+                        shared.serial_log_widget.log_insert(
+                            f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]&lt;-[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                            "receive")
+            self.tcp_client.readAll()
+
+        def gui(self):
+            port_layout = QHBoxLayout(self)
+            port_layout.setContentsMargins(0, 10, 0, 0)
+            # port status
+            status_widget = QWidget()
+            port_layout.addWidget(status_widget)
+            status_layout = QVBoxLayout(status_widget)
+            status_layout.setContentsMargins(0, 0, 0, 0)
+
+            # setting widget
+            setting_widget = QWidget()
+            status_layout.addWidget(setting_widget)
+            setting_layout = QHBoxLayout(setting_widget)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            port_label = QLabel("port info")
+            setting_layout.addWidget(port_label)
+            self.port_lineedit.setFixedWidth(168)
+            setting_layout.addWidget(self.port_lineedit)
+            setting_button = QPushButton()
+            setting_button.setFixedWidth(26)
+            setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
+            setting_layout.addWidget(setting_button)
+            # tx buffer widget
+            tx_buffer_widget = QWidget()
+            status_layout.addWidget(tx_buffer_widget)
+            tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
+            tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            tx_buffer_label = QLabel("tx buffer")
+            tx_buffer_layout.addWidget(tx_buffer_label)
+            self.tx_buffer_lineedit.setFixedWidth(200)
+            tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
+            # rx buffer widget
+            rx_buffer_widget = QWidget()
+            status_layout.addWidget(rx_buffer_widget)
+            rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
+            rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            rx_buffer_label = QLabel("rx buffer")
+            rx_buffer_layout.addWidget(rx_buffer_label)
+            self.rx_buffer_lineedit.setFixedWidth(200)
+            rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
+
+            # stretch
+            port_layout.addStretch()
+
+            # port toggle button
+            def port_toggle(on: bool) -> None:
+                if on:
+                    self.open()
+                else:
+                    self.close()
+
+            self.port_toggle_button.setIcon(QIcon("icon:power.svg"))
+            self.port_toggle_button.setIconSize(QSize(80, 80))
+            self.port_toggle_button.setCheckable(True)
+            self.port_toggle_button.toggled.connect(port_toggle)
+            port_layout.addWidget(self.port_toggle_button)
+
+    class TcpServerTab(QWidget):
+        def __init__(self, parent: "PortStatusWidget", port_setting: dict):
+            super().__init__()
+            self.parent = parent
+            # tcp client setting
+            self.tcp_server = QTcpServer()
+            self.tcp_peer = []
+
+            self.portname = port_setting["portname"]
+            self.localipv4 = port_setting["localipv4"]
+            self.localport = int(port_setting["localport"])
+            self.timeout = port_setting["timeout"]
+
+            self.tx_buffer = None
+            self.tx_format = port_setting["tx_format"]
+            self.tx_suffix = port_setting["tx_suffix"]
+            self.tx_interval = port_setting["tx_interval"]
+
+            self.tx_queue = []
+            self.tx_timer = QTimer()
+            self.tx_timer.setSingleShot(True)
+            self.tx_timer.timeout.connect(self.write_trigger)
+
+            self.rx_buffer = None
+            self.rx_buffer_raw = None
+            self.rx_format = port_setting["rx_format"]
+            self.rx_size = port_setting["rx_size"]
+
+            self.timer = QTimer()
+            # draw gui
+            self.port_toggle_button = QPushButton()
+            self.peer_combobox = QComboBox()
+            self.tx_buffer_lineedit = QLineEdit()
+            self.rx_buffer_lineedit = QLineEdit()
+            self.gui()
+
+        def open(self) -> None:
+            try:
+                self.tcp_server.listen(QHostAddress(self.localipv4), self.localport)
+                shared.serial_log_widget.log_insert("listening for client\n"
+                                                    f"---------------------------------------------------------------\n"
+                                                    f"|{'tcp server':^61}|\n"
+                                                    f"---------------------------------------------------------------\n"
+                                                    f"""|{'local ipv4':^30}|{f'{self.localipv4}:{self.localport}':^30}|\n"""
+                                                    f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                    f"---------------------------------------------------------------",
+                                                    "info")
+                self.tcp_server.newConnection.connect(self.find_peer)
+            except Exception as e:
+                shared.serial_log_widget.log_insert(f"{e}", "error")
+
+        def close(self) -> None:
+            try:
+                self.tcp_server.close()
+                shared.serial_log_widget.log_insert("server stopped listening", "info")
+                for peer in self.tcp_server.findChildren(QTcpSocket):
+                    peer.disconnectFromHost()
+                shared.serial_log_widget.log_insert("all client disconnected", "info")
+            except AttributeError:
+                shared.serial_log_widget.log_insert("tcp client close failed", "error")
+
+        def find_peer(self):
             peer = self.tcp_server.nextPendingConnection()
             if self.tcp_peer:
                 peer_list = ("\n".join(f"|{'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|" for peer in self.tcp_peer)
@@ -232,8 +727,8 @@ class IOStatusWidget(QWidget):
                 peer_list = f"|{'remote ipv4 (new)':^30}|<b>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</b>|\n"
             self.tcp_peer.append(peer)
             peer.readyRead.connect(lambda: self.read_timer(peer))
-            peer.disconnected.connect(lambda: self.tcp_server_lost_peer(peer))
-            self.server_refresh()
+            peer.disconnected.connect(lambda: self.lost_peer(peer))
+            self.peer_refresh()
             shared.serial_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{'client list':^61}|\n"
@@ -241,14 +736,14 @@ class IOStatusWidget(QWidget):
                                                 f"{peer_list}"
                                                 f"---------------------------------------------------------------", "info")
 
-        def tcp_server_lost_peer(self, peer):
+        def lost_peer(self, peer):
             self.tcp_peer.remove(peer)
             if self.tcp_peer:
                 peer_list = ("\n".join(f"|{'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|" for peer in self.tcp_peer)
                              + f"\n|{'remote ipv4 (lost)':^30}|<s>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</s>|\n")
             else:
                 peer_list = f"|{'remote ipv4 (lost)':^30}|<s>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</s>|\n"
-            self.server_refresh()
+            self.peer_refresh()
             shared.serial_log_widget.log_insert("connection lost\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{'client list':^61}|\n"
@@ -256,406 +751,792 @@ class IOStatusWidget(QWidget):
                                                 f"{peer_list}"
                                                 f"---------------------------------------------------------------", "info")
 
-        # def client_refresh(self):
-
-        def server_refresh(self):
+        def peer_refresh(self):
+            self.peer_combobox.clear()
             if len(self.tcp_peer) == 0:
-                self.parent.link_icon.setPixmap(QIcon("icon:link_dismiss.svg").pixmap(20, 20))
-                self.parent.remote_combobox.clear()
-                self.parent.remote_combobox.addItem("Listening...", "none")
+                self.peer_combobox.addItem("Listening...", "none")
             elif len(self.tcp_peer) == 1:
-                self.parent.link_icon.setPixmap(QIcon("icon:link.svg").pixmap(20, 20))
-                self.parent.remote_combobox.clear()
                 for peer in self.tcp_peer:
-                    self.parent.remote_combobox.addItem(f"{peer.peerAddress().toString()}:{peer.peerPort()}", peer)
+                    self.peer_combobox.addItem(f"{peer.peerAddress().toString()}:{peer.peerPort()}", peer)
             else:
-                self.parent.link_icon.setPixmap(QIcon("icon:link.svg").pixmap(20, 20))
-                self.parent.remote_combobox.clear()
-                self.parent.remote_combobox.addItem(f"Active Connections {len(self.tcp_peer)}", "broadcast")
+                self.peer_combobox.addItem(f"Active Connections {len(self.tcp_peer)}", "broadcast")
                 for peer in self.tcp_peer:
-                    self.parent.remote_combobox.addItem(f"{peer.peerAddress().toString()}:{peer.peerPort()}", peer)
+                    self.peer_combobox.addItem(f"{peer.peerAddress().toString()}:{peer.peerPort()}", peer)
 
-        def read_timer(self, device):
+        def write(self, message: str) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+
+            # message strip
+            message = message.strip()
+            # suffix generate
+            if self.tx_suffix == "crlf":
+                suffix = f"0d0a"
+            elif self.tx_suffix == "crc8 maxim":
+                try:
+                    suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
+                except:
+                    suffix = "NULL"
+            elif self.tx_suffix == "crc16 modbus":
+                try:
+                    suffix = f"{crc16_modbus(bytes.fromhex(message)):04X}"
+                except:
+                    suffix = "NULL"
+            else:  # self.tx_suffix == none
+                suffix = ""
+            message += suffix
+            # message reformat
+            if self.tx_format == "hex":
+                message = bytes.fromhex(message)
+            elif self.tx_format == "ascii":
+                message = message.encode("ascii")
+            else:  # self.tx_format == "utf-8"
+                message = message.encode("utf-8")
+            self.tx_queue.append(message)
+            if not self.tx_timer.isActive():
+                self.write_trigger()
+
+        def write_trigger(self):
+            if self.tx_queue:
+                message = self.tx_queue.pop(0)
+            else:
+                return
+            # write message to peer
+            if self.peer_combobox.currentData() == "broadcast":
+                for peer in self.tcp_peer:
+                    peer.write(message)
+                # start timer
+                self.tx_timer.start(self.tx_interval)
+                # save message to shared.tx_buffer
+                if self.tx_format == "hex":
+                    self.tx_buffer = message.hex().upper()
+                elif self.tx_format == "ascii":
+                    try:
+                        # raw to ascii
+                        self.tx_buffer = message.decode("ascii")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                else:  # self.tx_format == "utf-8":
+                    try:
+                        # raw to utf-8
+                        self.tx_buffer = message.decode("utf-8")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                # change tx buffer lineedit
+                self.tx_buffer_lineedit.setText(self.tx_buffer)
+                # append log
+                if self.tx_format == "hex":
+                    message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                    if "crc16" in self.tx_suffix:
+                        message_data = message[:-5]
+                        message_suffix = message[-5:]
+                    else:  # none/"\r\n"
+                        message_data = message
+                        message_suffix = ""
+                else:
+                    message_data = self.tx_buffer
+                    message_suffix = ""
+                shared.serial_log_widget.log_insert(
+                    f"[{self.localipv4}:{self.localport}]-&gt;[broadcast] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                    "send")
+            else:
+                peer = self.peer_combobox.currentData()
+                peer.write(message)
+                # start timer
+                self.tx_timer.start(self.tx_interval)
+                # save message to shared.tx_buffer
+                if self.tx_format == "hex":
+                    self.tx_buffer = message.hex().upper()
+                elif self.tx_format == "ascii":
+                    try:
+                        # raw to ascii
+                        self.tx_buffer = message.decode("ascii")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                else:  # self.tx_format == "utf-8":
+                    try:
+                        # raw to utf-8
+                        self.tx_buffer = message.decode("utf-8")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                # change tx buffer lineedit
+                self.tx_buffer_lineedit.setText(self.tx_buffer)
+                # append log
+                if self.tx_format == "hex":
+                    message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                    if "crc16" in self.tx_suffix:
+                        message_data = message[:-5]
+                        message_suffix = message[-5:]
+                    else:  # none/"\r\n"
+                        message_data = message
+                        message_suffix = ""
+                else:
+                    message_data = self.tx_buffer
+                    message_suffix = ""
+                shared.serial_log_widget.log_insert(
+                    f"[{self.localipv4}:{self.localport}]-&gt;[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                    "send")
+
+        def read_timer(self, peer) -> None:
             self.timer.setSingleShot(True)
-            self.timer.timeout.connect(lambda: self.read(device))
-            self.timer.start(int(shared.serial_setting["timeout"]))
+            self.timer.timeout.connect(lambda: self.read(peer))
+            self.timer.start(self.timeout)
 
-        def read(self, device):
-            buffer_size = shared.io_setting["rx_size"]
-            if buffer_size == 0:
-                rx_message = device.readAll().data().strip()
-                shared.rx_buffer_raw = rx_message
+        def read(self, peer):
+            if self.rx_size == 0:
+                rx_message = peer.readAll().data()
+                self.rx_buffer_raw = rx_message
                 if rx_message:
                     # save message to shared.rx_buffer
-                    if shared.io_setting["rx_format"] == "hex":
-                        shared.rx_buffer = rx_message.hex().upper()
-                    elif shared.io_setting["rx_format"] == "ascii":
+                    if self.rx_format == "hex":
+                        self.rx_buffer = rx_message.hex().upper()
+                    elif self.rx_format == "ascii":
                         try:
                             # raw to ascii
-                            shared.rx_buffer = rx_message.decode("ascii")
+                            self.rx_buffer = rx_message.decode("ascii")
                         except UnicodeDecodeError:
-                            shared.rx_buffer = rx_message.hex().upper()
-                    else:  # shared.io_setting["rx_format"] == "utf-8":
+                            self.rx_buffer = rx_message.hex().upper()
+                    else:  # self.rx_format == "utf-8":
                         try:
                             # raw to utf-8
-                            shared.rx_buffer = rx_message.decode("utf-8")
+                            self.rx_buffer = rx_message.decode("utf-8")
                         except UnicodeDecodeError:
-                            shared.rx_buffer = rx_message.hex().upper()
+                            self.rx_buffer = rx_message.hex().upper()
                     # change rx buffer lineedit
-                    shared.io_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                    self.rx_buffer_lineedit.setText(shared.rx_buffer)
                     # append log
-                    shared.serial_log_widget.log_insert(f"{shared.rx_buffer}", "receive")
+                    if self.rx_format == "hex":
+                        message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                        if "crc16" in self.tx_suffix:
+                            message_data = message[:-5]
+                            message_suffix = message[-5:]
+                        else:  # none/"\r\n"
+                            message_data = message
+                            message_suffix = ""
+                    else:
+                        message_data = self.rx_buffer
+                        message_suffix = ""
+                    shared.serial_log_widget.log_insert(
+                        f"[{self.localipv4}:{self.localport}]&lt;-[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                        "receive")
             else:
-                while device.bytesAvailable() >= buffer_size:
-                    rx_message = device.read(buffer_size).data().strip()
-                    shared.rx_buffer_raw = rx_message
+                while peer.bytesAvailable() >= self.rx_size:
+                    rx_message = peer.read(self.rx_size).data()
+                    self.rx_buffer_raw = rx_message
                     if rx_message:
                         # save message to shared.rx_buffer
-                        if shared.io_setting["rx_format"] == "hex":
-                            shared.rx_buffer = rx_message.hex().upper()
-                        elif shared.io_setting["rx_format"] == "ascii":
+                        if self.rx_format == "hex":
+                            self.rx_buffer = rx_message.hex().upper()
+                        elif self.rx_format == "ascii":
                             try:
                                 # raw to ascii
-                                shared.rx_buffer = rx_message.decode("ascii")
+                                self.rx_buffer = rx_message.decode("ascii")
                             except UnicodeDecodeError:
-                                shared.rx_buffer = rx_message.hex().upper()
+                                self.rx_buffer = rx_message.hex().upper()
                         else:  # shared.io_setting["rx_format"] == "utf-8":
                             try:
                                 # raw to utf-8
-                                shared.rx_buffer = rx_message.decode("utf-8")
+                                self.rx_buffer = rx_message.decode("utf-8")
                             except UnicodeDecodeError:
-                                shared.rx_buffer = rx_message.hex().upper()
+                                self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        shared.io_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        shared.port_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
                         # append log
-                        shared.serial_log_widget.log_insert(f"{shared.rx_buffer}", "receive")
-                device.readAll()
+                        if self.rx_format == "hex":
+                            message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                            if "crc16" in self.tx_suffix:
+                                message_data = message[:-5]
+                                message_suffix = message[-5:]
+                            else:  # none/"\r\n"
+                                message_data = message
+                                message_suffix = ""
+                        else:
+                            message_data = self.rx_buffer
+                            message_suffix = ""
+                        shared.serial_log_widget.log_insert(
+                            f"[{self.localipv4}:{self.localport}]&lt;-[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                            "receive")
+                peer.readAll()
 
-        def stop(self):
-            try:
-                if shared.serial_setting["port"] == "TCP client":
-                    self.tcp_client.disconnectFromHost()
-                    shared.serial_log_widget.log_insert(f"disconnected from server", "info")
-                elif shared.serial_setting["port"] == "TCP server":
-                    self.tcp_server.close()
-                    shared.serial_log_widget.log_insert("server stopped listening", "info")
-                    for peer in self.tcp_server.findChildren(QTcpSocket):
-                        peer.disconnectFromHost()
-                    shared.serial_log_widget.log_insert("all client disconnected", "info")
-                elif shared.serial_setting["port"] == "":
-                    return
-                elif shared.serial_setting["port"] == "EtherCAT master":
-                    self.ethercat_master.close()
+        def gui(self):
+            port_layout = QHBoxLayout(self)
+            port_layout.setContentsMargins(0, 10, 0, 0)
+            # port status
+            status_widget = QWidget()
+            port_layout.addWidget(status_widget)
+            status_layout = QVBoxLayout(status_widget)
+            status_layout.setContentsMargins(0, 0, 0, 0)
+
+            # setting widget
+            setting_widget = QWidget()
+            status_layout.addWidget(setting_widget)
+            setting_layout = QHBoxLayout(setting_widget)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            port_label = QLabel("port info")
+            setting_layout.addWidget(port_label)
+            self.peer_combobox.setFixedWidth(168)
+            setting_layout.addWidget(self.peer_combobox)
+            setting_button = QPushButton()
+            setting_button.setFixedWidth(26)
+            setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
+            setting_layout.addWidget(setting_button)
+            # tx buffer widget
+            tx_buffer_widget = QWidget()
+            status_layout.addWidget(tx_buffer_widget)
+            tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
+            tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            tx_buffer_label = QLabel("tx buffer")
+            tx_buffer_layout.addWidget(tx_buffer_label)
+            self.tx_buffer_lineedit.setFixedWidth(200)
+            tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
+            # rx buffer widget
+            rx_buffer_widget = QWidget()
+            status_layout.addWidget(rx_buffer_widget)
+            rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
+            rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            rx_buffer_label = QLabel("rx buffer")
+            rx_buffer_layout.addWidget(rx_buffer_label)
+            self.rx_buffer_lineedit.setFixedWidth(200)
+            rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
+
+            # stretch
+            port_layout.addStretch()
+
+            # port toggle button
+            def port_toggle(on: bool) -> None:
+                if on:
+                    self.open()
                 else:
-                    if self.serial.isOpen():
-                        self.serial.close()
-                        shared.serial_log_widget.log_insert("serial closed", "info")
-            except AttributeError:
-                shared.serial_log_widget.log_insert("serial close failed", "error")
+                    self.close()
 
-    def io_status_gui(self) -> None:
-        io_status_layout = QVBoxLayout(self)
-        io_status_layout.setContentsMargins(0, 0, 0, 0)
+            self.port_toggle_button.setIcon(QIcon("icon:power.svg"))
+            self.port_toggle_button.setIconSize(QSize(80, 80))
+            self.port_toggle_button.setCheckable(True)
+            self.port_toggle_button.toggled.connect(port_toggle)
+            port_layout.addWidget(self.port_toggle_button)
 
-        # io setting widget
-        io_setting_widget = QWidget()
-        io_status_layout.addWidget(io_setting_widget)
-        io_setting_layout = QHBoxLayout(io_setting_widget)
+    def port_status_gui(self) -> None:
+        # port status gui
+        port_status_layout = QVBoxLayout(self)
+        # port status tab widget
+        self.tab_widget.setMovable(True)
+        self.tab_widget.tabBar().tabMoved.connect(self.port_tab_move)
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.port_tab_close)
+        self.tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
+        port_status_layout.addWidget(self.tab_widget)
 
-        io_param_widget = QWidget()
-        io_setting_layout.addWidget(io_param_widget)
-        io_param_layout = QVBoxLayout(io_param_widget)
-        io_param_layout.setContentsMargins(0, 0, 0, 0)
+        # no port exists, create a welcome tab
+        if not len(shared.port_setting):
+            self.welcome_tab()
+        else:
+            self.port_status_load()
 
-        def io_control_toggle() -> None:
-            if io_control_button.isChecked():
-                io_control_button.setIcon(QIcon("icon:arrow_expand.svg"))
-                io_control_button.setToolTip("hide io settings")
-                io_control_tab.show()
+        # add button
+        add_button = QPushButton()
+        add_button.setFixedWidth(26)
+        add_button.setIcon(QIcon("icon:add.svg"))
+        add_button.clicked.connect(lambda: self.port_tab_edit(-1))
+        self.tab_widget.setCornerWidget(add_button)
+
+    def welcome_tab(self) -> None:
+        welcome_tab = QWidget()
+        self.tab_widget.addTab(welcome_tab, "welcome")
+
+    def port_status_load(self) -> None:
+        for i in range(len(shared.port_setting)):
+            port_name = shared.port_setting[i]["portname"]
+            if port_name == "tcp client":
+                port_tab = self.TcpClientTab(self, shared.port_setting[i])
+                self.tab_list.append(port_tab)
+                self.tab_widget.addTab(port_tab, port_name)
+                self.tab_widget.setTabIcon(i, QIcon("icon:desktop.svg"))
+            elif port_name == "tcp server":
+                port_tab = self.TcpServerTab(self, shared.port_setting[i])
+                self.tab_list.append(port_tab)
+                self.tab_widget.addTab(port_tab, port_name)
+                self.tab_widget.setTabIcon(i, QIcon("icon:server.svg"))
             else:
-                io_control_button.setIcon(QIcon("icon:arrow_collapse.svg"))
-                io_control_button.setToolTip("show io settings")
-                io_control_tab.hide()
+                port_tab = self.SerialPortTab(self, shared.port_setting[i])
+                self.tab_list.append(port_tab)
+                self.tab_widget.addTab(port_tab, port_name)
+                self.tab_widget.setTabIcon(i, QIcon("icon:serial_port.svg"))
 
-        # io control widget
-        io_control_widget = QWidget()
-        io_param_layout.addWidget(io_control_widget)
-        io_control_layout = QHBoxLayout(io_control_widget)
-        io_control_layout.setContentsMargins(0, 0, 0, 0)
-        io_control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        io_control_label = QLabel("io control")
-        io_control_label.setFixedWidth(80)
-        io_control_layout.addWidget(io_control_label)
-        io_control_button = QPushButton()
-        io_control_button.setFixedWidth(26)
-        io_control_button.setCheckable(True)
-        io_control_button.setIcon(QIcon("icon:arrow_collapse.svg"))
-        io_control_button.setToolTip("show advanced settings")
-        io_control_button.clicked.connect(io_control_toggle)
-        io_control_layout.addWidget(io_control_button)
+    def port_write(self, message: str, index: int) -> None:
+        # -2 broadcast
+        # -1 current port
+        # 0-n port n
+        if index == -2:
+            for i in range(self.tab_widget.count()):
+                self.tab_list[i].write(message)
+        else:
+            if index == -1:
+                index = self.tab_widget.currentIndex()
+            self.tab_list[index].write(message)
 
-        # io control tab
-        io_control_tab = QWidget()
-        io_control_tab.hide()
-        io_param_layout.addWidget(io_control_tab)
-        io_tab_layout = QVBoxLayout(io_control_tab)
-        io_tab_layout.setContentsMargins(0, 0, 0, 0)
-        io_tab_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+    def port_tab_edit(self, index: int) -> None:
+        if self.tab_widget.tabText(0) == "welcome":
+            self.tab_widget.removeTab(0)
+        port_add_window = QWidget(shared.main_window)
+        port_add_window.setWindowTitle("Add New Port")
+        port_add_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
+        port_add_window.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+        port_add_layout = QVBoxLayout(port_add_window)
+        port_add_layout.setSpacing(10)
 
-        # tx format widget
-        def tx_format_save(tx_format: str):
-            shared.io_setting["tx_format"] = tx_format
+        baudrate_lineedit = QLineEdit()
+        databits_combobox = QComboBox()
+        parity_combobox = QComboBox()
+        stopbits_combobox = QComboBox()
+        remoteipv4_lineedit = QLineEdit()
+        remoteport_lineedit = QLineEdit()
+        localipv4_combobox = QComboBox()
+        localport_lineedit = QLineEdit()
+        timeout_spinbox = QSpinBox()
 
-        tx_format_widget = QWidget()
-        io_tab_layout.addWidget(tx_format_widget)
-        tx_format_layout = QHBoxLayout(tx_format_widget)
-        tx_format_layout.setContentsMargins(0, 0, 0, 0)
-        tx_format_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        tx_format_label = QLabel("tx format")
-        tx_format_label.setFixedWidth(80)
-        tx_format_layout.addWidget(tx_format_label)
+        def port_setting_refresh(port_name: str, index: int) -> None:
+
+            def blank_gui() -> None:
+                for i in reversed(range(self.port_param_layout.count())):
+                    item = self.port_param_layout.takeAt(i)
+                    if item and item.widget():
+                        item.widget().hide()
+
+            def serial_gui() -> None:
+                blank_gui()
+
+                # baud rate entry
+                baudrate_label = QLabel(self.tr("Baud Rate"))
+                self.port_param_layout.addWidget(baudrate_label, 0, 0)
+                baudrate_lineedit.show()
+                baudrate_lineedit.setValidator(QIntValidator(0, 10000000))
+                if index == -1:
+                    baudrate_lineedit.setText("115200")
+                else:
+                    baudrate_lineedit.setText(str(shared.port_setting[index]["baudrate"]))
+                baudrate_lineedit.setToolTip(self.tr("Set the communication speed in bits per second(bps).\n"
+                                                     "Must match with the connected device's baud rate."))
+                self.port_param_layout.addWidget(baudrate_lineedit, 0, 1)
+                # data bits selection
+                databits_label = QLabel(self.tr("Data Bits"))
+                self.port_param_layout.addWidget(databits_label, 1, 0)
+                databits_combobox.show()
+                databits_combobox.addItems(["5", "6", "7", "8"])
+                if index == -1:
+                    databits_combobox.setCurrentText("8")
+                else:
+                    databits_combobox.setCurrentText(shared.port_setting[index]["databits"])
+                databits_combobox.setToolTip(self.tr("Set the number of data bits in each character.\n"
+                                                     "Most devices use 8 data bits."))
+                self.port_param_layout.addWidget(databits_combobox, 1, 1)
+                # parity selection
+                parity_label = QLabel(self.tr("Parity"))
+                self.port_param_layout.addWidget(parity_label, 2, 0)
+                parity_combobox.show()
+                parity_combobox.addItems(["None", "Even", "Odd", "Mark", "Space"])
+                if index == -1:
+                    parity_combobox.setCurrentText("None")
+                else:
+                    parity_combobox.setCurrentText(shared.port_setting[index]["parity"])
+                parity_combobox.setToolTip(self.tr("Select the parity for error checking.\n"
+                                                   "None: No parity bit.\n"
+                                                   "Even: Parity bit ensures even number of 1s.\n"
+                                                   "Odd: Parity bit ensures odd number of 1s.\n"
+                                                   "Mark: Parity bit is always 1.\n"
+                                                   "Space: Parity bit is always 0."))
+                self.port_param_layout.addWidget(parity_combobox, 2, 1)
+                # stop bits selection
+                stopbits_label = QLabel(self.tr("Stop Bits"))
+                self.port_param_layout.addWidget(stopbits_label, 3, 0)
+                stopbits_combobox.show()
+                stopbits_combobox.addItems(["1", "1.5", "2"])
+                if index == -1:
+                    stopbits_combobox.setCurrentText("1")
+                else:
+                    stopbits_combobox.setCurrentText(shared.port_setting[index]["stopbits"])
+                stopbits_combobox.setToolTip(self.tr("Set the number of stop bits used to indicate the end of a data frame.\n"
+                                                     "Must match with the connected device's configuration.\n"
+                                                     "1: One stop bit.\n"
+                                                     "1.5: One and a half stop bits.\n"
+                                                     "2: Two stop bits."))
+                self.port_param_layout.addWidget(stopbits_combobox, 3, 1)
+                # timeout value
+                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                self.port_param_layout.addWidget(timeout_label, 4, 0)
+                timeout_spinbox.show()
+                timeout_spinbox.setRange(0, 100)
+                timeout_spinbox.setSingleStep(1)
+                if index == -1:
+                    timeout_spinbox.setValue(0)
+                else:
+                    timeout_spinbox.setValue(shared.port_setting[index]["timeout"])
+                timeout_spinbox.setToolTip(self.tr("Specifies the read timeout for the serial port in milliseconds.\n"
+                                                   "0: None-blocking mode (immediate return).\n"
+                                                   ">0: Blocks for the specified time (ms)."))
+                self.port_param_layout.addWidget(timeout_spinbox, 4, 1)
+
+            def tcp_client_gui() -> None:
+                blank_gui()
+
+                # remote ip address entry
+                remoteipv4_label = QLabel(self.tr("Remote IPv4"))
+                self.port_param_layout.addWidget(remoteipv4_label, 0, 0)
+                remoteipv4_lineedit.show()
+                if index != -1:
+                    remoteipv4_lineedit.setText(shared.port_setting[index]["remoteipv4"])
+                self.port_param_layout.addWidget(remoteipv4_lineedit, 0, 1)
+
+                # remote port entry
+                remoteport_label = QLabel(self.tr("Remote Port"))
+                self.port_param_layout.addWidget(remoteport_label, 1, 0)
+                remoteport_lineedit.show()
+                if index != -1:
+                    remoteport_lineedit.setText(shared.port_setting[index]["remoteport"])
+                self.port_param_layout.addWidget(remoteport_lineedit, 1, 1)
+
+                # timeout value
+                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                self.port_param_layout.addWidget(timeout_label, 2, 0)
+                timeout_spinbox.show()
+                timeout_spinbox.setRange(0, 100)
+                timeout_spinbox.setSingleStep(1)
+                if index == -1:
+                    timeout_spinbox.setValue(0)
+                else:
+                    timeout_spinbox.setValue(shared.port_setting[index]["timeout"])
+                timeout_spinbox.setToolTip(self.tr("Specifies the read timeout for the serial port in milliseconds.\n"
+                                                   "0: None-blocking mode (immediate return).\n"
+                                                   ">0: Blocks for the specified time (ms)."))
+                self.port_param_layout.addWidget(timeout_spinbox, 2, 1)
+
+            def tcp_server_gui() -> None:
+                # add current ipv4 address to combobox
+                def localipv4_get():
+                    ip_list = []
+                    hostname = socket.gethostname()
+                    for info in socket.getaddrinfo(hostname, None, family=socket.AF_INET):
+                        ip = info[4][0]
+                        if ip not in ip_list:
+                            ip_list.append(ip)
+                    return ip_list
+
+                blank_gui()
+
+                # local ip address entry
+                localipv4_label = QLabel(self.tr("Local IPv4"))
+                self.port_param_layout.addWidget(localipv4_label, 0, 0)
+                localipv4_combobox.show()
+                localipv4_combobox.clear()
+                localipv4_combobox.addItems([""] + localipv4_get())
+                localipv4_combobox.setEditable(True)
+                if index != -1:
+                    localipv4_combobox.setCurrentText(shared.port_setting[index]["localipv4"])
+                self.port_param_layout.addWidget(localipv4_combobox, 0, 1)
+
+                # local port entry
+                localport_label = QLabel(self.tr("Local Port"))
+                self.port_param_layout.addWidget(localport_label, 1, 0)
+                localport_lineedit.show()
+                if index != -1:
+                    localport_lineedit.setText(shared.port_setting[index]["localport"])
+                self.port_param_layout.addWidget(localport_lineedit, 1, 1)
+
+                # timeout value
+                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                self.port_param_layout.addWidget(timeout_label, 2, 0)
+                timeout_spinbox = QSpinBox()
+                timeout_spinbox.setRange(0, 100)
+                timeout_spinbox.setSingleStep(1)
+                if index == -1:
+                    timeout_spinbox.setValue(0)
+                else:
+                    timeout_spinbox.setValue(shared.port_setting[index]["timeout"])
+                timeout_spinbox.setToolTip(self.tr("Specifies the read timeout for the serial port in milliseconds.\n"
+                                                   "0: None-blocking mode (immediate return).\n"
+                                                   ">0: Blocks for the specified time (ms)."))
+                self.port_param_layout.addWidget(timeout_spinbox, 2, 1)
+
+            if not port_name:
+                blank_gui()
+            elif port_name == "tcp client":
+                tcp_client_gui()
+            elif port_name == "tcp server":
+                tcp_server_gui()
+            else:
+                serial_gui()
+
+        def port_setting_save(index: int) -> None:
+            if index != -1:
+                # close port first
+                if self.tab_list[index].port_toggle_button.isChecked():
+                    self.tab_list[index].port_toggle_button.setChecked(False)
+                    time.sleep(0.1)
+                # check if port is closed
+                if self.tab_list[index].port_toggle_button.isChecked():
+                    return
+                del self.tab_list[index]
+                self.tab_widget.removeTab(index)
+                del shared.port_setting[index]
+
+            port_name = port_name_combobox.currentData()
+            if port_name == "":
+                pass
+            elif port_name == "tcp client":
+                port_setting = {
+                    "portname": port_name,
+                    "remoteipv4": remoteipv4_lineedit.text(),
+                    "remoteport": remoteport_lineedit.text(),
+                    "timeout": timeout_spinbox.value(),
+                    "tx_format": tx_format_combobox.currentText(),
+                    "tx_suffix": tx_suffix_combobox.currentText(),
+                    "tx_interval": tx_interval_spinbox.value(),
+                    "rx_format": rx_format_combobox.currentText(),
+                    "rx_size": rx_size_spinbox.value()
+                }
+                port_tab = self.TcpClientTab(self, port_setting)
+                if index == -1:
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, "tcp client")
+                    self.tab_widget.setTabIcon(len(shared.port_setting), QIcon("icon:desktop.svg"))
+                    shared.port_setting.append(port_setting)
+                else:
+                    self.tab_list.insert(index, port_tab)
+                    self.tab_widget.insertTab(index, port_tab, "tcp client")
+                    self.tab_widget.setTabIcon(index, QIcon("icon:desktop.svg"))
+                    shared.port_setting.insert(index, port_setting)
+            elif port_name == "tcp server":
+                port_setting = {
+                    "portname": port_name,
+                    "localipv4": localipv4_combobox.currentText(),
+                    "localport": localport_lineedit.text(),
+                    "timeout": timeout_spinbox.value(),
+                    "tx_format": tx_format_combobox.currentText(),
+                    "tx_suffix": tx_suffix_combobox.currentText(),
+                    "tx_interval": tx_interval_spinbox.value(),
+                    "rx_format": rx_format_combobox.currentText(),
+                    "rx_size": rx_size_spinbox.value()
+                }
+                port_tab = self.TcpServerTab(self, port_setting)
+                if index == -1:
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, "tcp server")
+                    self.tab_widget.setTabIcon(len(shared.port_setting), QIcon("icon:server.svg"))
+                    shared.port_setting.append(port_setting)
+                else:
+                    self.tab_list.insert(index, port_tab)
+                    self.tab_widget.insertTab(index, port_tab, "tcp server")
+                    self.tab_widget.setTabIcon(index, QIcon("icon:server.svg"))
+                    shared.port_setting.insert(index, port_setting)
+            else:
+                port_setting = {
+                    "portname": port_name,
+                    "baudrate": int(baudrate_lineedit.text()),
+                    "databits": databits_combobox.currentText(),
+                    "parity": parity_combobox.currentText(),
+                    "stopbits": stopbits_combobox.currentText(),
+                    "timeout": timeout_spinbox.value(),
+                    "tx_format": tx_format_combobox.currentText(),
+                    "tx_suffix": tx_suffix_combobox.currentText(),
+                    "tx_interval": tx_interval_spinbox.value(),
+                    "rx_format": rx_format_combobox.currentText(),
+                    "rx_size": rx_size_spinbox.value()
+                }
+                port_tab = self.SerialPortTab(self, port_setting)
+                if index == -1:
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, port_name)
+                    self.tab_widget.setTabIcon(len(shared.port_setting), QIcon("icon:serial_port.svg"))
+                    shared.port_setting.append(port_setting)
+                else:
+                    self.tab_list.insert(index, port_tab)
+                    self.tab_widget.insertTab(index, port_tab, port_name)
+                    self.tab_widget.setTabIcon(index, QIcon("icon:serial_port.svg"))
+                    shared.port_setting.insert(index, port_setting)
+            port_add_window.close()
+
+        # port setting widget
+        port_setting_widget = QWidget()
+        port_add_layout.addWidget(port_setting_widget)
+        port_setting_layout = QVBoxLayout(port_setting_widget)
+        port_setting_layout.setContentsMargins(0, 0, 0, 0)
+        port_setting_label = QLabel(self.tr("Port Setting"))
+        port_setting_label.setStyleSheet("font-weight: bold;")
+        port_setting_layout.addWidget(port_setting_label)
+        port_setting_seperator = QFrame()
+        port_setting_seperator.setFrameShape(QFrame.Shape.HLine)
+        port_setting_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+        port_setting_layout.addWidget(port_setting_seperator)
+        port_name_widget = QWidget()
+        port_name_widget.setFixedWidth(400)
+        port_setting_layout.addWidget(port_name_widget)
+        port_name_layout = QGridLayout(port_name_widget)
+        port_name_layout.setContentsMargins(0, 5, 0, 0)
+        port_name_layout.setSpacing(10)
+        port_name_layout.setColumnStretch(0, 1)
+        port_name_layout.setColumnStretch(1, 3)
+        port_name_label = QLabel(self.tr("Port Name"))
+        port_name_layout.addWidget(port_name_label, 0, 0)
+        port_name_combobox = QComboBox()
+        port_name_combobox.addItem("", "")
+        for port_info in QSerialPortInfo.availablePorts():
+            port_name_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
+        port_name_combobox.addItem("TCP client", "tcp client")
+        port_name_combobox.addItem("TCP server", "tcp server")
+        port_name_combobox.currentIndexChanged.connect(lambda: port_setting_refresh(port_name_combobox.currentData(), index))
+        port_name_layout.addWidget(port_name_combobox, 0, 1)
+        port_param_widget = QWidget()
+        port_param_widget.setFixedWidth(400)
+        port_param_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+        port_setting_layout.addWidget(port_param_widget)
+        self.port_param_layout = QGridLayout(port_param_widget)
+        self.port_param_layout.setContentsMargins(0, 5, 0, 0)
+        self.port_param_layout.setSpacing(10)
+        self.port_param_layout.setColumnStretch(0, 1)
+        self.port_param_layout.setColumnStretch(1, 3)
+
+        # tx setting widget
+        tx_setting_widget = QWidget()
+        port_add_layout.addWidget(tx_setting_widget)
+        tx_setting_layout = QVBoxLayout(tx_setting_widget)
+        tx_setting_layout.setContentsMargins(0, 0, 0, 0)
+        tx_setting_label = QLabel(self.tr("TX Setting"))
+        tx_setting_label.setStyleSheet("font-weight: bold;")
+        tx_setting_layout.addWidget(tx_setting_label)
+        tx_setting_seperator = QFrame()
+        tx_setting_seperator.setFrameShape(QFrame.Shape.HLine)
+        tx_setting_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+        tx_setting_layout.addWidget(tx_setting_seperator)
+        tx_param_widget = QWidget()
+        tx_param_widget.setFixedWidth(400)
+        tx_setting_layout.addWidget(tx_param_widget)
+        tx_param_layout = QGridLayout(tx_param_widget)
+        tx_param_layout.setContentsMargins(0, 5, 0, 0)
+        tx_param_layout.setSpacing(10)
+        tx_param_layout.setColumnStretch(0, 1)
+        tx_param_layout.setColumnStretch(1, 3)
+        tx_format_label = QLabel(self.tr("TX format"))
+        tx_param_layout.addWidget(tx_format_label, 0, 0)
         tx_format_combobox = QComboBox()
-        tx_format_combobox.setFixedWidth(200)
         tx_format_combobox.addItems(["hex", "ascii", "utf-8"])
-        tx_format_combobox.setCurrentText(shared.io_setting["tx_format"])
-        tx_format_combobox.setToolTip("hex: treat the input as hexadecimal format\n"
-                                      "ascii: treat the input as ascii format\n"
-                                      "utf-8: treat the input as utf-8 format")
-        tx_format_combobox.currentTextChanged.connect(tx_format_save)
-        tx_format_layout.addWidget(tx_format_combobox)
-
-        # tx suffix selection
-        def tx_suffix_save(tx_suffix: str):
-            shared.io_setting["tx_suffix"] = tx_suffix
-            shared.single_send_widget.single_send_calculate(data=None)
-
-        tx_suffix_widget = QWidget()
-        io_tab_layout.addWidget(tx_suffix_widget)
-        tx_suffix_layout = QHBoxLayout(tx_suffix_widget)
-        tx_suffix_layout.setContentsMargins(0, 0, 0, 0)
-        tx_suffix_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        tx_suffix_label = QLabel("tx suffix")
-        tx_suffix_label.setFixedWidth(80)
-        tx_suffix_layout.addWidget(tx_suffix_label)
+        if index == -1:
+            tx_format_combobox.setCurrentText("hex")
+        else:
+            tx_format_combobox.setCurrentText(shared.port_setting[index]["tx_format"])
+        tx_format_combobox.setToolTip(self.tr("hex: treat the input as hexadecimal format\n"
+                                              "ascii: treat the input as ascii format\n"
+                                              "utf-8: treat the input as utf-8 format"))
+        tx_param_layout.addWidget(tx_format_combobox, 0, 1)
+        tx_suffix_label = QLabel(self.tr("TX suffix"))
+        tx_param_layout.addWidget(tx_suffix_label, 1, 0)
         tx_suffix_combobox = QComboBox()
-        tx_suffix_combobox.setFixedWidth(140)
         tx_suffix_combobox.addItems(["none", "crlf", "crc8 maxim", "crc16 modbus"])
-        tx_suffix_combobox.setCurrentText(shared.io_setting["tx_suffix"])
-        tx_suffix_combobox.setToolTip("A calculated value used to verify the integrity of data.")
-        tx_suffix_combobox.currentTextChanged.connect(tx_suffix_save)
-        tx_suffix_layout.addWidget(tx_suffix_combobox)
-        self.tx_suffix_lineedit.setFixedWidth(55)
-        tx_suffix_layout.addWidget(self.tx_suffix_lineedit)
-
-        # tx interval spinbox
-        def tx_interval_save(tx_interval: int):
-            shared.io_setting["tx_interval"] = tx_interval
-
-        tx_interval_widget = QWidget()
-        io_tab_layout.addWidget(tx_interval_widget)
-        tx_interval_layout = QHBoxLayout(tx_interval_widget)
-        tx_interval_layout.setContentsMargins(0, 0, 0, 0)
-        tx_interval_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        tx_interval_label = QLabel("tx interval")
-        tx_interval_label.setFixedWidth(80)
-        tx_interval_layout.addWidget(tx_interval_label)
+        if index == -1:
+            tx_suffix_combobox.setCurrentText("none")
+        else:
+            tx_suffix_combobox.setCurrentText(shared.port_setting[index]["tx_suffix"])
+        tx_suffix_combobox.setToolTip(self.tr("A calculated value used to verify the integrity of data."))
+        tx_param_layout.addWidget(tx_suffix_combobox, 1, 1)
+        tx_interval_label = QLabel(self.tr("TX interval"))
+        tx_param_layout.addWidget(tx_interval_label, 2, 0)
         tx_interval_spinbox = QSpinBox()
-        tx_interval_spinbox.setFixedWidth(200)
         tx_interval_spinbox.setRange(0, 1000)
         tx_interval_spinbox.setSingleStep(1)
-        tx_interval_spinbox.setValue(shared.io_setting["tx_interval"])
-        tx_interval_spinbox.setToolTip("The minimum transmission interval(ms).")
-        tx_interval_spinbox.valueChanged.connect(tx_interval_save)
-        tx_interval_layout.addWidget(tx_interval_spinbox)
+        if index == -1:
+            tx_interval_spinbox.setValue(0)
+        else:
+            tx_interval_spinbox.setValue(shared.port_setting[index]["tx_interval"])
+        tx_interval_spinbox.setToolTip(self.tr("The minimum transmission interval(ms)."))
+        tx_param_layout.addWidget(tx_interval_spinbox, 2, 1)
 
-        # rx format widget
-        def rx_format_save(rx_format: str):
-            shared.io_setting["rx_format"] = rx_format
-
-        rx_format_widget = QWidget()
-        io_tab_layout.addWidget(rx_format_widget)
-        rx_format_layout = QHBoxLayout(rx_format_widget)
-        rx_format_layout.setContentsMargins(0, 0, 0, 0)
-        rx_format_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        rx_format_label = QLabel("rx format")
-        rx_format_label.setFixedWidth(80)
-        rx_format_layout.addWidget(rx_format_label)
+        # rx setting widget
+        rx_setting_widget = QWidget()
+        port_add_layout.addWidget(rx_setting_widget)
+        rx_setting_layout = QVBoxLayout(rx_setting_widget)
+        rx_setting_layout.setContentsMargins(0, 0, 0, 0)
+        rx_setting_label = QLabel(self.tr("RX Setting"))
+        rx_setting_label.setStyleSheet("font-weight: bold;")
+        rx_setting_layout.addWidget(rx_setting_label)
+        rx_setting_seperator = QFrame()
+        rx_setting_seperator.setFrameShape(QFrame.Shape.HLine)
+        rx_setting_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+        rx_setting_layout.addWidget(rx_setting_seperator)
+        rx_param_widget = QWidget()
+        rx_param_widget.setFixedWidth(400)
+        rx_setting_layout.addWidget(rx_param_widget)
+        rx_param_layout = QGridLayout(rx_param_widget)
+        rx_param_layout.setContentsMargins(0, 5, 0, 0)
+        rx_param_layout.setSpacing(10)
+        rx_param_layout.setColumnStretch(0, 1)
+        rx_param_layout.setColumnStretch(1, 3)
+        rx_format_label = QLabel(self.tr("RX format"))
+        rx_param_layout.addWidget(rx_format_label, 0, 0)
         rx_format_combobox = QComboBox()
-        rx_format_combobox.setFixedWidth(200)
         rx_format_combobox.addItems(["raw", "hex", "ascii", "utf-8"])
-        rx_format_combobox.setCurrentText(shared.io_setting["rx_format"])
-        rx_format_combobox.setToolTip("raw: treat the input as raw format\n"
-                                      "hex: treat the input as hexadecimal format\n"
-                                      "ascii: treat the input as ascii format\n"
-                                      "utf-8: treat the input as utf-8 format")
-        rx_format_combobox.currentTextChanged.connect(rx_format_save)
-        rx_format_layout.addWidget(rx_format_combobox)
-
-        # rx size spinbox
-        def rx_size_save(rx_size: int):
-            shared.io_setting["rx_size"] = rx_size
-
-        rx_size_widget = QWidget()
-        io_tab_layout.addWidget(rx_size_widget)
-        rx_size_layout = QHBoxLayout(rx_size_widget)
-        rx_size_layout.setContentsMargins(0, 0, 0, 0)
-        rx_size_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        rx_size_label = QLabel("rx size")
-        rx_size_label.setFixedWidth(80)
-        rx_size_layout.addWidget(rx_size_label)
+        if index == -1:
+            rx_format_combobox.setCurrentText("hex")
+        else:
+            rx_format_combobox.setCurrentText(shared.port_setting[index]["rx_format"])
+        rx_format_combobox.setToolTip(self.tr("raw: treat the input as raw format\n"
+                                              "hex: treat the input as hexadecimal format\n"
+                                              "ascii: treat the input as ascii format\n"
+                                              "utf-8: treat the input as utf-8 format"))
+        rx_param_layout.addWidget(rx_format_combobox, 0, 1)
+        rx_size_label = QLabel(self.tr("RX size"))
+        rx_param_layout.addWidget(rx_size_label, 1, 0)
         rx_size_spinbox = QSpinBox()
-        rx_size_spinbox.setFixedWidth(200)
         rx_size_spinbox.setRange(0, 100)
         rx_size_spinbox.setSingleStep(1)
-        rx_size_spinbox.setValue(shared.io_setting["rx_size"])
-        rx_size_spinbox.setToolTip("0: automatic buffer size\n"
-                                   "n: set buffer size to n bytes")
-        rx_size_spinbox.valueChanged.connect(rx_size_save)
-        rx_size_layout.addWidget(rx_size_spinbox)
-
-        # tx buffer entry
-        tx_buffer_widget = QWidget()
-        io_param_layout.addWidget(tx_buffer_widget)
-        tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
-        tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
-        tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        tx_buffer_label = QLabel("tx buffer")
-        tx_buffer_label.setFixedWidth(80)
-        tx_buffer_layout.addWidget(tx_buffer_label)
-        self.tx_buffer_lineedit.setFixedWidth(200)
-        tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
-        # rx buffer entry
-        rx_buffer_widget = QWidget()
-        io_param_layout.addWidget(rx_buffer_widget)
-        rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
-        rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
-        rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        rx_buffer_label = QLabel("rx buffer")
-        rx_buffer_label.setFixedWidth(80)
-        rx_buffer_layout.addWidget(rx_buffer_label)
-        self.rx_buffer_lineedit.setFixedWidth(200)
-        rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
-
-        io_control_widget = QWidget()
-        io_setting_layout.addWidget(io_control_widget)
-        io_control_layout = QVBoxLayout(io_control_widget)
-        io_control_layout.setContentsMargins(0, 0, 0, 0)
-        # serial toggle button
-        self.serial_toggle_button.setIcon(QIcon("icon:power.svg"))
-        self.serial_toggle_button.setIconSize(QSize(80, 80))
-        self.serial_toggle_button.setCheckable(True)
-        self.serial_toggle_button.toggled.connect(self.io_status_toggle)
-        self.serial_toggle_button.toggled.connect(self.io_info_refresh)
-        io_control_layout.addWidget(self.serial_toggle_button)
-
-        # io info widget
-        self.io_info_widget.setStyleSheet("background: #eceff2;")
-        io_status_layout.addWidget(self.io_info_widget)
-        self.io_info_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.io_info_layout.setContentsMargins(10, 5, 10, 5)
-        # local icon
-        self.local_icon.setFixedWidth(22)
-        self.io_info_layout.addWidget(self.local_icon)
-        # local lineedit
-        self.local_lineedit.setFixedWidth(160)
-        self.local_lineedit.setReadOnly(True)
-        self.io_info_layout.addWidget(self.local_lineedit)
-        # link icon
-        self.link_icon.setFixedWidth(22)
-        self.io_info_layout.addWidget(self.link_icon)
-        # remote icon
-        self.remote_icon.setFixedWidth(22)
-        self.io_info_layout.addWidget(self.remote_icon)
-        # remote lineedit
-        self.remote_lineedit.setFixedWidth(160)
-        self.remote_lineedit.setReadOnly(True)
-        self.io_info_layout.addWidget(self.remote_lineedit)
-        # remote combobox
-        self.remote_combobox.setFixedWidth(160)
-        self.io_info_layout.addWidget(self.remote_combobox)
-        # hint button
-        self.hint_button.setStyleSheet("color: black;")
-        self.hint_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        from gui_module import setting_tab_gui
-        self.hint_button.clicked.connect(setting_tab_gui)
-        self.io_info_layout.addWidget(self.hint_button)
-        # serial icon
-        self.serial_icon.setFixedWidth(22)
-        self.serial_icon.setPixmap(QIcon("icon:serial_port.svg").pixmap(20, 20))
-        self.io_info_layout.addWidget(self.serial_icon)
-        # serial label
-        self.io_info_layout.addWidget(self.serial_label)
-        # initialize io info
-        self.io_info_refresh()
-
-    def io_info_refresh(self) -> None:
-        if not self.serial_toggle_button.isChecked():
-            # hide all widgets
-            for i in range(self.io_info_layout.count()):
-                item = self.io_info_layout.itemAt(i)
-                if item and item.widget():
-                    item.widget().hide()
-            if shared.serial_setting["port"] == "TCP client":
-                self.local_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(20, 20))
-                self.local_icon.show()
-                self.local_lineedit.setText("")
-                self.local_lineedit.show()
-                self.link_icon.setPixmap(QIcon("icon:link_dismiss.svg").pixmap(20, 20))
-                self.link_icon.show()
-                self.remote_icon.setPixmap(QIcon("icon:server.svg").pixmap(20, 20))
-                self.remote_icon.show()
-                self.remote_lineedit.setText(f"{shared.serial_setting['remoteipv4']}:{shared.serial_setting['remoteport']}")
-                self.remote_lineedit.show()
-            elif shared.serial_setting["port"] == "TCP server":
-                self.local_icon.setPixmap(QIcon("icon:server.svg").pixmap(20, 20))
-                self.local_icon.show()
-                self.local_lineedit.setText(f"{shared.serial_setting['localipv4']}:{shared.serial_setting['localport']}")
-                self.local_lineedit.show()
-                self.link_icon.setPixmap(QIcon("icon:link_dismiss.svg").pixmap(20, 20))
-                self.link_icon.show()
-                self.remote_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(20, 20))
-                self.remote_icon.show()
-                self.remote_combobox.clear()
-                self.remote_combobox.show()
-            elif shared.serial_setting["port"] == "":
-                self.hint_button.show()
-            else:
-                self.serial_icon.show()
-                self.serial_label.setText(f"Port: {shared.serial_setting['port']}, "
-                                          f"Baudrate: {shared.serial_setting['baudrate']}, "
-                                          f"Databits: {shared.serial_setting['databits']}, "
-                                          f"Parity: {shared.serial_setting['parity']}, "
-                                          f"Stopbits: {shared.serial_setting['stopbits']}")
-                self.serial_label.show()
-        elif shared.serial_setting["port"] == "TCP client":
-            self.local_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(20, 20))
-            self.local_icon.show()
-            self.local_lineedit.setText("Connecting...")
-            self.local_lineedit.show()
-            self.link_icon.setPixmap(QIcon("icon:link_dismiss.svg").pixmap(20, 20))
-            self.link_icon.show()
-            self.remote_icon.setPixmap(QIcon("icon:server.svg").pixmap(20, 20))
-            self.remote_icon.show()
-            self.remote_lineedit.setText(f"{shared.serial_setting['remoteipv4']}:{shared.serial_setting['remoteport']}")
-            self.remote_lineedit.show()
-        elif shared.serial_setting["port"] == "TCP server":
-            self.local_icon.setPixmap(QIcon("icon:server.svg").pixmap(20, 20))
-            self.local_icon.show()
-            self.local_lineedit.setText(f"{shared.serial_setting['localipv4']}:{shared.serial_setting['localport']}")
-            self.local_lineedit.show()
-            self.link_icon.setPixmap(QIcon("icon:link_dismiss.svg").pixmap(20, 20))
-            self.link_icon.show()
-            self.remote_icon.setPixmap(QIcon("icon:desktop.svg").pixmap(20, 20))
-            self.remote_icon.show()
-            self.remote_combobox.clear()
-            self.remote_combobox.addItem("Listening...", "none")
-            self.remote_combobox.show()
-
-    def io_status_toggle(self) -> None:
-        if self.serial_toggle_button.isChecked():
-            self.serial_control.run()
+        if index == -1:
+            rx_size_spinbox.setValue(0)
         else:
-            self.serial_control.stop()
+            rx_size_spinbox.setValue(shared.port_setting[index]["rx_size"])
+        rx_size_spinbox.setToolTip(self.tr("0: automatic buffer size\n"
+                                           "n: set buffer size to n bytes"))
+        rx_param_layout.addWidget(rx_size_spinbox, 1, 1)
+
+        # save button
+        save_seperator = QFrame()
+        save_seperator.setFrameShape(QFrame.Shape.HLine)
+        save_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+        port_add_layout.addWidget(save_seperator)
+        save_button = QPushButton("Create New Port")
+        save_button.setShortcut(QKeySequence(Qt.Key.Key_Return))
+        save_button.clicked.connect(lambda: port_setting_save(index))
+        port_add_layout.addWidget(save_button)
+
+        if index != -1:
+            i = port_name_combobox.findData(shared.port_setting[index]["portname"])
+            if i >= 0:
+                port_name_combobox.setCurrentIndex(i)
+
+        port_add_window.show()
+
+    def port_tab_close(self, index: int) -> None:
+        if self.tab_widget.tabText(index) == "welcome":
+            return
+        self.tab_list[index].port_toggle_button.setChecked(False)
+        del self.tab_list[index]
+        self.tab_widget.removeTab(index)
+        del shared.port_setting[index]
+        if not len(shared.port_setting):
+            self.welcome_tab()
+
+    def port_tab_move(self, src: int, dst: int) -> None:
+        # switch self.tab_list
+        tmp = self.tab_list.pop(src)
+        self.tab_list.insert(dst, tmp)
+        # switch shared.port_setting
+        tmp = shared.port_setting.pop(src)
+        shared.port_setting.insert(dst, tmp)
 
 
 class SingleSendWidget(QWidget):
@@ -664,11 +1545,6 @@ class SingleSendWidget(QWidget):
         self.setAcceptDrops(True)
         # instance variables
         self.overlay = QWidget(self)
-
-        self.single_send_queue = []
-        self.single_send_timer = QTimer()
-        self.single_send_timer.setSingleShot(True)
-        self.single_send_timer.timeout.connect(self.single_send_trigger)
 
         self.single_send_textedit = self.SingleSendPlainTextEdit()
         self.single_send_button = QPushButton()
@@ -736,7 +1612,7 @@ class SingleSendWidget(QWidget):
         # single send textedit
         self.single_send_textedit.setStyleSheet("margin: 0px;")
         self.single_send_textedit.setFixedHeight(90)
-        self.single_send_textedit.textChanged.connect(lambda: self.single_send_calculate(data=None))
+        # self.single_send_textedit.textChanged.connect(lambda: self.single_send_calculate(data=None))
         single_send_layout.addWidget(self.single_send_textedit)
         # control widget
         control_widget = QWidget()
@@ -747,8 +1623,7 @@ class SingleSendWidget(QWidget):
         # single send button
         self.single_send_button.setFixedWidth(26)
         self.single_send_button.setIcon(QIcon("icon:send.svg"))
-        self.single_send_button.clicked.connect(lambda: self.single_send(self.single_send_textedit.toPlainText(), shared.io_status_widget.tx_suffix_lineedit.text(),
-                                                                         shared.io_setting["tx_format"]))
+        self.single_send_button.clicked.connect(lambda: shared.port_status_widget.port_write(self.single_send_textedit.toPlainText(), -1))
         self.single_send_button.setToolTip("send")
         control_layout.addWidget(self.single_send_button)
         # single save button
@@ -783,17 +1658,12 @@ class SingleSendWidget(QWidget):
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                               QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
-                    shared.command_shortcut_widget.command_shortcut_save(index, "single",
-                                                                         self.single_send_textedit.toPlainText(),
-                                                                         shared.io_status_widget.tx_suffix_lineedit.text(),
-                                                                         shared.io_setting["tx_format"])
+                    shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText())
                     shared.serial_log_widget.log_insert(f"single shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("single shortcut overwrite cancelled", "info")
             else:
-                shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText(),
-                                                                     shared.io_status_widget.tx_suffix_lineedit.text(),
-                                                                     shared.io_setting["tx_format"])
+                shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText())
                 shared.serial_log_widget.log_insert(f"single shortcut saved to {index}", "info")
         else:
             shared.serial_log_widget.log_insert("single shortcut save", "warning")
@@ -801,100 +1671,8 @@ class SingleSendWidget(QWidget):
     def single_send_clear(self) -> None:
         self.single_send_textedit.clear()
 
-    def single_send_calculate(self, data=None) -> str:
-        if data is None:  # single send calls this func
-            update = True
-            data = self.single_send_textedit.toPlainText().strip()
-        else:  # advanced send calls this func
-            update = False
-        if shared.io_setting["tx_suffix"] == "crlf":
-            suffix = f"0d0a"
-        elif shared.io_setting["tx_suffix"] == "crc8 maxim":
-            try:
-                data = bytes.fromhex(data)
-                suffix = f"{crc8_maxim(data):02X}"
-            except:
-                suffix = "NULL"
-        elif shared.io_setting["tx_suffix"] == "crc16 modbus":
-            try:
-                data = bytes.fromhex(data)
-                suffix = f"{crc16_modbus(data):04X}"
-            except:
-                suffix = "NULL"
-        else:  # suffix == none
-            suffix = ""
-        if update:  # only update when single send calls this func
-            shared.io_status_widget.tx_suffix_lineedit.setText(suffix)
-        return suffix
-
     def single_send_config_save(self) -> None:
         shared.single_send_buffer = self.single_send_textedit.toPlainText().strip()
-
-    def single_send(self, command: str, suffix: str, format: str) -> None:
-        # open serial first
-        if not shared.io_status_widget.serial_toggle_button.isChecked():
-            shared.io_status_widget.serial_toggle_button.setChecked(True)
-            time.sleep(0.1)
-        # check if serial is opened
-        if not shared.io_status_widget.serial_toggle_button.isChecked():
-            return
-        # single send
-        command = command.strip()
-        command += suffix
-        if format == "hex":
-            tx_message = bytes.fromhex(command)
-        elif format == "ascii":
-            tx_message = command.encode("ascii")
-        else:  # format == "utf-8"
-            tx_message = command.encode("utf-8")
-        self.single_send_queue.append(tx_message)
-        if not self.single_send_timer.isActive():
-            self.single_send_trigger()
-
-    def single_send_trigger(self):
-        if self.single_send_queue:
-            tx_message = self.single_send_queue.pop()
-        else:
-            return
-        # write message to serial
-        if shared.serial_setting["port"] == "TCP client":
-            if shared.io_status_widget.local_lineedit.text() == "Connecting...":
-                shared.serial_log_widget.log_insert("no active TCP connection", "warning")
-                return
-            else:
-                shared.io_status_widget.serial_control.tcp_client.write(tx_message)
-        elif shared.serial_setting["port"] == "TCP server":
-            if shared.io_status_widget.remote_combobox.currentData() == "none":
-                shared.serial_log_widget.log_insert("no active TCP connection", "warning")
-                return
-            elif shared.io_status_widget.remote_combobox.currentData() == "broadcast":
-                for peer in shared.io_status_widget.serial_control.tcp_peer:
-                    peer.write(tx_message)
-            else:
-                shared.io_status_widget.remote_combobox.currentData().write(tx_message)
-        else:
-            shared.io_status_widget.serial_control.serial.write(tx_message)
-        # start timer
-        self.single_send_timer.start(shared.io_setting["tx_interval"])
-        # save message to shared.tx_buffer
-        if shared.io_setting["tx_format"] == "hex":
-            shared.tx_buffer = tx_message.hex().upper()
-        elif shared.io_setting["tx_format"] == "ascii":
-            try:
-                # raw to ascii
-                shared.tx_buffer = tx_message.decode("ascii")
-            except UnicodeDecodeError:
-                shared.tx_buffer = tx_message.hex().upper()
-        else:  # shared.io_setting["tx_format"] == "utf-8":
-            try:
-                # raw to utf-8
-                shared.tx_buffer = tx_message.decode("utf-8")
-            except UnicodeDecodeError:
-                shared.tx_buffer = tx_message.hex().upper()
-        # change tx buffer lineedit
-        shared.io_status_widget.tx_buffer_lineedit.setText(shared.tx_buffer)
-        # append log
-        shared.serial_log_widget.log_insert(f"{shared.tx_buffer}", "send")
 
 
 class AdvancedSendWidget(QWidget):
@@ -953,7 +1731,7 @@ class AdvancedSendWidget(QWidget):
 
             thread.highlight_signal.connect(self.table_highlight)
             thread.log_signal.connect(shared.serial_log_widget.log_insert)
-            thread.send_signal.connect(shared.single_send_widget.single_send)
+            thread.send_signal.connect(shared.port_status_widget.port_write)
             thread.request_signal.connect(self.input_request)
             thread.database_import_signal.connect(shared.data_collect_widget.database_import)
             thread.datatable_import_signal.connect(shared.data_collect_widget.datatable_import)
@@ -1027,7 +1805,7 @@ class AdvancedSendWidget(QWidget):
         class AdvancedSendThread(QThread):
             highlight_signal = Signal(int, int, str)
             log_signal = Signal(str, str)
-            send_signal = Signal(str, str, str)
+            send_signal = Signal(str, str)
             request_signal = Signal(QThread, str, str, QWaitCondition)
             database_import_signal = Signal(int, str)
             datatable_import_signal = Signal(int, str)
@@ -1059,8 +1837,12 @@ class AdvancedSendWidget(QWidget):
                 length = len(buffer)
                 while index < length:
                     # tx/rx variable import
-                    tx_buffer = shared.tx_buffer
-                    rx_buffer = shared.rx_buffer
+                    global tx_buffer, rx_buffer
+                    tx_buffer.clear()
+                    rx_buffer.clear()
+                    for i in range(len(shared.port_setting)):
+                        tx_buffer.append(shared.port_status_widget.tab_list[i].tx_buffer)
+                        rx_buffer.append(shared.port_status_widget.tab_list[i].rx_buffer)
                     # database variable import
                     for row in range(len(shared.data_collect["database"])):
                         name = shared.data_collect_widget.database.item(row, 1).text()
@@ -1093,9 +1875,7 @@ class AdvancedSendWidget(QWidget):
                             type = shared.command_shortcut[row]["type"]
                             if type == "single":
                                 command = shared.command_shortcut[row]["command"]
-                                suffix = shared.command_shortcut[row]["suffix"]
-                                format = shared.command_shortcut[row]["format"]
-                                self.send_signal.emit(command, suffix, format)
+                                self.send_signal.emit(command, -1)
                             else:
                                 command = eval(shared.command_shortcut[row]["command"])
                                 self.send(command)
@@ -1111,12 +1891,7 @@ class AdvancedSendWidget(QWidget):
                                     # error highlight
                                     self.highlight_signal.emit(length, index, "red")
                                     raise e
-                            suffix = shared.single_send_widget.single_send_calculate(command)
-                            if suffix == "NULL":
-                                # error highlight
-                                self.highlight_signal.emit(length, index, "red")
-                                raise Exception(f"suffix exception: trying to calculate suffix of ({command})")
-                            self.send_signal.emit(command, suffix, "hex")
+                            self.send_signal.emit(command, -1)
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
                     elif action == "database":
@@ -1313,13 +2088,6 @@ class AdvancedSendWidget(QWidget):
                 return
 
             def run(self):
-                # open serial first
-                if not shared.io_status_widget.serial_toggle_button.isChecked():
-                    shared.io_status_widget.serial_toggle_button.setChecked(True)
-                    time.sleep(0.1)
-                # check if serial is opened
-                if not shared.io_status_widget.serial_toggle_button.isChecked():
-                    return
                 self.enable = True
                 try:
                     self.send(self.buffer)
@@ -2138,12 +2906,12 @@ class AdvancedSendWidget(QWidget):
                                               f"Shortcut already exists.\nDo you want to overwrite it?\n: {title}",
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
-                    shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(shared.advanced_send_buffer), "", "")
+                    shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(shared.advanced_send_buffer))
                     shared.serial_log_widget.log_insert(f"advanced shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
                     shared.serial_log_widget.log_insert("advanced shortcut overwrite cancelled", "info")
             else:
-                shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(shared.advanced_send_buffer), "", "")
+                shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(shared.advanced_send_buffer))
                 shared.serial_log_widget.log_insert(f"advanced shortcut saved to {index}", "info")
         else:
             shared.serial_log_widget.log_insert("advanced shortcut save cancelled", "warning")
@@ -2171,7 +2939,7 @@ class FileSendWidget(QWidget):
 
         self.file_send_thread = self.FileSendThread(self)
         self.file_send_thread.log_signal.connect(shared.serial_log_widget.log_insert)
-        self.file_send_thread.send_signal.connect(shared.single_send_widget.single_send)
+        self.file_send_thread.send_signal.connect(shared.port_status_widget.port_write)
         self.file_send_thread.progress_signal.connect(self.file_progress_refresh)
         self.file_send_thread.clear_signal.connect(self.file_send_clear)
         # draw gui
@@ -2242,11 +3010,11 @@ class FileSendWidget(QWidget):
 
         def run(self) -> None:
             # open serial first
-            if not shared.io_status_widget.serial_toggle_button.isChecked():
-                shared.io_status_widget.serial_toggle_button.setChecked(True)
+            if not shared.port_status_widget.serial_toggle_button.isChecked():
+                shared.port_status_widget.serial_toggle_button.setChecked(True)
                 time.sleep(0.1)
             # check if serial is opened
-            if not shared.io_status_widget.serial_toggle_button.isChecked():
+            if not shared.port_status_widget.serial_toggle_button.isChecked():
                 return
             self.enable = True
             try:
@@ -2280,11 +3048,11 @@ class FileSendWidget(QWidget):
         self.preview_textedit.setStyleSheet("margin: 0px;")
         # textedit initialization
         font = QFont()
-        font.setFamily(shared.log_font["family"])
-        font.setPointSize(shared.log_font["pointsize"])
-        font.setBold(shared.log_font["bold"])
-        font.setItalic(shared.log_font["italic"])
-        font.setUnderline(shared.log_font["underline"])
+        font.setFamily(shared.font_setting["family"])
+        font.setPointSize(shared.font_setting["pointsize"])
+        font.setBold(shared.font_setting["bold"])
+        font.setItalic(shared.font_setting["italic"])
+        font.setUnderline(shared.font_setting["underline"])
         self.preview_textedit.setFont(font)
         self.preview_textedit.setWordWrapMode(QTextOption.WrapMode.NoWrap)
         file_send_layout.addWidget(self.preview_textedit)
@@ -2423,11 +3191,11 @@ class FileSendWidget(QWidget):
 
     def file_preview_font(self) -> None:
         font = QFont()
-        font.setFamily(shared.log_font["family"])
-        font.setPointSize(shared.log_font["pointsize"])
-        font.setBold(shared.log_font["bold"])
-        font.setItalic(shared.log_font["italic"])
-        font.setUnderline(shared.log_font["underline"])
+        font.setFamily(shared.font_setting["family"])
+        font.setPointSize(shared.font_setting["pointsize"])
+        font.setBold(shared.font_setting["bold"])
+        font.setItalic(shared.font_setting["italic"])
+        font.setUnderline(shared.font_setting["underline"])
         self.preview_textedit.setFont(font)
 
     def file_progress_refresh(self, value: int, max: int, format: str) -> None:

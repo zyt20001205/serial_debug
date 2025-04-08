@@ -1,7 +1,7 @@
 import sys
 import qdarktheme
 from PySide6.QtWidgets import QMainWindow, QApplication
-from PySide6.QtCore import QDir
+from PySide6.QtCore import QDir, QTranslator, QCoreApplication
 
 import shared
 from gui_module import main_gui
@@ -49,14 +49,34 @@ class MainWindow(QMainWindow):
             event.ignore()
 
 
+def language_load(refresh: bool = 0) -> None:
+    app = QApplication.instance()
+    language = shared.language_setting
+    for translator in app.findChildren(QTranslator):
+        app.removeTranslator(translator)
+    translator = QTranslator(app)
+    if language == "zh_CN":
+        if translator.load("lang:zh_CN.qm"):
+            QCoreApplication.installTranslator(translator)
+    else:
+        pass
+    if refresh:
+        from gui_module import widget_init, tab_init, dock_refresh
+        widget_init()
+        tab_init()
+        dock_refresh()
+
+
 if __name__ == "__main__":
     # app initialization
     app = QApplication(sys.argv)
     # resource dir
     if hasattr(sys, '_MEIPASS'):  # release environment
         QDir.addSearchPath('icon', '_internal/icon/')
+        QDir.addSearchPath('lang', '_internal/translations/')
     else:  # development environment
         QDir.addSearchPath('icon', 'icon/')
+        QDir.addSearchPath('lang', 'translations/')
     qdarktheme.setup_theme("light")
     # instantiation main window
     main_window = MainWindow()
@@ -65,14 +85,12 @@ if __name__ == "__main__":
     config = config_file_load()
     # load config to shared
     config_to_shared(config)
+    # lang file load
+    language_load()
     # gui draw
     main_gui()
     # layout load
     layout_load()
-
-
-
-
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)

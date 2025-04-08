@@ -5,7 +5,7 @@ rx_buffer_raw = None
 tx_buffer = None
 
 serial_log_widget = None
-io_status_widget = None
+port_status_widget = None
 single_send_widget = None
 advanced_send_widget = None
 file_send_widget = None
@@ -31,19 +31,17 @@ log_textedit = None
 
 database_table = None
 
-# gui module
+# setting module
 layout = None
-keyboard_shortcut = None
-
-# serial module
-serial_setting = None
+language_setting = None
+font_setting = None
+shortcut_setting = None
 
 # log module
 log_setting = None
-log_font = None
 
 # io module
-io_setting = None
+port_setting = None
 single_send_buffer = ""
 advanced_send_buffer = []
 file_send = None

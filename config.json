@@ -1,13 +1,21 @@
 {
     "layout": {
         "tab": "custom_tab",
-        "geometry": "01d9d0cb000300000000007b0000004000000571000002ff0000007b0000005e00000571000002ff000000000000000006000000007b0000005e00000571000002ff",
-        "send_state": "000000ff00000000fd0000000200000000000003ef000002e5fc0200000002fb0000001400730065007200690061006c005f006c006f00670100000000000002e50000009a00fffffffb0000001400730065007200690061006c005f006c006f0067000000039a00000146000000000000000000000001000001c2000002e5fc020000000cfb000000120069006f005f0073007400610074007500730100000000000000a8000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000008200000082fb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000db00fffffffb0000001a0061006400760061006e006300650064005f00730065006e00640100000132000000a60000009e00fffffffb000000200063006f006d006d0061006e0064005f00730068006f0072007400630075007401000001dc000001090000009a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00fffffffb000000120069006f005f0073007400610074007500730100000000000000a80000000000000000fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000000000000000fb0000001a0061006400760061006e006300650064005f00730065006e006401000001320000009e0000000000000000fb0000001200660069006c0065005f00730065006e00640000000000ffffffff0000000000000000fb000000200063006f006d006d0061006e0064005f00730068006f0072007400630075007401000001d4000000be0000000000000000fb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000000000000000000000000002e500000004000000040000000800000008fc000000010000000000000001ffffffff0300000000ffffffff0000000000000000",
+        "geometry": "01d9d0cb000300000000006f00000021000005580000031c0000006f0000003f000005580000031c000000000000000006000000006f0000003f000005580000031c",
+        "send_state": "000000ff00000000fd00000002000000000000030200000278fc0200000002fb0000001400730065007200690061006c005f006c006f00670100000000000002780000009a00fffffffb0000001400730065007200690061006c005f006c006f0067000000039a00000146000000000000000000000001000001bb00000278fc020000000cfb000000120069006f005f0073007400610074007500730100000000000000a8000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000008200000082fb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000db00fffffffb0000001a0061006400760061006e006300650064005f00730065006e006401000001320000009e0000009e00fffffffb000000200063006f006d006d0061006e0064005f00730068006f0072007400630075007401000001d4000000a40000007a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00fffffffb000000120069006f005f0073007400610074007500730100000000000000a80000000000000000fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000000000000000fb0000001a0061006400760061006e006300650064005f00730065006e006401000001320000009e0000000000000000fb0000001200660069006c0065005f00730065006e00640000000000ffffffff0000000000000000fb000000200063006f006d006d0061006e0064005f00730068006f0072007400630075007401000001d4000000be0000000000000000fb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff0000000000000000000000000000027800000004000000040000000800000008fc000000010000000000000001000000200076006500720074006900630061006c005f0074006f006f006c0062006100720300000000ffffffff0000000000000000",
         "file_state": "000000ff00000000fd00000002000000000000037300000299fc0200000001fb0000001400730065007200690061006c005f006c006f00670100000000000002990000009a00ffffff000000010000023c00000299fc0200000006fb000000120069006f005f0073007400610074007500730000000000ffffffff000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e00640000000000ffffffff0000008200000082fb0000001a0061006400760061006e006300650064005f00730065006e00640000000000ffffffff0000009e00fffffffb0000001200660069006c0065005f00730065006e00640100000000000002990000019000fffffffb000000200063006f006d006d0061006e0064005f00730068006f007200740063007500740000000000ffffffff0000007a00fffffffb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000bd00ffffff000000000000029900000004000000040000000800000008fc000000010000000000000001000000200076006500720074006900630061006c005f0074006f006f006c0062006100720300000000ffffffff0000000000000000",
         "data_state": null,
-        "custom_state": "000000ff00000000fd00000002000000000000030b000002a2fc0200000003fb0000001400730065007200690061006c005f006c006f006701000000000000012e0000009a00fffffffc00000132000001700000009e00fffffffc0100000002fb000000200063006f006d006d0061006e0064005f00730068006f00720074006300750074010000002d000002260000006400fffffffb0000001a0061006400760061006e006300650064005f00730065006e00640100000257000000e1000000cd00fffffffb0000001400730065007200690061006c005f006c006f00670000000000ffffffff000000000000000000000001000001bb000002a2fc020000000afb000000120069006f005f0073007400610074007500730100000000000000a8000000a8000000a8fb0000001600730069006e0067006c0065005f00730065006e006401000000ac000000820000008200000082fb000000180064006100740061005f0063006f006c006c006500630074010000013200000170000000bd00fffffffb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000db00fffffffb000000120069006f005f0073007400610074007500730000000000ffffffff0000000000000000fb0000001600730069006e0067006c0065005f00730065006e00640000000000ffffffff0000000000000000fb0000001a0061006400760061006e006300650064005f00730065006e00640000000000ffffffff0000000000000000fb0000001200660069006c0065005f00730065006e00640000000000ffffffff0000000000000000fb000000200063006f006d006d0061006e0064005f00730068006f007200740063007500740000000000ffffffff0000000000000000fb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000000000000000000000000002a200000004000000040000000800000008fc000000010000000000000001000000200076006500720074006900630061006c005f0074006f006f006c0062006100720300000000ffffffff0000000000000000"
+        "custom_state": "000000ff00000000fd0000000200000000000002ed000002defc0200000002fc00000000000002de000000b801000019fa000000000100000002fb0000001400730065007200690061006c005f006c006f0067010000002d000002ed0000016000fffffffb0000001a0061006400760061006e006300650064005f00730065006e00640100000000ffffffff000000cd00fffffffb0000001400730065007200690061006c005f006c006f00670000000000ffffffff000000000000000000000001000001cc000002defc020000000afb000000120069006f005f0073007400610074007500730000000000ffffffff0000000000000000fb0000001200660069006c0065005f00730065006e00640000000000ffffffff000000db00fffffffb000000200063006f006d006d0061006e0064005f00730068006f007200740063007500740000000000ffffffff0000007a00fffffffc00000000000002de0000013500000135fc0200000003fb000000160070006f00720074005f0073007400610074007500730100000000000000af000000af000000affb0000001600730069006e0067006c0065005f00730065006e006401000000b30000022b0000008200000082fb000000180064006100740061005f0063006f006c006c00650063007400000001390000012d000000bd00fffffffb000000120069006f005f0073007400610074007500730000000000ffffffff0000000000000000fb0000001600730069006e0067006c0065005f00730065006e00640000000000ffffffff0000000000000000fb0000001a0061006400760061006e006300650064005f00730065006e00640000000000ffffffff0000000000000000fb0000001200660069006c0065005f00730065006e00640000000000ffffffff0000000000000000fb000000200063006f006d006d0061006e0064005f00730068006f007200740063007500740000000000ffffffff0000000000000000fb000000180064006100740061005f0063006f006c006c0065006300740000000000ffffffff000000000000000000000000000002de00000004000000040000000800000008fc000000010000000000000001000000200076006500720074006900630061006c005f0074006f006f006c0062006100720300000000ffffffff0000000000000000"
     },
-    "keyboard_shortcut": {
+    "language_setting": "en_US",
+    "font_setting": {
+        "family": "Consolas",
+        "pointsize": 12,
+        "bold": false,
+        "italic": false,
+        "underline": false
+    },
+    "shortcut_setting": {
         "save": "Ctrl+S",
         "save_as": "Ctrl+Shift+S",
         "load": "Ctrl+L",
@@ -15,41 +23,100 @@
         "zoom_in": "Ctrl+]",
         "zoom_out": "Ctrl+["
     },
-    "serial_setting": {
-        "port": "COM3",
-        "baudrate": "115200",
-        "databits": "8",
-        "parity": "Even",
-        "stopbits": "1",
-        "localipv4": "172.20.10.11",
-        "localport": "4196",
-        "remoteipv4": "192.168.0.7",
-        "remoteport": "26",
-        "masteradapter": "\\Device\\NPF_{528167E6-3E8E-4781-9AA7-FF2B58B91249}",
-        "timeout": 10
-    },
+    "port_setting": [
+        {
+            "portname": "COM3",
+            "baudrate": 115200,
+            "databits": "8",
+            "parity": "Even",
+            "stopbits": "1",
+            "timeout": 10,
+            "tx_format": "hex",
+            "tx_suffix": "crc16 modbus",
+            "tx_interval": 30,
+            "rx_format": "hex",
+            "rx_size": 0
+        },
+        {
+            "portname": "COM11",
+            "baudrate": 115200,
+            "databits": "8",
+            "parity": "Even",
+            "stopbits": "1",
+            "timeout": 10,
+            "tx_format": "hex",
+            "tx_suffix": "crc16 modbus",
+            "tx_interval": 30,
+            "rx_format": "hex",
+            "rx_size": 0
+        },
+        {
+            "portname": "COM12",
+            "baudrate": 115200,
+            "databits": "8",
+            "parity": "Even",
+            "stopbits": "1",
+            "timeout": 10,
+            "tx_format": "hex",
+            "tx_suffix": "crc16 modbus",
+            "tx_interval": 30,
+            "rx_format": "hex",
+            "rx_size": 0
+        },
+        {
+            "portname": "tcp client",
+            "remoteipv4": "172.20.10.11",
+            "remoteport": "777",
+            "timeout": 10,
+            "tx_format": "hex",
+            "tx_suffix": "crc16 modbus",
+            "tx_interval": 30,
+            "rx_format": "hex",
+            "rx_size": 0
+        },
+        {
+            "portname": "tcp client",
+            "remoteipv4": "172.20.10.11",
+            "remoteport": "777",
+            "timeout": 10,
+            "tx_format": "hex",
+            "tx_suffix": "crc16 modbus",
+            "tx_interval": 30,
+            "rx_format": "hex",
+            "rx_size": 0
+        },
+        {
+            "portname": "tcp server",
+            "localipv4": "172.20.10.11",
+            "localport": "777",
+            "timeout": 0,
+            "tx_format": "hex",
+            "tx_suffix": "crc16 modbus",
+            "tx_interval": 30,
+            "rx_format": "hex",
+            "rx_size": 0
+        }
+    ],
     "log_setting": {
         "timestamp": true,
         "lock": false,
         "wrap": "none",
         "length": 2000
     },
-    "log_font": {
-        "family": "Consolas",
-        "pointsize": 12,
-        "bold": false,
-        "italic": false,
-        "underline": false
-    },
-    "io_setting": {
-        "tx_format": "hex",
-        "tx_suffix": "crc16 modbus",
-        "tx_interval": 30,
-        "rx_format": "hex",
-        "rx_size": 0
-    },
-    "single_send_buffer": "",
+    "single_send_buffer": "2222",
     "advanced_send_buffer": [
+        [
+            "loop",
+            10
+        ],
+        [
+            "command",
+            "010300F00001",
+            "plain"
+        ],
+        [
+            "endloop"
+        ],
         [
             "tail"
         ]
@@ -64,177 +131,127 @@
         {
             "type": "advanced",
             "function": "input case",
-            "command": "[['input', 'x0', 'write something'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['input', 'x0', 'write something'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "command case",
-            "command": "[['command', '010300F00001', 'plain'], ['delay', 100, 'ms'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['command', '010300F00001', 'plain'], ['delay', 100, 'ms'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "database case",
-            "command": "[['database', '123', 'new'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['database', '123', 'new'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "datatable case",
-            "command": "[['datatable', '111', 'new'], ['datatable', '222', 'new'], ['datatable', '333', 'new'], ['datatable', '444', 'new'], ['datatable', '555', 'new'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['datatable', '111', 'new'], ['datatable', '222', 'new'], ['datatable', '333', 'new'], ['datatable', '444', 'new'], ['datatable', '555', 'new'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "message case",
-            "command": "[['message', 'the initial value of x0 is {x0}', 'info'], ['input', 'x0', 'enter a new value of x0'], ['message', 'the value of x0 is now {x0}', 'info'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['message', 'the initial value of x0 is {x0}', 'info'], ['input', 'x0', 'enter a new value of x0'], ['message', 'the value of x0 is now {x0}', 'info'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "messagebox case",
-            "command": "[['messagebox', 'this is an info', 'info'], ['messagebox', 'this is a warning', 'warning'], ['messagebox', 'this is an error', 'error'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['messagebox', 'this is an info', 'info'], ['messagebox', 'this is a warning', 'warning'], ['messagebox', 'this is an error', 'error'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "log case",
-            "command": "[['input', 'x0', 'log case input'], ['log', '{x0}', 'append'], ['log', 'log case', 'append'], ['log', '', 'export'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['input', 'x0', 'log case input'], ['log', '{x0}', 'append'], ['log', 'log case', 'append'], ['log', '', 'export'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "expression case",
-            "command": "[['message', 'the initial value of x0 is {x0}', 'info'], ['expression', 'x0=100'], ['message', 'the value of x0 is now {x0}', 'info'], ['expression', 'x0=x0*2'], ['message', 'the value of x0 is now {x0}', 'info'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['message', 'the initial value of x0 is {x0}', 'info'], ['expression', 'x0=100'], ['message', 'the value of x0 is now {x0}', 'info'], ['expression', 'x0=x0*2'], ['message', 'the value of x0 is now {x0}', 'info'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "delay case",
-            "command": "[['message', 'delay case start', 'info'], ['delay', 1, 'sec'], ['message', 'delay case end', 'info'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['message', 'delay case start', 'info'], ['delay', 1, 'sec'], ['message', 'delay case end', 'info'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "stopwatch case",
-            "command": "[['stopwatch', 'start'], ['delay', 100, 'ms'], ['stopwatch', 'restart'], ['delay', 500, 'ms'], ['stopwatch', 'elapsed'], ['message', '{stopwatch}', 'info'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['stopwatch', 'start'], ['delay', 100, 'ms'], ['stopwatch', 'restart'], ['delay', 500, 'ms'], ['stopwatch', 'elapsed'], ['message', '{stopwatch}', 'info'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "loop case",
-            "command": "[['loop', 3], ['loop', 2], ['message', 'inner loop', 'info'], ['endloop'], ['message', 'outer loop', 'warning'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['loop', 3], ['loop', 2], ['message', 'inner loop', 'info'], ['endloop'], ['message', 'outer loop', 'warning'], ['endloop'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "if case",
-            "command": "[['if', 'True'], ['if', '1 + 1 == 2'], ['message', '1 + 1 = 2', 'info'], ['endif'], ['if', '1 + 1 != 3'], ['message', '1 + 1 != 3', 'info'], ['endif'], ['endif'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['if', 'True'], ['if', '1 + 1 == 2'], ['message', '1 + 1 = 2', 'info'], ['endif'], ['if', '1 + 1 != 3'], ['message', '1 + 1 != 3', 'info'], ['endif'], ['endif'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "break case",
-            "command": "[['expression', 'x0 = 0'], ['loop', 10], ['message', 'x0 is {x0}', 'info'], ['expression', 'x0 += 1'], ['if', 'x0 == 3'], ['break'], ['endif'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['expression', 'x0 = 0'], ['loop', 10], ['message', 'x0 is {x0}', 'info'], ['expression', 'x0 += 1'], ['if', 'x0 == 3'], ['break'], ['endif'], ['endloop'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "abort case",
-            "command": "[['loop', 10], ['message', 'ready to abort', 'warning'], ['abort', 'abort case'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['loop', 10], ['message', 'ready to abort', 'warning'], ['abort', 'abort case'], ['endloop'], ['tail']]"
         },
         {
             "type": "",
             "function": "",
-            "command": "",
-            "suffix": "",
-            "format": ""
+            "command": ""
         },
         {
             "type": "advanced",
             "function": "dummy thread 1",
-            "command": "[['loop', 100], ['message', 'dummy thread 1', 'info'], ['delay', 1, 'sec'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['loop', 100], ['message', 'dummy thread 1', 'info'], ['delay', 1, 'sec'], ['endloop'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "dummy thread 2",
-            "command": "[['loop', 100], ['message', 'dummy thread 2', 'info'], ['delay', 1, 'sec'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['loop', 100], ['message', 'dummy thread 2', 'info'], ['delay', 1, 'sec'], ['endloop'], ['tail']]"
         },
         {
             "type": null,
             "function": "",
-            "command": "",
-            "suffix": "",
-            "format": ""
+            "command": ""
         },
         {
             "type": "advanced",
             "function": "multi command send",
-            "command": "[['message', 'first command', 'info'], ['command', '010300F00001', 'plain'], ['delay', 100, 'ms'], ['message', 'second command', 'info'], ['command', '010300F10001', 'plain'], ['delay', 100, 'ms'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['message', 'first command', 'info'], ['command', '010300F00001', 'plain'], ['delay', 100, 'ms'], ['message', 'second command', 'info'], ['command', '010300F10001', 'plain'], ['delay', 100, 'ms'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "loop command send",
-            "command": "[['loop', 10], ['command', '010300F00001', 'plain'], ['delay', 100, 'ms'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['loop', 10], ['command', '010300F00001', 'plain'], ['delay', 100, 'ms'], ['endloop'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "single reg write",
-            "command": "[['command', '010300F20001', 'plain'], ['input', 'x0', 'input the value of reg 00F2'], ['command', '{0x011000F20001020000+x0:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['command', '010300F20001', 'plain'], ['input', 'x0', 'input the value of reg 00F2'], ['command', '{0x011000F20001020000+x0:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "duo reg write",
-            "command": "[['input', 'x0', 'input the value of 00F3 and 00F2'], ['command', '{0x011000F30001020000+x0%65536:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '{0x011000F20001020000+x0//65536%65536:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '010300F30001', 'plain'], ['delay', 100, 'ms'], ['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['input', 'x0', 'input the value of 00F3 and 00F2'], ['command', '{0x011000F30001020000+x0%65536:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '{0x011000F20001020000+x0//65536%65536:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '010300F30001', 'plain'], ['delay', 100, 'ms'], ['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "rx buffer print",
-            "command": "[['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['message', 'the initial value of 00F2 is {hex2int(rx_buffer[6:10])}', 'info'], ['input', 'x0', 'input the value of reg 00F2'], ['command', '{0x011000F20001020000+x0:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['message', 'the value of 00F2 is now {hex2int(rx_buffer[6:10])}', 'info'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['message', 'the initial value of 00F2 is {hex2int(rx_buffer[6:10])}', 'info'], ['input', 'x0', 'input the value of reg 00F2'], ['command', '{0x011000F20001020000+x0:018X}', 'expression'], ['delay', 100, 'ms'], ['command', '010300F20001', 'plain'], ['delay', 100, 'ms'], ['message', 'the value of 00F2 is now {hex2int(rx_buffer[6:10])}', 'info'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "rx buffer judge",
-            "command": "[['command', '011000000001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000070001020000', 'plain'], ['delay', 100, 'ms'], ['command', '0110000B00020400000000', 'plain'], ['delay', 100, 'ms'], ['command', '011000080001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000060001020001', 'plain'], ['expression', 'x0=0'], ['loop', 100], ['command', '010300140001', 'plain'], ['delay', 50, 'ms'], ['if', 'rx_buffer==\"0103020000B844\"'], ['expression', 'x0+=1'], ['endif'], ['if', 'rx_buffer==\"01030200017984\"'], ['message', 'motor in position after {x0*50} ms', 'info'], ['break'], ['endif'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['command', '011000000001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000070001020000', 'plain'], ['delay', 100, 'ms'], ['command', '0110000B00020400000000', 'plain'], ['delay', 100, 'ms'], ['command', '011000080001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000060001020001', 'plain'], ['expression', 'x0=0'], ['loop', 100], ['command', '010300140001', 'plain'], ['delay', 50, 'ms'], ['if', 'rx_buffer==\"0103020000B844\"'], ['expression', 'x0+=1'], ['endif'], ['if', 'rx_buffer==\"01030200017984\"'], ['message', 'motor in position after {x0*50} ms', 'info'], ['break'], ['endif'], ['endloop'], ['tail']]"
         },
         {
             "type": "advanced",
             "function": "data collect",
-            "command": "[['loop', 20], ['command', '0103000D0002', 'plain'], ['delay', 100, 'ms'], ['datatable', 'hex2int(rx_buffer[10:14]+rx_buffer[6:10])', 'new'], ['endloop'], ['command', '011000000001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000070001020000', 'plain'], ['delay', 100, 'ms'], ['command', '0110000B0002044240000F', 'plain'], ['delay', 100, 'ms'], ['command', '011000080001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000060001020001', 'plain'], ['loop', 30], ['command', '0103000D0002', 'plain'], ['delay', 100, 'ms'], ['datatable', 'hex2int(rx_buffer[10:14]+rx_buffer[6:10])', 'new'], ['endloop'], ['tail']]",
-            "suffix": "",
-            "format": ""
+            "command": "[['loop', 20], ['command', '0103000D0002', 'plain'], ['delay', 100, 'ms'], ['datatable', 'hex2int(rx_buffer[10:14]+rx_buffer[6:10])', 'new'], ['endloop'], ['command', '011000000001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000070001020000', 'plain'], ['delay', 100, 'ms'], ['command', '0110000B0002044240000F', 'plain'], ['delay', 100, 'ms'], ['command', '011000080001020001', 'plain'], ['delay', 100, 'ms'], ['command', '011000060001020001', 'plain'], ['loop', 30], ['command', '0103000D0002', 'plain'], ['delay', 100, 'ms'], ['datatable', 'hex2int(rx_buffer[10:14]+rx_buffer[6:10])', 'new'], ['endloop'], ['tail']]"
         }
     ],
     "data_collect": {

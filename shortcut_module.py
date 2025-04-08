@@ -167,9 +167,7 @@ class CommandShortcutWidget(QWidget):
             "type": None,
             "function": "new",
             "command": "",
-            "suffix": "",
-            "format": ""
-        })
+            })
         # shortcut table insert
         self.shortcut_table.insertRow(row)
         self.shortcut_table.blockSignals(True)
@@ -229,13 +227,11 @@ class CommandShortcutWidget(QWidget):
             buffer = eval(command)
             shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
 
-    def command_shortcut_save(self, index, type, command, suffix, format) -> None:
+    def command_shortcut_save(self, index, type, command) -> None:
         row = index - 1
         # command shortcut save
         shared.command_shortcut[row]["type"] = type
         shared.command_shortcut[row]["command"] = command
-        shared.command_shortcut[row]["suffix"] = suffix
-        shared.command_shortcut[row]["format"] = format
         # shortcut table save
         self.shortcut_table.blockSignals(True)
         self.shortcut_table.item(row, 2).setText(command)
