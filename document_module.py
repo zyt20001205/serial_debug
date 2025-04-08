@@ -131,7 +131,7 @@ def file_drop(event):
             elif file_path.endswith(".hex"):
                 shared.file_send_widget.file_send_load(file_path)
             else:
-                shared.serial_log_widget.log_insert("unknown file dropped", "warning")
+                shared.port_log_widget.log_insert("unknown file dropped", "warning")
 
 
 def config_file_load():
@@ -143,7 +143,7 @@ def config_file_load():
             with open(CONFIG_FILE, "r", encoding="utf-8") as file:
                 return json.load(file)
         except(json.JSONDecodeError, IOError) as e:
-            shared.serial_log_widget.log_insert("workspace load failed", "error")
+            shared.port_log_widget.log_insert("workspace load failed", "error")
             QMessageBox.critical(shared.main_window, "Error", "Config load failed.")
 
 
@@ -151,7 +151,7 @@ def config_file_load_from(file_path=None):
     if not file_path:
         file_path, _ = QFileDialog.getOpenFileName(None, "Load config file from", "", "Text Files (*.json);;All Files (*)")
         if not file_path:
-            shared.serial_log_widget.log_insert("workspace load cancelled", "warning")
+            shared.port_log_widget.log_insert("workspace load cancelled", "warning")
             return
     try:
         with open(file_path, "r", encoding="utf-8") as file:
@@ -162,7 +162,7 @@ def config_file_load_from(file_path=None):
             tab_init()
             dock_refresh()
     except(json.JSONDecodeError, IOError) as e:
-        shared.serial_log_widget.log_insert("workspace load failed", "error")
+        shared.port_log_widget.log_insert("workspace load failed", "error")
         QMessageBox.critical(shared.main_window, "Error", "Config load failed.")
 
 
@@ -171,26 +171,26 @@ def config_file_save(config):
         with open(CONFIG_FILE, "w", encoding="utf-8") as file:
             json.dump(config, file, indent=4, ensure_ascii=False)  # type: ignore
             try:
-                shared.serial_log_widget.log_insert("workspace saved", "info")
+                shared.port_log_widget.log_insert("workspace saved", "info")
             except:
                 pass
             return
     except IOError as e:
-        shared.serial_log_widget.log_insert("workspace save failed", "error")
+        shared.port_log_widget.log_insert("workspace save failed", "error")
         QMessageBox.critical(shared.main_window, "Error", "Config save failed.")
 
 
 def config_file_save_as(config):
     file_path, _ = QFileDialog.getSaveFileName(None, "Save config file as", "", "Text Files (*.json);;All Files (*)")
     if not file_path:
-        shared.serial_log_widget.log_insert("workspace save cancelled", "warning")
+        shared.port_log_widget.log_insert("workspace save cancelled", "warning")
         return
     try:
         with open(file_path, "w", encoding="utf-8") as file:
             json.dump(config, file, indent=4, ensure_ascii=False)  # type: ignore
-            shared.serial_log_widget.log_insert(f"workspace saved to: {file_path}", "info")
+            shared.port_log_widget.log_insert(f"workspace saved to: {file_path}", "info")
     except IOError as e:
-        shared.serial_log_widget.log_insert("workspace save failed", "error")
+        shared.port_log_widget.log_insert("workspace save failed", "error")
         QMessageBox.critical(shared.main_window, "Error", "Config save failed.")
 
 
@@ -208,7 +208,7 @@ def config_to_shared(config):
         shared.command_shortcut = config["command_shortcut"]
         shared.data_collect = config["data_collect"]
     except KeyError as e:
-        shared.serial_log_widget.log_insert(f"config file invalid", "error")
+        shared.port_log_widget.log_insert(f"config file invalid", "error")
         QMessageBox.critical(shared.main_window, "Error", "Config file invalid.")
 
 
@@ -238,7 +238,7 @@ def shared_to_config(config):
 
 def config_save():
     # save shared
-    shared.serial_log_widget.log_config_save()
+    shared.port_log_widget.log_config_save()
     # shared.port_status_widget.port_status_config_save()
     shared.single_send_widget.single_send_config_save()
     # shared.advanced_send_widget.advanced_send_config_save()
@@ -255,7 +255,7 @@ def config_save():
 
 def config_save_as():
     # save shared
-    shared.serial_log_widget.log_config_save()
+    shared.port_log_widget.log_config_save()
     # shared.port_status_widget.port_status_config_save()
     shared.single_send_widget.single_send_config_save()
     # shared.advanced_send_widget.advanced_send_config_save()

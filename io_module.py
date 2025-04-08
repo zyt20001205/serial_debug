@@ -103,7 +103,7 @@ class PortStatusWidget(QWidget):
                 self.serial_error_handler()
                 self.serial_port.errorOccurred.connect(self.serial_error_handler)
                 self.serial_port.readyRead.connect(self.read_timer)
-                shared.serial_log_widget.log_insert("\n---------------------------------------------------------------\n"
+                shared.port_log_widget.log_insert("\n---------------------------------------------------------------\n"
                                                     f"|{'serial port':^61}|\n"
                                                     "---------------------------------------------------------------\n"
                                                     f"|{'portname':^30}|{self.portname:^30}|\n"
@@ -115,15 +115,15 @@ class PortStatusWidget(QWidget):
                                                     f"---------------------------------------------------------------",
                                                     "info")
             except Exception as e:
-                shared.serial_log_widget.log_insert(f"{e}", "error")
+                shared.port_log_widget.log_insert(f"{e}", "error")
 
         def close(self) -> None:
             try:
                 if self.serial_port.isOpen():
                     self.serial_port.close()
-                    shared.serial_log_widget.log_insert("serial closed", "info")
+                    shared.port_log_widget.log_insert("serial closed", "info")
             except AttributeError:
-                shared.serial_log_widget.log_insert("serial close failed", "error")
+                shared.port_log_widget.log_insert("serial close failed", "error")
 
         def serial_error_handler(self):
             if self.serial_port.error() == QSerialPort.SerialPortError.NoError:
@@ -136,7 +136,7 @@ class PortStatusWidget(QWidget):
                 raise Exception("serial error: device not found")
             elif self.serial_port.error() == QSerialPort.SerialPortError.ResourceError:
                 self.port_toggle_button.setChecked(False)
-                shared.serial_log_widget.log_insert("serial error: device disconnected", "error")
+                shared.port_log_widget.log_insert("serial error: device disconnected", "error")
             else:
                 self.port_toggle_button.setChecked(False)
                 raise Exception("serial error: unknown error, please report")
@@ -217,7 +217,7 @@ class PortStatusWidget(QWidget):
             else:
                 message_data = self.tx_buffer
                 message_suffix = ""
-            shared.serial_log_widget.log_insert(f"[{self.portname}]-&gt; {message_data}<span style='color:orange;'>{message_suffix}</span>", "send")
+            shared.port_log_widget.log_insert(f"[{self.portname}]-&gt; {message_data}<span style='color:orange;'>{message_suffix}</span>", "send")
 
         def read_timer(self) -> None:
             self.timer.setSingleShot(True)
@@ -258,7 +258,7 @@ class PortStatusWidget(QWidget):
                     else:
                         message_data = self.rx_buffer
                         message_suffix = ""
-                    shared.serial_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
+                    shared.port_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
             else:
                 while self.serial_port.bytesAvailable() >= self.rx_size:
                     rx_message = self.serial_port.read(self.rx_size).data()
@@ -293,7 +293,7 @@ class PortStatusWidget(QWidget):
                         else:
                             message_data = self.rx_buffer
                             message_suffix = ""
-                        shared.serial_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
+                        shared.port_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
                 self.serial_port.readAll()
 
         def gui(self):
@@ -397,7 +397,7 @@ class PortStatusWidget(QWidget):
         def open(self) -> None:
             try:
                 self.tcp_client.connectToHost(self.remoteipv4, self.remoteport)
-                shared.serial_log_widget.log_insert("connecting to server\n"
+                shared.port_log_widget.log_insert("connecting to server\n"
                                                     "---------------------------------------------------------------\n"
                                                     f"|{'tcp client':^61}|\n"
                                                     "---------------------------------------------------------------\n"
@@ -407,21 +407,21 @@ class PortStatusWidget(QWidget):
                                                     "info")
                 self.tcp_client.connected.connect(self.find_server)
             except Exception as e:
-                shared.serial_log_widget.log_insert(f"{e}", "error")
+                shared.port_log_widget.log_insert(f"{e}", "error")
 
         def close(self) -> None:
             try:
                 self.tcp_client.disconnectFromHost()
                 self.tcp_client.connected.disconnect(self.find_server)
-                shared.serial_log_widget.log_insert(f"disconnected from server", "info")
+                shared.port_log_widget.log_insert(f"disconnected from server", "info")
             except AttributeError:
-                shared.serial_log_widget.log_insert("tcp client close failed", "error")
+                shared.port_log_widget.log_insert("tcp client close failed", "error")
 
         def find_server(self):
             self.tcp_client.readyRead.connect(self.read_timer)
             self.tcp_client.disconnected.connect(self.lost_server)
             self.port_lineedit.setText(f"{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}")
-            shared.serial_log_widget.log_insert("connection established\n"
+            shared.port_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
                                                 f"---------------------------------------------------------------",
@@ -429,7 +429,7 @@ class PortStatusWidget(QWidget):
 
         def lost_server(self):
             self.port_lineedit.setText("connecting to server...")
-            shared.serial_log_widget.log_insert("connection lost\n"
+            shared.port_log_widget.log_insert("connection lost\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{f'local ipv4':^30}|{f'{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}':^30}|\n"
                                                 f"---------------------------------------------------------------",
@@ -511,7 +511,7 @@ class PortStatusWidget(QWidget):
             else:
                 message_data = self.tx_buffer
                 message_suffix = ""
-            shared.serial_log_widget.log_insert(
+            shared.port_log_widget.log_insert(
                 f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]-&gt;[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                 "send")
 
@@ -554,7 +554,7 @@ class PortStatusWidget(QWidget):
                     else:
                         message_data = self.rx_buffer
                         message_suffix = ""
-                    shared.serial_log_widget.log_insert(
+                    shared.port_log_widget.log_insert(
                         f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]&lt;-[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                         "receive")
             else:
@@ -591,7 +591,7 @@ class PortStatusWidget(QWidget):
                         else:
                             message_data = self.rx_buffer
                             message_suffix = ""
-                        shared.serial_log_widget.log_insert(
+                        shared.port_log_widget.log_insert(
                             f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]&lt;-[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                             "receive")
             self.tcp_client.readAll()
@@ -696,7 +696,7 @@ class PortStatusWidget(QWidget):
         def open(self) -> None:
             try:
                 self.tcp_server.listen(QHostAddress(self.localipv4), self.localport)
-                shared.serial_log_widget.log_insert("listening for client\n"
+                shared.port_log_widget.log_insert("listening for client\n"
                                                     f"---------------------------------------------------------------\n"
                                                     f"|{'tcp server':^61}|\n"
                                                     f"---------------------------------------------------------------\n"
@@ -706,17 +706,17 @@ class PortStatusWidget(QWidget):
                                                     "info")
                 self.tcp_server.newConnection.connect(self.find_peer)
             except Exception as e:
-                shared.serial_log_widget.log_insert(f"{e}", "error")
+                shared.port_log_widget.log_insert(f"{e}", "error")
 
         def close(self) -> None:
             try:
                 self.tcp_server.close()
-                shared.serial_log_widget.log_insert("server stopped listening", "info")
+                shared.port_log_widget.log_insert("server stopped listening", "info")
                 for peer in self.tcp_server.findChildren(QTcpSocket):
                     peer.disconnectFromHost()
-                shared.serial_log_widget.log_insert("all client disconnected", "info")
+                shared.port_log_widget.log_insert("all client disconnected", "info")
             except AttributeError:
-                shared.serial_log_widget.log_insert("tcp client close failed", "error")
+                shared.port_log_widget.log_insert("tcp client close failed", "error")
 
         def find_peer(self):
             peer = self.tcp_server.nextPendingConnection()
@@ -729,7 +729,7 @@ class PortStatusWidget(QWidget):
             peer.readyRead.connect(lambda: self.read_timer(peer))
             peer.disconnected.connect(lambda: self.lost_peer(peer))
             self.peer_refresh()
-            shared.serial_log_widget.log_insert("connection established\n"
+            shared.port_log_widget.log_insert("connection established\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{'client list':^61}|\n"
                                                 f"---------------------------------------------------------------\n"
@@ -744,7 +744,7 @@ class PortStatusWidget(QWidget):
             else:
                 peer_list = f"|{'remote ipv4 (lost)':^30}|<s>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</s>|\n"
             self.peer_refresh()
-            shared.serial_log_widget.log_insert("connection lost\n"
+            shared.port_log_widget.log_insert("connection lost\n"
                                                 f"---------------------------------------------------------------\n"
                                                 f"|{'client list':^61}|\n"
                                                 f"---------------------------------------------------------------\n"
@@ -841,7 +841,7 @@ class PortStatusWidget(QWidget):
                 else:
                     message_data = self.tx_buffer
                     message_suffix = ""
-                shared.serial_log_widget.log_insert(
+                shared.port_log_widget.log_insert(
                     f"[{self.localipv4}:{self.localport}]-&gt;[broadcast] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                     "send")
             else:
@@ -878,7 +878,7 @@ class PortStatusWidget(QWidget):
                 else:
                     message_data = self.tx_buffer
                     message_suffix = ""
-                shared.serial_log_widget.log_insert(
+                shared.port_log_widget.log_insert(
                     f"[{self.localipv4}:{self.localport}]-&gt;[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                     "send")
 
@@ -921,7 +921,7 @@ class PortStatusWidget(QWidget):
                     else:
                         message_data = self.rx_buffer
                         message_suffix = ""
-                    shared.serial_log_widget.log_insert(
+                    shared.port_log_widget.log_insert(
                         f"[{self.localipv4}:{self.localport}]&lt;-[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                         "receive")
             else:
@@ -958,7 +958,7 @@ class PortStatusWidget(QWidget):
                         else:
                             message_data = self.rx_buffer
                             message_suffix = ""
-                        shared.serial_log_widget.log_insert(
+                        shared.port_log_widget.log_insert(
                             f"[{self.localipv4}:{self.localport}]&lt;-[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                             "receive")
                 peer.readAll()
@@ -1087,7 +1087,7 @@ class PortStatusWidget(QWidget):
         if self.tab_widget.tabText(0) == "welcome":
             self.tab_widget.removeTab(0)
         port_add_window = QWidget(shared.main_window)
-        port_add_window.setWindowTitle("Add New Port")
+        port_add_window.setWindowTitle(self.tr("Edit Port"))
         port_add_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
         port_add_window.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         port_add_layout = QVBoxLayout(port_add_window)
@@ -1423,7 +1423,7 @@ class PortStatusWidget(QWidget):
         tx_param_layout.setSpacing(10)
         tx_param_layout.setColumnStretch(0, 1)
         tx_param_layout.setColumnStretch(1, 3)
-        tx_format_label = QLabel(self.tr("TX format"))
+        tx_format_label = QLabel(self.tr("tx format"))
         tx_param_layout.addWidget(tx_format_label, 0, 0)
         tx_format_combobox = QComboBox()
         tx_format_combobox.addItems(["hex", "ascii", "utf-8"])
@@ -1431,11 +1431,11 @@ class PortStatusWidget(QWidget):
             tx_format_combobox.setCurrentText("hex")
         else:
             tx_format_combobox.setCurrentText(shared.port_setting[index]["tx_format"])
-        tx_format_combobox.setToolTip(self.tr("hex: treat the input as hexadecimal format\n"
-                                              "ascii: treat the input as ascii format\n"
-                                              "utf-8: treat the input as utf-8 format"))
+        tx_format_combobox.setToolTip(self.tr("hex: send as hexadecimal format\n"
+                                              "ascii: send as ascii format\n"
+                                              "utf-8: send as utf-8 format"))
         tx_param_layout.addWidget(tx_format_combobox, 0, 1)
-        tx_suffix_label = QLabel(self.tr("TX suffix"))
+        tx_suffix_label = QLabel(self.tr("tx suffix"))
         tx_param_layout.addWidget(tx_suffix_label, 1, 0)
         tx_suffix_combobox = QComboBox()
         tx_suffix_combobox.addItems(["none", "crlf", "crc8 maxim", "crc16 modbus"])
@@ -1445,7 +1445,7 @@ class PortStatusWidget(QWidget):
             tx_suffix_combobox.setCurrentText(shared.port_setting[index]["tx_suffix"])
         tx_suffix_combobox.setToolTip(self.tr("A calculated value used to verify the integrity of data."))
         tx_param_layout.addWidget(tx_suffix_combobox, 1, 1)
-        tx_interval_label = QLabel(self.tr("TX interval"))
+        tx_interval_label = QLabel(self.tr("tx interval"))
         tx_param_layout.addWidget(tx_interval_label, 2, 0)
         tx_interval_spinbox = QSpinBox()
         tx_interval_spinbox.setRange(0, 1000)
@@ -1477,7 +1477,7 @@ class PortStatusWidget(QWidget):
         rx_param_layout.setSpacing(10)
         rx_param_layout.setColumnStretch(0, 1)
         rx_param_layout.setColumnStretch(1, 3)
-        rx_format_label = QLabel(self.tr("RX format"))
+        rx_format_label = QLabel(self.tr("rx format"))
         rx_param_layout.addWidget(rx_format_label, 0, 0)
         rx_format_combobox = QComboBox()
         rx_format_combobox.addItems(["raw", "hex", "ascii", "utf-8"])
@@ -1485,12 +1485,12 @@ class PortStatusWidget(QWidget):
             rx_format_combobox.setCurrentText("hex")
         else:
             rx_format_combobox.setCurrentText(shared.port_setting[index]["rx_format"])
-        rx_format_combobox.setToolTip(self.tr("raw: treat the input as raw format\n"
-                                              "hex: treat the input as hexadecimal format\n"
-                                              "ascii: treat the input as ascii format\n"
-                                              "utf-8: treat the input as utf-8 format"))
+        rx_format_combobox.setToolTip(self.tr("raw: receive as raw format\n"
+                                              "hex: receive as hexadecimal format\n"
+                                              "ascii: receive as ascii format\n"
+                                              "utf-8: receive as utf-8 format"))
         rx_param_layout.addWidget(rx_format_combobox, 0, 1)
-        rx_size_label = QLabel(self.tr("RX size"))
+        rx_size_label = QLabel(self.tr("rx size"))
         rx_param_layout.addWidget(rx_size_label, 1, 0)
         rx_size_spinbox = QSpinBox()
         rx_size_spinbox.setRange(0, 100)
@@ -1508,7 +1508,7 @@ class PortStatusWidget(QWidget):
         save_seperator.setFrameShape(QFrame.Shape.HLine)
         save_seperator.setFrameShadow(QFrame.Shadow.Sunken)
         port_add_layout.addWidget(save_seperator)
-        save_button = QPushButton("Create New Port")
+        save_button = QPushButton(self.tr("Save Settings"))
         save_button.setShortcut(QKeySequence(Qt.Key.Key_Return))
         save_button.clicked.connect(lambda: port_setting_save(index))
         port_add_layout.addWidget(save_button)
@@ -1585,7 +1585,7 @@ class SingleSendWidget(QWidget):
                 self.single_send_load(stream.readQString())
             else:
                 QMessageBox.critical(shared.main_window, "Invalid input", "Please choose a single shortcut.")
-                shared.serial_log_widget.log_insert("shortcut load failed", "error")
+                shared.port_log_widget.log_insert("shortcut load failed", "error")
         else:
             event.ignore()
 
@@ -1659,14 +1659,14 @@ class SingleSendWidget(QWidget):
                                               QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
                     shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText())
-                    shared.serial_log_widget.log_insert(f"single shortcut overwrites {index}", "info")
+                    shared.port_log_widget.log_insert(f"single shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
-                    shared.serial_log_widget.log_insert("single shortcut overwrite cancelled", "info")
+                    shared.port_log_widget.log_insert("single shortcut overwrite cancelled", "info")
             else:
                 shared.command_shortcut_widget.command_shortcut_save(index, "single", self.single_send_textedit.toPlainText())
-                shared.serial_log_widget.log_insert(f"single shortcut saved to {index}", "info")
+                shared.port_log_widget.log_insert(f"single shortcut saved to {index}", "info")
         else:
-            shared.serial_log_widget.log_insert("single shortcut save", "warning")
+            shared.port_log_widget.log_insert("single shortcut save", "warning")
 
     def single_send_clear(self) -> None:
         self.single_send_textedit.clear()
@@ -1730,7 +1730,7 @@ class AdvancedSendWidget(QWidget):
             thread.setObjectName(thread_id)
 
             thread.highlight_signal.connect(self.table_highlight)
-            thread.log_signal.connect(shared.serial_log_widget.log_insert)
+            thread.log_signal.connect(shared.port_log_widget.log_insert)
             thread.send_signal.connect(shared.port_status_widget.port_write)
             thread.request_signal.connect(self.input_request)
             thread.database_import_signal.connect(shared.data_collect_widget.database_import)
@@ -1740,13 +1740,13 @@ class AdvancedSendWidget(QWidget):
 
             self.threadpool.append(thread)
             self.combobox_refresh()
-            shared.serial_log_widget.log_insert(f"advanced send start, thread id: {thread_id}", "info")
+            shared.port_log_widget.log_insert(f"advanced send start, thread id: {thread_id}", "info")
             thread.start()
 
         def remove(self, thread: QThread) -> None:
             thread_id = thread.objectName()
             self.threadpool.remove(thread)
-            shared.serial_log_widget.log_insert(f"advanced send end, thread id: {thread_id}", "info")
+            shared.port_log_widget.log_insert(f"advanced send end, thread id: {thread_id}", "info")
             self.combobox_refresh()
 
         def stop(self) -> None:
@@ -1758,11 +1758,11 @@ class AdvancedSendWidget(QWidget):
                 for thread in self.threadpool:
                     thread.stop()
                 self.threadpool = []
-                shared.serial_log_widget.log_insert("all advanced send threads manually terminated", "warning")
+                shared.port_log_widget.log_insert("all advanced send threads manually terminated", "warning")
             else:
                 thread.stop()
                 self.threadpool.remove(thread)
-                shared.serial_log_widget.log_insert(f"advanced send manually terminated, thread id: {thread_id}", "warning")
+                shared.port_log_widget.log_insert(f"advanced send manually terminated, thread id: {thread_id}", "warning")
             self.combobox_refresh()
 
         def combobox_refresh(self) -> None:
@@ -1975,9 +1975,9 @@ class AdvancedSendWidget(QWidget):
                                 log_path = os.path.join(os.getcwd(), log_name)
                                 with open(log_path, 'w', encoding='utf-8', newline='\n') as f:
                                     f.writelines(log_buffer)
-                                shared.serial_log_widget.log_insert(f"log saved to: {log_path}", "info")
+                                shared.port_log_widget.log_insert(f"log saved to: {log_path}", "info")
                             except:
-                                shared.serial_log_widget.log_insert("log save failed", "error")
+                                shared.port_log_widget.log_insert("log save failed", "error")
                                 QMessageBox.critical(shared.main_window, "Error", "Log save failed.")
                             log_buffer = []
                         # remove highlight
@@ -2210,7 +2210,7 @@ class AdvancedSendWidget(QWidget):
                 self.advanced_send_table_load(eval(stream.readQString()))
             else:
                 QMessageBox.critical(shared.main_window, "Invalid input", "Please choose an advanced shortcut.")
-                shared.serial_log_widget.log_insert("shortcut load failed", "error")
+                shared.port_log_widget.log_insert("shortcut load failed", "error")
         else:
             event.ignore()
 
@@ -2907,14 +2907,14 @@ class AdvancedSendWidget(QWidget):
                                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
                 if result == QMessageBox.StandardButton.Yes:
                     shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(shared.advanced_send_buffer))
-                    shared.serial_log_widget.log_insert(f"advanced shortcut overwrites {index}", "info")
+                    shared.port_log_widget.log_insert(f"advanced shortcut overwrites {index}", "info")
                 else:  # result == QMessageBox.StandardButton.No
-                    shared.serial_log_widget.log_insert("advanced shortcut overwrite cancelled", "info")
+                    shared.port_log_widget.log_insert("advanced shortcut overwrite cancelled", "info")
             else:
                 shared.command_shortcut_widget.command_shortcut_save(index, "advanced", str(shared.advanced_send_buffer))
-                shared.serial_log_widget.log_insert(f"advanced shortcut saved to {index}", "info")
+                shared.port_log_widget.log_insert(f"advanced shortcut saved to {index}", "info")
         else:
-            shared.serial_log_widget.log_insert("advanced shortcut save cancelled", "warning")
+            shared.port_log_widget.log_insert("advanced shortcut save cancelled", "warning")
 
 
 class FileSendWidget(QWidget):
@@ -2938,7 +2938,7 @@ class FileSendWidget(QWidget):
         self.file_format = None
 
         self.file_send_thread = self.FileSendThread(self)
-        self.file_send_thread.log_signal.connect(shared.serial_log_widget.log_insert)
+        self.file_send_thread.log_signal.connect(shared.port_log_widget.log_insert)
         self.file_send_thread.send_signal.connect(shared.port_status_widget.port_write)
         self.file_send_thread.progress_signal.connect(self.file_progress_refresh)
         self.file_send_thread.clear_signal.connect(self.file_send_clear)
@@ -3216,9 +3216,9 @@ class FileSendWidget(QWidget):
         if not file_path:
             file_path, _ = QFileDialog.getOpenFileName(None, "Open hex file", "", "HEX Files (*.hex);;All Files (*)")
             if file_path:
-                shared.serial_log_widget.log_insert("hex file loaded", "info")
+                shared.port_log_widget.log_insert("hex file loaded", "info")
             else:
-                shared.serial_log_widget.log_insert("hex file open cancelled", "warning")
+                shared.port_log_widget.log_insert("hex file open cancelled", "warning")
                 return
         self.file_send_clear()
         self.file_chunk = 0
@@ -3292,7 +3292,7 @@ class FileSendWidget(QWidget):
             return
         source_file_path = self.path_lineedit.text()
         if source_file_path.endswith(".tmp"):
-            shared.serial_log_widget.log_insert("file already split", "warning")
+            shared.port_log_widget.log_insert("file already split", "warning")
             return
         source_dir = os.path.dirname(source_file_path)
         chunk_size = self.chunk_size_spinbox.value()
@@ -3329,7 +3329,7 @@ class FileSendWidget(QWidget):
                     temp_file.write(":00000001FF\n")
         except Exception:
             pass
-        shared.serial_log_widget.log_insert(f"file split finished, chunk size: {chunk_size}", "info")
+        shared.port_log_widget.log_insert(f"file split finished, chunk size: {chunk_size}", "info")
         self.path_lineedit.setText(temp_file_path)
         self.file_send_load(temp_file_path)
 

@@ -25,10 +25,10 @@ class SerialLogWidget(QWidget):
         # shared variables
         shared.log_textedit = self.log_textedit
         # draw gui
-        self.serial_log_gui()
+        self.port_log_gui()
 
-    def serial_log_gui(self):
-        serial_log_layout = QVBoxLayout(self)
+    def port_log_gui(self):
+        port_log_layout = QVBoxLayout(self)
 
         def toggle_search_widget():
             if self.search_widget.isVisible():
@@ -43,7 +43,7 @@ class SerialLogWidget(QWidget):
         self.search_widget.setVisible(False)
         search_layout = QHBoxLayout(self.search_widget)
         search_layout.setContentsMargins(0, 0, 0, 0)
-        serial_log_layout.addWidget(self.search_widget)
+        port_log_layout.addWidget(self.search_widget)
         search_shortcut = QShortcut(QKeySequence("Ctrl+F"), shared.main_window)
         search_shortcut.activated.connect(toggle_search_widget)
 
@@ -175,12 +175,12 @@ class SerialLogWidget(QWidget):
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         else:  # shared.log_setting["wrap"] == "auto"
             self.log_textedit.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
-        serial_log_layout.addWidget(self.log_textedit)
+        port_log_layout.addWidget(self.log_textedit)
 
         # log control widget
         log_control_widget = QWidget()
         log_control_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        serial_log_layout.addWidget(log_control_widget)
+        port_log_layout.addWidget(log_control_widget)
         log_control_layout = QHBoxLayout(log_control_widget)
         log_control_layout.setContentsMargins(0, 0, 0, 0)
         log_control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)

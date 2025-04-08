@@ -351,7 +351,7 @@ class SettingWidget(QWidget):
         self.italic_combobox.setCurrentText("False")
         shared.font_setting["underline"] = False
         self.underline_combobox.setCurrentText("False")
-        shared.serial_log_widget.font_setting()
+        shared.port_log_widget.font_setting()
         shared.file_send_widget.file_preview_font()
         # save keyboard shortcut setting
         self.save_sequence.setKeySequence("Ctrl+S")
@@ -373,8 +373,6 @@ class SettingWidget(QWidget):
         shared.zoom_out_shortcut.setKey(QKeySequence("Ctrl+["))
         shared.shortcut_setting["zoom_out"] = "Ctrl+["
         QMessageBox.information(shared.main_window, self.tr("Reset Completed"), self.tr("The configuration has been reset to default."))
-        shared.serial_toggle_button.setChecked(False)
-        shared.port_status_widget.io_info_refresh()
 
     def setting_save(self):
         # save language setting
@@ -385,7 +383,7 @@ class SettingWidget(QWidget):
         shared.font_setting["bold"] = self.bold_combobox.currentData()
         shared.font_setting["italic"] = self.italic_combobox.currentData()
         shared.font_setting["underline"] = self.underline_combobox.currentData()
-        shared.serial_log_widget.font_setting()
+        shared.port_log_widget.font_setting()
         shared.file_send_widget.file_preview_font()
         # save keyboard shortcut setting
         shared.save_shortcut.setKey(self.save_sequence.keySequence())
@@ -400,9 +398,6 @@ class SettingWidget(QWidget):
         shared.shortcut_setting["zoom_in"] = self.zoom_in_sequence.keySequence().toString()
         shared.zoom_out_shortcut.setKey(self.zoom_out_sequence.keySequence())
         shared.shortcut_setting["zoom_out"] = self.zoom_out_sequence.keySequence().toString()
-        # close port
-        shared.serial_toggle_button.setChecked(False)
-        shared.port_status_widget.io_info_refresh()
         # layout refresh
         from main import language_load
         language_load(True)

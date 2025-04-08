@@ -25,7 +25,7 @@
 pyinstaller --onedir --noconsole --add-data "icon/*;icon" main.py
 
 ## Localization Command
-pyside6-lupdate setting_module.py -ts translations/zh_CN.ts
+pyside6-lupdate data_module.py io_module.py setting_module.py -ts translations/zh_CN.ts
 pyside6-linguist translations/zh_CN.ts
 pyside6-lrelease translations/zh_CN.ts -qm translations/zh_CN.qm
 

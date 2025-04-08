@@ -41,11 +41,11 @@ class MainWindow(QMainWindow):
                 elif file_path.endswith(".hex"):
                     shared.file_send_widget.file_send_load(file_path)
                 else:
-                    shared.serial_log_widget.log_insert("unknown file dropped", "error")
+                    shared.port_log_widget.log_insert("unknown file dropped", "error")
             else:
-                shared.serial_log_widget.log_insert("only accept single file", "error")
+                shared.port_log_widget.log_insert("only accept single file", "error")
         else:
-            shared.serial_log_widget.log_insert("only accept file drop", "error")
+            shared.port_log_widget.log_insert("only accept file drop", "error")
             event.ignore()
 
 

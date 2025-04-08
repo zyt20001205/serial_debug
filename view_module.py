@@ -7,14 +7,14 @@ import shared
 class ViewWidget(QMenu):
     def __init__(self, show_list: list):
         from gui_module import dock_update
-        from gui_module import serial_log_dock_widget, port_status_dock_widget, single_send_dock_widget, advanced_send_dock_widget, file_send_dock_widget, \
+        from gui_module import port_log_dock_widget, port_status_dock_widget, single_send_dock_widget, advanced_send_dock_widget, file_send_dock_widget, \
             command_shortcut_dock_widget, data_collect_dock_widget
         super().__init__()
         # dock widget view checkbox
-        self.serial_log_checkbox = QAction("serial log", self)
-        self.serial_log_checkbox.setCheckable(True)
-        self.serial_log_checkbox.triggered.connect(lambda checked: dock_update(serial_log_dock_widget, checked))
-        self.addAction(self.serial_log_checkbox)
+        self.port_log_checkbox = QAction("port log", self)
+        self.port_log_checkbox.setCheckable(True)
+        self.port_log_checkbox.triggered.connect(lambda checked: dock_update(port_log_dock_widget, checked))
+        self.addAction(self.port_log_checkbox)
         self.port_status_checkbox = QAction("port status", self)
         self.port_status_checkbox.setCheckable(True)
         self.port_status_checkbox.triggered.connect(lambda checked: dock_update(port_status_dock_widget, checked))
@@ -49,8 +49,8 @@ class ViewWidget(QMenu):
         self.view_init(show_list)
 
     def view_init(self, show_list: list) -> None:
-        if "serial_log" in show_list:
-            self.serial_log_checkbox.setChecked(True)
+        if "port_log" in show_list:
+            self.port_log_checkbox.setChecked(True)
         if "port_status" in show_list:
             self.port_status_checkbox.setChecked(True)
         if "single_send" in show_list:

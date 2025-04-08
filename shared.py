@@ -4,7 +4,7 @@ rx_buffer = None
 rx_buffer_raw = None
 tx_buffer = None
 
-serial_log_widget = None
+port_log_widget = None
 port_status_widget = None
 single_send_widget = None
 advanced_send_widget = None
@@ -25,7 +25,6 @@ zoom_in_shortcut = None
 zoom_out_shortcut = None
 
 send_suffix_combobox = None
-serial_toggle_button = None
 status_bar = None
 log_textedit = None
 

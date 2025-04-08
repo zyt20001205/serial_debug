@@ -295,7 +295,7 @@ class DataCollectWidget(QWidget):
             self.datatable.setHorizontalHeaderItem(col, header)
             # print(shared.data_collect["datatable"])
         else:
-            shared.serial_log_widget.log_insert("datatable column insert cancelled", "warning")
+            shared.port_log_widget.log_insert("datatable column insert cancelled", "warning")
 
     def datatable_remove(self) -> None:
         # get remove index
@@ -322,7 +322,7 @@ class DataCollectWidget(QWidget):
             self.datatable.setHorizontalHeaderItem(col, header)
             # print(shared.data_collect["datatable"])
         else:
-            shared.serial_log_widget.log_insert("datatable column rename cancelled", "warning")
+            shared.port_log_widget.log_insert("datatable column rename cancelled", "warning")
 
     def datatable_save(self) -> None:
         try:
@@ -345,14 +345,14 @@ class DataCollectWidget(QWidget):
             all_rows = [headers] + data_rows
             file_path, _ = QFileDialog.getSaveFileName(None, "Datatable Save", "", "CSV Files (*.csv);;All Files (*)")
             if not file_path:
-                shared.serial_log_widget.log_insert("datatable save cancelled", "warning")
+                shared.port_log_widget.log_insert("datatable save cancelled", "warning")
                 return
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
                 writer.writerows(all_rows)
-            shared.serial_log_widget.log_insert(f"datatable saved to: {file_path}", "info")
+            shared.port_log_widget.log_insert(f"datatable saved to: {file_path}", "info")
         except:
-            shared.serial_log_widget.log_insert(f"datatable save failed", "warning")
+            shared.port_log_widget.log_insert(f"datatable save failed", "warning")
 
     def datatable_clear(self) -> None:
         self.datatable.clearContents()
