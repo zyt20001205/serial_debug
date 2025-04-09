@@ -33,6 +33,7 @@ database_table = None
 # setting module
 layout = None
 language_setting = None
+autosave_setting = None
 font_setting = None
 shortcut_setting = None
 

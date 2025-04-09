@@ -19,20 +19,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "custom_state": None
     },
     "language_setting": "en_US",
-
-    "serial_setting": {
-        "port": "",
-        "baudrate": 115200,
-        "databits": "8",
-        "parity": "None",
-        "stopbits": "1",
-        "localipv4": "",
-        "localport": "",
-        "remoteipv4": "",
-        "remoteport": "",
-        "masteradapter": "",
-        "timeout": 0,
-    },
+    "autosave_setting": 5,
     "font_setting": {
         "family": "Consolas",
         "pointsize": 12,
@@ -40,6 +27,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "italic": False,
         "underline": False
     },
+    "port_setting": [],
     "shortcut_setting": {
         "save": "Ctrl+S",
         "save_as": "Ctrl+Shift+S",
@@ -77,7 +65,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         }
     ],
     "data_collect": {
-        "database": [{"label": "new", "link": None}],
+        "database": [{"label": "new", "link": ""}],
         "datatable": ["new"]
     }
 }
@@ -159,8 +147,8 @@ def config_file_load_from(file_path=None):
             config_to_shared(config)
             from gui_module import widget_init, tab_init, dock_init
             widget_init()
-            tab_init()
             dock_init()
+            tab_init()
     except(json.JSONDecodeError, IOError) as e:
         shared.port_log_widget.log_insert("workspace load failed", "error")
         QMessageBox.critical(shared.main_window, "Error", "Config load failed.")
@@ -198,10 +186,11 @@ def config_to_shared(config):
     try:
         shared.layout = config["layout"]
         shared.language_setting = config["language_setting"]
+        shared.autosave_setting = config["autosave_setting"]
+        shared.font_setting = config["font_setting"]
         shared.shortcut_setting = config["shortcut_setting"]
         shared.port_setting = config["port_setting"]
         shared.log_setting = config["log_setting"]
-        shared.font_setting = config["font_setting"]
         shared.single_send_buffer = config["single_send_buffer"]
         shared.advanced_send_buffer = config["advanced_send_buffer"]
         shared.file_send = config["file_send"]
@@ -224,10 +213,11 @@ def shared_to_config(config):
     else:  # shared.layout["tab"] == "custom_tab":
         config["layout"]["custom_state"] = shared.main_window.saveState().data().hex()
     config["language_setting"] = shared.language_setting
+    config["autosave_setting"] = shared.autosave_setting
+    config["font_setting"] = shared.font_setting
     config["shortcut_setting"] = shared.shortcut_setting
     config["port_setting"] = shared.port_setting
     config["log_setting"] = shared.log_setting
-    config["font_setting"] = shared.font_setting
     config["single_send_buffer"] = shared.single_send_buffer
     config["advanced_send_buffer"] = shared.advanced_send_buffer
     config["file_send"] = shared.file_send

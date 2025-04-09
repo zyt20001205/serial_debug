@@ -1,8 +1,9 @@
 from PySide6.QtGui import QFont, QIcon, QKeySequence, QFontDatabase
 from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QPushButton, QSpinBox, QVBoxLayout, QFrame, QHBoxLayout, QKeySequenceEdit, QScrollArea, QMessageBox
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 
 import shared
+from document_module import config_save
 
 
 class SettingWidget(QWidget):
@@ -23,6 +24,14 @@ class SettingWidget(QWidget):
 
         self.language_combobox = QComboBox()
 
+        self.autosave_spinbox = QSpinBox()
+        self.autosave_timer = QTimer()
+        self.autosave_timer.timeout.connect(config_save)
+        if shared.autosave_setting:
+            self.autosave_timer.start(shared.autosave_setting * 60000)
+        else:
+            self.autosave_timer.stop()
+
         self.family_combobox = QComboBox()
         self.pointsize_spinbox = QSpinBox()
         self.bold_combobox = QComboBox()
@@ -38,10 +47,11 @@ class SettingWidget(QWidget):
         # draw gui
         self.setting_gui()
         self.language_setting_gui()
+        self.autosave_setting_gui()
         self.font_setting_gui()
         self.shortcut_setting_gui()
 
-    def setting_gui(self):
+    def setting_gui(self) -> None:
         setting_layout = QVBoxLayout(self)
         setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
@@ -78,8 +88,7 @@ class SettingWidget(QWidget):
         save_button.clicked.connect(self.setting_save)
         control_layout.addWidget(save_button)
 
-    def language_setting_gui(self):
-
+    def language_setting_gui(self) -> None:
         language_setting_widget = QWidget()
         self.setting_scroll_layout.addWidget(language_setting_widget)
         language_setting_layout = QVBoxLayout(language_setting_widget)
@@ -120,7 +129,48 @@ class SettingWidget(QWidget):
             self.language_combobox.setCurrentIndex(index)
         language_param_layout.addWidget(self.language_combobox, 0, 1)
 
-    def font_setting_gui(self):
+    def autosave_setting_gui(self) -> None:
+        autosave_setting_widget = QWidget()
+        self.setting_scroll_layout.addWidget(autosave_setting_widget)
+        autosave_setting_layout = QVBoxLayout(autosave_setting_widget)
+        # title
+        autosave_label = QLabel(self.tr("Autosave Setting"))
+        autosave_label.setFont(self.title)
+        autosave_setting_layout.addWidget(autosave_label)
+        # line
+        autosave_line = QFrame()
+        autosave_line.setFrameShape(QFrame.Shape.HLine)
+        autosave_line.setFrameShadow(QFrame.Shadow.Sunken)
+        autosave_setting_layout.addWidget(autosave_line)
+        # widget
+        autosave_widget = QWidget()
+        autosave_setting_layout.addWidget(autosave_widget)
+        autosave_layout = QHBoxLayout(autosave_widget)
+        autosave_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        # autosave param widget
+        autosave_param_widget = QWidget()
+        autosave_param_widget.setFixedWidth(800)
+        autosave_layout.addWidget(autosave_param_widget)
+        autosave_param_layout = QGridLayout(autosave_param_widget)
+        autosave_param_layout.setContentsMargins(0, 0, 0, 0)
+        autosave_param_layout.setSpacing(10)
+        autosave_param_layout.setColumnStretch(0, 2)
+        autosave_param_layout.setColumnStretch(1, 3)
+        # autosave select
+        autosave_label = QLabel(self.tr("Interval(min)"))
+        autosave_label.setFont(self.font)
+        autosave_label.setFixedHeight(self.height)
+        autosave_param_layout.addWidget(autosave_label, 0, 0)
+        self.autosave_spinbox.setFont(self.font)
+        self.autosave_spinbox.setFixedHeight(self.height)
+        self.autosave_spinbox.setRange(0, 60)
+        self.autosave_spinbox.setSingleStep(1)
+        self.autosave_spinbox.setValue(shared.autosave_setting)
+        self.autosave_spinbox.setToolTip(self.tr("0: disable auto save\n"
+                                                 "n: save settings to config every n minutes"))
+        autosave_param_layout.addWidget(self.autosave_spinbox, 0, 1)
+
+    def font_setting_gui(self) -> None:
         def font_view_gui_refresh(**kwargs):
             if "family" in kwargs:
                 font_preview.setFamily(kwargs["family"])
@@ -237,7 +287,7 @@ class SettingWidget(QWidget):
         font_label.setFont(font_preview)
         font_view_layout.addWidget(font_label)
 
-    def shortcut_setting_gui(self):
+    def shortcut_setting_gui(self) -> None:
         def shortcut_view_gui_refresh(icon: str):
             if icon == "save":
                 shortcut_icon.setPixmap(QIcon("icon:save.svg").pixmap(128, 128))
@@ -339,8 +389,18 @@ class SettingWidget(QWidget):
         shortcut_icon.setPixmap(QIcon("icon:checkmark_circle.svg").pixmap(128, 128))
         shortcut_view_layout.addWidget(shortcut_icon)
 
-    def setting_reset(self):
-        # save font setting
+    def setting_reset(self) -> None:
+        # reset language setting
+        shared.language_setting = "en_US"
+        self.language_combobox.setCurrentText("English")
+        # reset autosave setting
+        shared.autosave_setting = 5
+        self.autosave_spinbox.setValue(5)
+        if shared.autosave_setting:
+            self.autosave_timer.start(shared.autosave_setting * 60000)
+        else:
+            self.autosave_timer.stop()
+        # reset font setting
         shared.font_setting["family"] = "Consolas"
         self.family_combobox.setCurrentText("Consolas")
         shared.font_setting["pointsize"] = 12
@@ -353,7 +413,7 @@ class SettingWidget(QWidget):
         self.underline_combobox.setCurrentText("False")
         shared.port_log_widget.font_setting()
         shared.file_send_widget.file_preview_font()
-        # save keyboard shortcut setting
+        # reset keyboard shortcut setting
         self.save_sequence.setKeySequence("Ctrl+S")
         shared.save_shortcut.setKey(QKeySequence("Ctrl+S"))
         shared.shortcut_setting["save"] = "Ctrl+S"
@@ -372,11 +432,20 @@ class SettingWidget(QWidget):
         self.zoom_out_sequence.setKeySequence("Ctrl+[")
         shared.zoom_out_shortcut.setKey(QKeySequence("Ctrl+["))
         shared.shortcut_setting["zoom_out"] = "Ctrl+["
+        # save to config
+        config_save()
+        # messagebox
         QMessageBox.information(shared.main_window, self.tr("Reset Completed"), self.tr("The configuration has been reset to default."))
 
-    def setting_save(self):
+    def setting_save(self) -> None:
         # save language setting
         shared.language_setting = self.language_combobox.currentData()
+        # save autosave setting
+        shared.autosave_setting = self.autosave_spinbox.value()
+        if shared.autosave_setting:
+            self.autosave_timer.start(shared.autosave_setting * 60000)
+        else:
+            self.autosave_timer.stop()
         # save font setting
         shared.font_setting["family"] = self.family_combobox.currentText()
         shared.font_setting["pointsize"] = self.pointsize_spinbox.value()
@@ -398,7 +467,10 @@ class SettingWidget(QWidget):
         shared.shortcut_setting["zoom_in"] = self.zoom_in_sequence.keySequence().toString()
         shared.zoom_out_shortcut.setKey(self.zoom_out_sequence.keySequence())
         shared.shortcut_setting["zoom_out"] = self.zoom_out_sequence.keySequence().toString()
+        # save to config
+        config_save()
         # layout refresh
         from main import language_load
         language_load(True)
+        # messagebox
         QMessageBox.information(shared.main_window, self.tr("Save Completed"), self.tr("The configuration has been successfully saved."))

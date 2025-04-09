@@ -63,8 +63,8 @@ def language_load(refresh: bool = 0) -> None:
     if refresh:
         from gui_module import widget_init, tab_init, dock_init
         widget_init()
-        tab_init()
         dock_init()
+        tab_init()
 
 
 if __name__ == "__main__":

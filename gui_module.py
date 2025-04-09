@@ -178,6 +178,7 @@ def dock_init():
     port_log_dock_widget.setWidget(shared.port_log_widget)
     port_log_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     port_log_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
 
     global port_status_dock_widget
     port_status_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Port Status"), shared.main_window)
@@ -185,6 +186,7 @@ def dock_init():
     port_status_dock_widget.setWidget(shared.port_status_widget)
     port_status_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     port_status_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
 
     global single_send_dock_widget
     single_send_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Single Send"), shared.main_window)
@@ -192,6 +194,7 @@ def dock_init():
     single_send_dock_widget.setWidget(shared.single_send_widget)
     single_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     single_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
 
     global advanced_send_dock_widget
     advanced_send_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Advanced Send"), shared.main_window)
@@ -199,6 +202,7 @@ def dock_init():
     advanced_send_dock_widget.setWidget(shared.advanced_send_widget)
     advanced_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     advanced_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
 
     global file_send_dock_widget
     file_send_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "File Send"), shared.main_window)
@@ -206,6 +210,7 @@ def dock_init():
     file_send_dock_widget.setWidget(shared.file_send_widget)
     file_send_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     file_send_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
 
     global command_shortcut_dock_widget
     command_shortcut_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Command Shortcut"), shared.main_window)
@@ -213,6 +218,7 @@ def dock_init():
     command_shortcut_dock_widget.setWidget(shared.command_shortcut_widget)
     command_shortcut_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     command_shortcut_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
 
     global data_collect_dock_widget
     data_collect_dock_widget = QDockWidget(QCoreApplication.translate("MainGUI", "Data Collect"), shared.main_window)
@@ -220,6 +226,7 @@ def dock_init():
     data_collect_dock_widget.setWidget(shared.data_collect_widget)
     data_collect_dock_widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
     data_collect_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
 
 
 def shortcut_init():
@@ -268,31 +275,11 @@ def send_tab_gui(default: bool) -> None:
     tab_clear(send_tab)
     shared.layout["tab"] = "send_tab"
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
     port_log_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    shared.main_window.resizeDocks([port_status_dock_widget], [450], Qt.Orientation.Horizontal)
     port_status_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    shared.main_window.resizeDocks([single_send_dock_widget], [450], Qt.Orientation.Horizontal)
     single_send_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    shared.main_window.resizeDocks([advanced_send_dock_widget], [450], Qt.Orientation.Horizontal)
     advanced_send_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    shared.main_window.resizeDocks([command_shortcut_dock_widget], [450], Qt.Orientation.Horizontal)
-    shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
     command_shortcut_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
 
     if not default:
         layout_load()
@@ -302,27 +289,8 @@ def file_tab_gui(default: bool) -> None:
     tab_clear(file_tab)
     shared.layout["tab"] = "file_tab"
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
     port_log_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    shared.main_window.resizeDocks([file_send_dock_widget], [600], Qt.Orientation.Horizontal)
     file_send_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    command_shortcut_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
 
     if not default:
         layout_load()
@@ -332,28 +300,8 @@ def data_tab_gui(default: bool) -> None:
     tab_clear(data_tab)
     shared.layout["tab"] = "data_tab"
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
     port_log_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    shared.main_window.resizeDocks([command_shortcut_dock_widget], [500], Qt.Orientation.Horizontal)
-    shared.main_window.resizeDocks([command_shortcut_dock_widget], [600], Qt.Orientation.Vertical)
     command_shortcut_dock_widget.show()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    shared.main_window.resizeDocks([data_collect_dock_widget], [500], Qt.Orientation.Horizontal)
     data_collect_dock_widget.show()
 
     if not default:
@@ -363,27 +311,6 @@ def data_tab_gui(default: bool) -> None:
 def custom_tab_gui(default: bool) -> None:
     tab_clear(custom_tab)
     shared.layout["tab"] = "custom_tab"
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
-    port_log_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    command_shortcut_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
 
     if not default:
         layout_load()
@@ -407,54 +334,12 @@ def toolbox_tab_gui():
     tab_clear(toolbox_tab)
     shared.layout["tab"] = "toolbox_tab"
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
-    port_log_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    command_shortcut_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
-
     shared.main_window.setCentralWidget(shared.toolbox_widget)
 
 
 def document_tab_gui():
     tab_clear(document_tab)
     shared.layout["tab"] = "document_tab"
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
-    port_log_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    command_shortcut_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
 
     shared.main_window.setCentralWidget(shared.document_widget)
 
@@ -463,54 +348,12 @@ def setting_tab_gui():
     tab_clear(setting_tab)
     shared.layout["tab"] = "setting_tab"
 
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
-    port_log_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    command_shortcut_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
-
     shared.main_window.setCentralWidget(shared.setting_widget)
 
 
 def info_tab_gui():
     tab_clear(info_tab)
     shared.layout["tab"] = "info_tab"
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, port_log_dock_widget)
-    port_log_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, port_status_dock_widget)
-    port_status_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, single_send_dock_widget)
-    single_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, advanced_send_dock_widget)
-    advanced_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, file_send_dock_widget)
-    file_send_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, command_shortcut_dock_widget)
-    command_shortcut_dock_widget.hide()
-
-    shared.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, data_collect_dock_widget)
-    data_collect_dock_widget.hide()
 
     shared.main_window.setCentralWidget(shared.info_widget)
 

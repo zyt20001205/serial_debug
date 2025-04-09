@@ -1668,7 +1668,7 @@ class SingleSendWidget(QWidget):
         self.single_send_textedit.setPlainText(send_buffer)
 
     def single_send_save(self) -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, len(shared.command_shortcut), 1)
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", shared.command_shortcut_widget.shortcut_table.currentRow() + 1, 1, len(shared.command_shortcut), 1)
         row = index - 1
         if ok:
             if shared.command_shortcut[row]["type"]:
@@ -2490,7 +2490,7 @@ class AdvancedSendWidget(QWidget):
                 self.database_param1_lineedit.setFocus()
                 # param2
                 self.database_param2_combobox = QComboBox()
-                self.database_param2_combobox.addItems(shared.data_collect["database"])
+                self.database_param2_combobox.addItems([item["label"] for item in shared.data_collect["database"]])
                 param2_layout.addWidget(self.database_param2_combobox)
             elif self.action_combobox.currentText() == "datatable":
                 # param1
@@ -2920,7 +2920,8 @@ class AdvancedSendWidget(QWidget):
 
     @staticmethod
     def advanced_send_save() -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", 1, 1, len(shared.command_shortcut), 1)
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", shared.command_shortcut_widget.shortcut_table.currentRow() + 1, 1,
+                                        len(shared.command_shortcut), 1)
         row = index - 1
         if ok:
             if shared.command_shortcut[row]["type"]:

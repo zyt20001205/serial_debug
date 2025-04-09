@@ -2,7 +2,7 @@ import csv
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
     QMessageBox, QLabel, QInputDialog
-from PySide6.QtCore import Qt, QMimeData, QTimer
+from PySide6.QtCore import Qt, QMimeData
 import pyqtgraph as pg
 
 import shared
@@ -226,7 +226,7 @@ class DataCollectWidget(QWidget):
         # data collect insert
         shared.data_collect["database"].insert(row, {
             "label": "new",
-            "link": None
+            "link": ""
         })
         # database insert
         self.database.insertRow(row)
@@ -267,8 +267,10 @@ class DataCollectWidget(QWidget):
             shared.data_collect["database"][row]["label"] = self.database.item(row, 1).text()
             # print(shared.data_collect["database"])
         else:  # if col == 2:
-            row = -1
             link = shared.data_collect["database"][row]["link"]
+            if not link:
+                return
+            row = -1
             for i in range(len(shared.command_shortcut)):
                 if link == shared.command_shortcut[i]["function"]:
                     row = i
