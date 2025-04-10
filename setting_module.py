@@ -292,7 +292,7 @@ class SettingWidget(QWidget):
             if icon == "save":
                 shortcut_icon.setPixmap(QIcon("icon:save.svg").pixmap(128, 128))
             elif icon == "save_as":
-                shortcut_icon.setPixmap(QIcon("icon:save_as.svg").pixmap(128, 128))
+                shortcut_icon.setPixmap(QIcon("icon:save_arrow_right.svg").pixmap(128, 128))
             elif icon == "load":
                 shortcut_icon.setPixmap(QIcon("icon:folder_open.svg").pixmap(128, 128))
             elif icon == "quit":
