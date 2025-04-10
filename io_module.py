@@ -100,8 +100,8 @@ class PortStatusWidget(QWidget):
                 self.serial_port.setStopBits(self.stopbits)
                 self.serial_port.setFlowControl(QSerialPort.FlowControl.NoFlowControl)
                 self.serial_port.open(QIODevice.OpenModeFlag.ReadWrite)
-                self.serial_error_handler()
-                self.serial_port.errorOccurred.connect(self.serial_error_handler)
+                self.exception_handler()
+                self.serial_port.errorOccurred.connect(self.exception_handler)
                 self.serial_port.readyRead.connect(self.read_timer)
                 shared.port_log_widget.log_insert("\n---------------------------------------------------------------\n"
                                                   f"|{'serial port':^61}|\n"
@@ -125,21 +125,39 @@ class PortStatusWidget(QWidget):
             except AttributeError:
                 shared.port_log_widget.log_insert("serial close failed", "error")
 
-        def serial_error_handler(self):
+        def exception_handler(self):
             if self.serial_port.error() == QSerialPort.SerialPortError.NoError:
                 return
-            elif self.serial_port.error() == QSerialPort.SerialPortError.PermissionError:
-                self.port_toggle_button.setChecked(False)
-                raise Exception("serial error: serial port is occupied")
             elif self.serial_port.error() == QSerialPort.SerialPortError.DeviceNotFoundError:
                 self.port_toggle_button.setChecked(False)
-                raise Exception("serial error: device not found")
+                raise Exception(f"{self.portname} not found")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.PermissionError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"permission denied for {self.portname}")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.OpenError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"failed to open {self.portname}")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.WriteError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"write operation failed on {self.portname}")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.ReadError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"read operation failed on {self.portname}")
             elif self.serial_port.error() == QSerialPort.SerialPortError.ResourceError:
                 self.port_toggle_button.setChecked(False)
-                shared.port_log_widget.log_insert("serial error: device disconnected", "error")
-            else:
+                shared.port_log_widget.log_insert(f"{self.portname} disconnected", "error")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.UnsupportedOperationError:
                 self.port_toggle_button.setChecked(False)
-                raise Exception("serial error: unknown error, please report")
+                raise Exception(f"unsupported operation on {self.portname}")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.UnknownError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"unknown error occurred with {self.portname}")
+            elif self.serial_port.error() == QSerialPort.SerialPortError.TimeoutError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"timeout reached while operating on {self.portname}")
+            else:  # self.serial_port.error() == QSerialPort.SerialPortError.NotOpenError:
+                self.port_toggle_button.setChecked(False)
+                raise Exception(f"operation attempted on {self.portname} while port is not open")
 
         def write(self, message: str) -> None:
             # open serial first
@@ -346,7 +364,7 @@ class PortStatusWidget(QWidget):
             tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
             tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
             tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-            tx_buffer_label = QLabel("tx buffer")
+            tx_buffer_label = QLabel(self.tr("tx buffer"))
             tx_buffer_layout.addWidget(tx_buffer_label)
             self.tx_buffer_lineedit.setFixedWidth(200)
             tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
@@ -356,7 +374,7 @@ class PortStatusWidget(QWidget):
             rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
             rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
             rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-            rx_buffer_label = QLabel("rx buffer")
+            rx_buffer_label = QLabel(self.tr("rx buffer"))
             rx_buffer_layout.addWidget(rx_buffer_label)
             self.rx_buffer_lineedit.setFixedWidth(200)
             rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
@@ -1567,6 +1585,7 @@ class SingleSendWidget(QWidget):
         self.overlay = QWidget(self)
 
         self.single_send_textedit = self.SingleSendPlainTextEdit()
+        self.single_send_label = QLabel()
         self.single_send_button = QPushButton()
         # draw gui
         self.single_send_gui()
@@ -1629,11 +1648,21 @@ class SingleSendWidget(QWidget):
 
         # advanced send gui
         single_send_layout = QHBoxLayout(self)
+        # container which contains command input text and suffix label
+        single_send_container = QWidget()
+        single_send_layout.addWidget(single_send_container)
+        single_send_container_layout = QGridLayout(single_send_container)
+        single_send_container_layout.setContentsMargins(0, 0, 0, 0)
+
         # single send textedit
         self.single_send_textedit.setStyleSheet("margin: 0px;")
         self.single_send_textedit.setFixedHeight(90)
-        # self.single_send_textedit.textChanged.connect(lambda: self.single_send_calculate(data=None))
-        single_send_layout.addWidget(self.single_send_textedit)
+        self.single_send_textedit.textChanged.connect(self.suffix_refresh)
+        single_send_container_layout.addWidget(self.single_send_textedit, 0, 0)
+        # single send suffix label
+        single_send_container_layout.addWidget(self.single_send_label, 0, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        self.suffix_refresh()
+
         # control widget
         control_widget = QWidget()
         single_send_layout.addWidget(control_widget)
@@ -1664,11 +1693,30 @@ class SingleSendWidget(QWidget):
         # initialize gui
         self.single_send_load(shared.single_send_buffer)
 
+    def suffix_refresh(self) -> None:
+        tx_suffix = shared.port_setting[shared.port_status_widget.tab_widget.currentIndex()]["tx_suffix"]
+        message = self.single_send_textedit.toPlainText()
+        try:
+            if tx_suffix == "crlf":
+                suffix = f"0d0a"
+            elif tx_suffix == "crc8 maxim":
+                suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
+            elif tx_suffix == "crc16 modbus":
+                suffix = f"{crc16_modbus(bytes.fromhex(message)):04X}"
+            else:  # self.tx_suffix == none
+                suffix = ""
+            self.single_send_textedit.setStyleSheet("background-color: white;")
+        except:
+            suffix = "NULL"
+            self.single_send_textedit.setStyleSheet("background-color: lightyellow;")
+        self.single_send_label.setText(suffix)
+
     def single_send_load(self, send_buffer: str = None) -> None:
         self.single_send_textedit.setPlainText(send_buffer)
 
     def single_send_save(self) -> None:
-        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", shared.command_shortcut_widget.shortcut_table.currentRow() + 1, 1, len(shared.command_shortcut), 1)
+        index, ok = QInputDialog.getInt(shared.main_window, "Save Shortcut to", "index:", shared.command_shortcut_widget.shortcut_table.currentRow() + 1, 1,
+                                        len(shared.command_shortcut), 1)
         row = index - 1
         if ok:
             if shared.command_shortcut[row]["type"]:
@@ -2237,6 +2285,10 @@ class AdvancedSendWidget(QWidget):
         else:
             event.ignore()
 
+    @staticmethod
+    def block_wheel(event):
+        event.ignore()
+
     def advanced_send_gui(self) -> None:
         # advanced send overlay
         self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 96);")
@@ -2348,6 +2400,7 @@ class AdvancedSendWidget(QWidget):
             '''
             action = shared.advanced_send_buffer[i][0]
             param1 = shared.advanced_send_buffer[i][1] if len(shared.advanced_send_buffer[i]) > 1 else None
+            param2 = shared.advanced_send_buffer[i][2] if len(shared.advanced_send_buffer[i]) > 2 else None
             # move icon
             move_icon = QLabel()
             move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
@@ -2393,8 +2446,9 @@ class AdvancedSendWidget(QWidget):
             elif action == "delay":
                 param_widget = QSpinBox()
                 param_widget.setRange(0, 2147483647)
-                param_widget.setSingleStep(10)
                 param_widget.setValue(param1)
+                param_widget.setSuffix(f"{param2}")
+                param_widget.wheelEvent = self.block_wheel
                 param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "stopwatch":
                 param_widget = QComboBox()
@@ -2406,8 +2460,8 @@ class AdvancedSendWidget(QWidget):
             elif action == "loop":
                 param_widget = QSpinBox()
                 param_widget.setRange(1, 2147483647)
-                param_widget.setSingleStep(1)
                 param_widget.setValue(param1)
+                param_widget.wheelEvent = self.block_wheel
                 param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             elif action == "endloop":
                 param_widget = QLineEdit()
@@ -2741,8 +2795,9 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(0, 2147483647)
-            param_widget.setSingleStep(10)
             param_widget.setValue(param1)
+            param_widget.setSuffix(f"{param2}")
+            param_widget.wheelEvent = self.block_wheel
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "stopwatch":
@@ -2784,8 +2839,8 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QSpinBox()
             param_widget.setRange(1, 2147483647)
-            param_widget.setSingleStep(1)
             param_widget.setValue(param1)
+            param_widget.wheelEvent = self.block_wheel
             param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "if":

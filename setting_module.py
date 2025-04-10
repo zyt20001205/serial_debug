@@ -157,7 +157,7 @@ class SettingWidget(QWidget):
         autosave_param_layout.setColumnStretch(0, 2)
         autosave_param_layout.setColumnStretch(1, 3)
         # autosave select
-        autosave_label = QLabel(self.tr("Interval(min)"))
+        autosave_label = QLabel(self.tr("Interval"))
         autosave_label.setFont(self.font)
         autosave_label.setFixedHeight(self.height)
         autosave_param_layout.addWidget(autosave_label, 0, 0)
@@ -165,6 +165,7 @@ class SettingWidget(QWidget):
         self.autosave_spinbox.setFixedHeight(self.height)
         self.autosave_spinbox.setRange(0, 60)
         self.autosave_spinbox.setSingleStep(1)
+        self.autosave_spinbox.setSuffix(self.tr("min"))
         self.autosave_spinbox.setValue(shared.autosave_setting)
         self.autosave_spinbox.setToolTip(self.tr("0: disable auto save\n"
                                                  "n: save settings to config every n minutes"))
