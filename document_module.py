@@ -105,23 +105,6 @@ def document_gui():
     document_layout.addWidget(exit_button, 3, 0)
 
 
-def file_enter(event):
-    event.accept()
-
-
-def file_drop(event):
-    if event.mimeData().hasUrls():
-        urls = event.mimeData().urls()
-        for url in urls:
-            file_path = url.toLocalFile()
-            if file_path.endswith(".json"):
-                config_file_load_from(file_path)
-            elif file_path.endswith(".hex"):
-                shared.file_send_widget.file_send_load(file_path)
-            else:
-                shared.port_log_widget.log_insert("unknown file dropped", "warning")
-
-
 def config_file_load():
     if not os.path.exists(CONFIG_FILE):
         config_file_save(DEFAULT_CONFIG)
@@ -260,22 +243,7 @@ def config_save_as():
     config_file_save_as(config)
 
 
-def layout_load():
-    geometry = shared.layout["geometry"]
-    if shared.layout["tab"] == "send_tab":
-        state = shared.layout["send_state"]
-    elif shared.layout["tab"] == "file_tab":
-        state = shared.layout["file_state"]
-    elif shared.layout["tab"] == "data_tab":
-        state = shared.layout["data_state"]
-    else:  # shared.layout["tab"] == "custom_tab":
-        state = shared.layout["custom_state"]
-    if geometry:
-        shared.main_window.restoreGeometry(bytes.fromhex(geometry))
-    if state:
-        shared.main_window.restoreState(bytes.fromhex(state))
-    if geometry:
-        shared.main_window.restoreGeometry(bytes.fromhex(geometry))
+
 
 
 def config_save_on_closed():

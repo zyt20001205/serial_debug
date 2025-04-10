@@ -1,6 +1,6 @@
-from PySide6.QtCore import Qt, QSize, QCoreApplication
+from PySide6.QtCore import Qt, QSize, QCoreApplication, QTranslator
 from PySide6.QtGui import QAction, QIcon, QShortcut, QKeySequence
-from PySide6.QtWidgets import QWidget, QSizePolicy, QToolBar, QDockWidget
+from PySide6.QtWidgets import QWidget, QSizePolicy, QToolBar, QDockWidget, QApplication
 
 import shared
 from log_module import SerialLogWidget
@@ -8,7 +8,7 @@ from io_module import PortStatusWidget, SingleSendWidget, AdvancedSendWidget, Fi
 from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
-from document_module import config_save, config_save_as, config_file_load_from, document_gui, layout_load
+from document_module import config_save, config_save_as, config_file_load_from, document_gui
 from view_module import ViewWidget
 from setting_module import SettingWidget
 from info_module import InfoWidget
@@ -107,20 +107,37 @@ def main_gui():
     global tab_list
     tab_list = [send_tab, file_tab, data_tab, custom_tab, toolbox_tab, document_tab, setting_tab, info_tab]
 
+    # lang file load
+    language_load()
     # widget initialization
     widget_init()
-
     # dock initialization
     dock_init()
-
     # shortcut initialization
     shortcut_init()
-
     # tab initialization
     tab_init()
-
+    # layout load
+    layout_load()
     # show main window
     shared.main_window.show()
+
+
+def language_load(refresh: bool = 0) -> None:
+    app = QApplication.instance()
+    language = shared.language_setting
+    for translator in app.findChildren(QTranslator):
+        app.removeTranslator(translator)
+    translator = QTranslator(app)
+    if language == "zh_CN":
+        if translator.load("lang:zh_CN.qm"):
+            QCoreApplication.installTranslator(translator)
+    else:
+        pass
+    if refresh:
+        widget_init()
+        dock_init()
+        tab_init()
 
 
 def widget_init():
@@ -269,6 +286,24 @@ def tab_init():
     else:  # shared.layout["tab"] == "info_tab"
         info_tab.setChecked(True)
         info_tab_gui()
+
+
+def layout_load():
+    geometry = shared.layout["geometry"]
+    if shared.layout["tab"] == "send_tab":
+        state = shared.layout["send_state"]
+    elif shared.layout["tab"] == "file_tab":
+        state = shared.layout["file_state"]
+    elif shared.layout["tab"] == "data_tab":
+        state = shared.layout["data_state"]
+    else:  # shared.layout["tab"] == "custom_tab":
+        state = shared.layout["custom_state"]
+    if geometry:
+        shared.main_window.restoreGeometry(bytes.fromhex(geometry))
+    if state:
+        shared.main_window.restoreState(bytes.fromhex(state))
+    if geometry:
+        shared.main_window.restoreGeometry(bytes.fromhex(geometry))
 
 
 def send_tab_gui(default: bool) -> None:

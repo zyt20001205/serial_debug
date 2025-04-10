@@ -470,7 +470,7 @@ class SettingWidget(QWidget):
         # save to config
         config_save()
         # layout refresh
-        from main import language_load
+        from gui_module import language_load
         language_load(True)
         # messagebox
         QMessageBox.information(shared.main_window, self.tr("Save Completed"), self.tr("The configuration has been successfully saved."))
