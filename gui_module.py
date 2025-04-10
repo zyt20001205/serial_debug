@@ -8,7 +8,7 @@ from io_module import PortStatusWidget, SingleSendWidget, AdvancedSendWidget, Fi
 from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
 from toolbox_module import ToolboxWidget
-from document_module import config_save, config_save_as, config_file_load_from, document_gui
+from document_module import DocumentWidget, config_save, config_save_as, config_file_load_from
 from view_module import ViewWidget
 from setting_module import SettingWidget
 from info_module import InfoWidget
@@ -173,7 +173,9 @@ def widget_init():
     toolbox_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     shared.toolbox_widget = toolbox_widget
 
-    document_gui()
+    document_widget = DocumentWidget()
+    document_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    shared.document_widget = document_widget
 
     setting_widget = SettingWidget()
     setting_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

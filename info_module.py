@@ -10,7 +10,7 @@ class InfoWidget(QWidget):
         # draw gui
         self.info_gui()
 
-    def info_gui(self):
+    def info_gui(self) -> None:
         info_layout = QVBoxLayout(self)
         info_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.info_textedit.setHtml("""

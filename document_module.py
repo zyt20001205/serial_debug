@@ -71,38 +71,44 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 
-def document_gui():
-    shared.document_widget = QWidget()
-    document_layout = QGridLayout(shared.document_widget)
-    document_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+class DocumentWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        # instance variables
+        # draw gui
+        self.document_gui()
 
-    save_button = QPushButton("  save workspace")
-    save_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
-    save_button.setIcon(QIcon("icon:save.svg"))
-    save_button.setIconSize(QSize(64, 64))
-    save_button.clicked.connect(config_save)
-    document_layout.addWidget(save_button, 0, 0)
+    def document_gui(self) -> None:
+        document_layout = QGridLayout(self)
+        document_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
-    save_as_button = QPushButton("  save workspace as")
-    save_as_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
-    save_as_button.setIcon(QIcon("icon:save_arrow_right.svg"))
-    save_as_button.setIconSize(QSize(64, 64))
-    save_as_button.clicked.connect(config_save_as)
-    document_layout.addWidget(save_as_button, 1, 0)
+        save_button = QPushButton(self.tr("  save workspace"))
+        save_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
+        save_button.setIcon(QIcon("icon:save.svg"))
+        save_button.setIconSize(QSize(64, 64))
+        save_button.clicked.connect(config_save)
+        document_layout.addWidget(save_button, 0, 0)
 
-    load_button = QPushButton("  load workspace")
-    load_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
-    load_button.setIcon(QIcon("icon:folder_open.svg"))
-    load_button.setIconSize(QSize(64, 64))
-    load_button.clicked.connect(config_file_load_from)
-    document_layout.addWidget(load_button, 2, 0)
+        save_as_button = QPushButton(self.tr("  save workspace as"))
+        save_as_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
+        save_as_button.setIcon(QIcon("icon:save_arrow_right.svg"))
+        save_as_button.setIconSize(QSize(64, 64))
+        save_as_button.clicked.connect(config_save_as)
+        document_layout.addWidget(save_as_button, 1, 0)
 
-    exit_button = QPushButton("  exit")
-    exit_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
-    exit_button.setIcon(QIcon("icon:arrow_exit.svg"))
-    exit_button.setIconSize(QSize(64, 64))
-    exit_button.clicked.connect(shared.main_window.close)
-    document_layout.addWidget(exit_button, 3, 0)
+        load_button = QPushButton(self.tr("  load workspace"))
+        load_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
+        load_button.setIcon(QIcon("icon:folder_open.svg"))
+        load_button.setIconSize(QSize(64, 64))
+        load_button.clicked.connect(config_file_load_from)
+        document_layout.addWidget(load_button, 2, 0)
+
+        exit_button = QPushButton(self.tr("  exit"))
+        exit_button.setStyleSheet("text-align: left; font-size: 32px; color: black;")
+        exit_button.setIcon(QIcon("icon:arrow_exit.svg"))
+        exit_button.setIconSize(QSize(64, 64))
+        exit_button.clicked.connect(shared.main_window.close)
+        document_layout.addWidget(exit_button, 3, 0)
 
 
 def config_file_load():
@@ -241,9 +247,6 @@ def config_save_as():
     config = shared_to_config(config)
     # save config as
     config_file_save_as(config)
-
-
-
 
 
 def config_save_on_closed():
