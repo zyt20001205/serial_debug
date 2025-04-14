@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QMimeData, QDataStream, QByteArray, QIODevice
 from PySide6.QtGui import QDrag, QIcon
-from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QLineEdit, QPushButton, QHeaderView, QLabel, QHBoxLayout, QMessageBox, QTableWidgetItem
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QPushButton, QHeaderView, QLabel, QTableWidgetItem
 
 import shared
 
@@ -167,7 +167,7 @@ class CommandShortcutWidget(QWidget):
             "type": None,
             "function": "new",
             "command": "",
-            })
+        })
         # shortcut table insert
         self.shortcut_table.insertRow(row)
         self.shortcut_table.blockSignals(True)
@@ -206,6 +206,8 @@ class CommandShortcutWidget(QWidget):
             # save cell
             shared.command_shortcut[row]["function"] = self.shortcut_table.item(row, 1).text()
             # print(shared.command_shortcut)
+        else:  # col == 2:
+            shared.command_shortcut[row]["command"] = self.shortcut_table.item(row, 2).text()
 
     def command_shortcut_send(self) -> None:
         # get widget index

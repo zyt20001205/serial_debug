@@ -27,7 +27,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "italic": False,
         "underline": False
     },
-    "port_setting": [],
     "shortcut_setting": {
         "save": "Ctrl+S",
         "save_as": "Ctrl+Shift+S",
@@ -36,18 +35,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "zoom_in": "Ctrl+]",
         "zoom_out": "Ctrl+["
     },
+    "port_setting": [],
     "log_setting": {
         "timestamp": True,
         "lock": False,
         "wrap": "none",
         "length": 1000
-    },
-    "io_setting": {
-        "tx_format": "hex",
-        "tx_suffix": "",
-        "tx_interval": 0,
-        "rx_format": "hex",
-        "rx_size": 0
     },
     "single_send_buffer": "",
     "advanced_send_buffer": [["tail"]],

@@ -36,6 +36,21 @@ class PortStatusWidget(QWidget):
         # draw gui
         self.port_status_gui()
 
+    class WelcomeTab(QWidget):
+        def __init__(self):
+            super().__init__()
+            self.gui()
+
+        def gui(self):
+            port_layout = QHBoxLayout(self)
+            port_layout.setContentsMargins(0, 10, 0, 0)
+
+            # create port hint
+            hint_label = QLabel(self.tr("click the add button above to create a new port"))
+            hint_label.setStyleSheet("font-size: 16px;")
+            hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            port_layout.addWidget(hint_label)
+
     class SerialPortTab(QWidget):
         DATABITS_MAPPING = {
             "5": QSerialPort.DataBits.Data5,
@@ -1060,53 +1075,6 @@ class PortStatusWidget(QWidget):
             self.port_toggle_button.toggled.connect(port_toggle)
             port_layout.addWidget(self.port_toggle_button)
 
-    def port_status_gui(self) -> None:
-        # port status gui
-        port_status_layout = QVBoxLayout(self)
-        # port status tab widget
-        self.tab_widget.setMovable(True)
-        self.tab_widget.tabBar().tabMoved.connect(self.port_tab_move)
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.port_tab_close)
-        self.tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
-        port_status_layout.addWidget(self.tab_widget)
-
-        # no port exists, create a welcome tab
-        if not len(shared.port_setting):
-            self.welcome_tab()
-        else:
-            self.port_status_load()
-
-        # add button
-        add_button = QPushButton()
-        add_button.setFixedWidth(26)
-        add_button.setIcon(QIcon("icon:add.svg"))
-        add_button.clicked.connect(lambda: self.port_tab_edit(-1))
-        self.tab_widget.setCornerWidget(add_button)
-
-    def welcome_tab(self) -> None:
-        welcome_tab = QWidget()
-        self.tab_widget.addTab(welcome_tab, "welcome")
-
-    def port_status_load(self) -> None:
-        for i in range(len(shared.port_setting)):
-            port_name = shared.port_setting[i]["portname"]
-            if port_name == "tcp client":
-                port_tab = self.TcpClientTab(self, shared.port_setting[i])
-                self.tab_list.append(port_tab)
-                self.tab_widget.addTab(port_tab, port_name)
-                self.tab_widget.setTabIcon(i, QIcon("icon:desktop.svg"))
-            elif port_name == "tcp server":
-                port_tab = self.TcpServerTab(self, shared.port_setting[i])
-                self.tab_list.append(port_tab)
-                self.tab_widget.addTab(port_tab, port_name)
-                self.tab_widget.setTabIcon(i, QIcon("icon:server.svg"))
-            else:
-                port_tab = self.SerialPortTab(self, shared.port_setting[i])
-                self.tab_list.append(port_tab)
-                self.tab_widget.addTab(port_tab, port_name)
-                self.tab_widget.setTabIcon(i, QIcon("icon:serial_port.svg"))
-
     def port_write(self, message: str, index: int) -> None:
         # -2 broadcast
         # -1 current port
@@ -1119,9 +1087,50 @@ class PortStatusWidget(QWidget):
                 index = self.tab_widget.currentIndex()
             self.tab_list[index].write(message)
 
+    def port_status_gui(self) -> None:
+        # port status gui
+        port_status_layout = QVBoxLayout(self)
+        # port status tab widget
+        self.tab_widget.setMovable(True)
+        self.tab_widget.tabBar().tabMoved.connect(self.port_tab_move)
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.port_tab_close)
+        self.tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
+        port_status_layout.addWidget(self.tab_widget)
+
+        self.port_tab_load()
+
+        # add button
+        add_button = QPushButton()
+        add_button.setFixedWidth(26)
+        add_button.setIcon(QIcon("icon:add.svg"))
+        add_button.clicked.connect(lambda: self.port_tab_edit(-1))
+        self.tab_widget.setCornerWidget(add_button)
+
+    def port_tab_load(self) -> None:
+        if not len(shared.port_setting):
+            welcome_tab = self.WelcomeTab()
+            self.tab_widget.addTab(welcome_tab, "welcome")
+        else:
+            for i in range(len(shared.port_setting)):
+                port_name = shared.port_setting[i]["portname"]
+                if port_name == "tcp client":
+                    port_tab = self.TcpClientTab(self, shared.port_setting[i])
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, port_name)
+                    self.tab_widget.setTabIcon(i, QIcon("icon:desktop.svg"))
+                elif port_name == "tcp server":
+                    port_tab = self.TcpServerTab(self, shared.port_setting[i])
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, port_name)
+                    self.tab_widget.setTabIcon(i, QIcon("icon:server.svg"))
+                else:
+                    port_tab = self.SerialPortTab(self, shared.port_setting[i])
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, port_name)
+                    self.tab_widget.setTabIcon(i, QIcon("icon:serial_port.svg"))
+
     def port_tab_edit(self, index: int) -> None:
-        if self.tab_widget.tabText(0) == "welcome":
-            self.tab_widget.removeTab(0)
         port_add_window = QWidget(shared.main_window)
         port_add_window.setWindowTitle(self.tr("Edit Port"))
         port_add_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
@@ -1301,16 +1310,18 @@ class PortStatusWidget(QWidget):
                                                    ">0: Blocks for the specified time (ms)."))
                 self.port_param_layout.addWidget(timeout_spinbox, 2, 1)
 
-            if not port_name:
-                blank_gui()
-            elif port_name == "tcp client":
+            if port_name == "tcp client":
                 tcp_client_gui()
             elif port_name == "tcp server":
                 tcp_server_gui()
             else:
                 serial_gui()
 
+            port_add_window.adjustSize()
+            port_add_window.move(port_add_window.parentWidget().geometry().center() - port_add_window.rect().center())
+
         def port_setting_save(index: int) -> None:
+            # delete old port
             if index != -1:
                 # close port first
                 if self.tab_list[index].port_toggle_button.isChecked():
@@ -1322,7 +1333,7 @@ class PortStatusWidget(QWidget):
                 del self.tab_list[index]
                 self.tab_widget.removeTab(index)
                 del shared.port_setting[index]
-
+            # create new port
             port_name = port_name_combobox.currentData()
             if port_name == "":
                 pass
@@ -1397,6 +1408,15 @@ class PortStatusWidget(QWidget):
                     self.tab_widget.insertTab(index, port_tab, port_name)
                     self.tab_widget.setTabIcon(index, QIcon("icon:serial_port.svg"))
                     shared.port_setting.insert(index, port_setting)
+            # delete welcome tab
+            if self.tab_widget.tabText(0) == "welcome":
+                self.tab_widget.removeTab(0)
+            # select tab
+            if index == -1:
+                self.tab_widget.setCurrentIndex(self.tab_widget.count() - 1)
+            else:
+                self.tab_widget.setCurrentIndex(index)
+            # close window
             port_add_window.close()
 
         # port setting widget
@@ -1422,7 +1442,6 @@ class PortStatusWidget(QWidget):
         port_name_label = QLabel(self.tr("Port Name"))
         port_name_layout.addWidget(port_name_label, 0, 0)
         port_name_combobox = QComboBox()
-        port_name_combobox.addItem("", "")
         for port_info in QSerialPortInfo.availablePorts():
             port_name_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
         port_name_combobox.addItem("TCP client", "tcp client")
@@ -1440,6 +1459,7 @@ class PortStatusWidget(QWidget):
         self.port_param_layout.setSpacing(10)
         self.port_param_layout.setColumnStretch(0, 1)
         self.port_param_layout.setColumnStretch(1, 3)
+        port_setting_refresh(port_name_combobox.currentData(), index)
 
         # tx setting widget
         tx_setting_widget = QWidget()
@@ -1557,6 +1577,7 @@ class PortStatusWidget(QWidget):
                 port_name_combobox.setCurrentIndex(i)
 
         port_add_window.show()
+        port_add_window.move(port_add_window.parentWidget().geometry().center() - port_add_window.rect().center())
 
     def port_tab_close(self, index: int) -> None:
         if self.tab_widget.tabText(index) == "welcome":
@@ -1566,7 +1587,8 @@ class PortStatusWidget(QWidget):
         self.tab_widget.removeTab(index)
         del shared.port_setting[index]
         if not len(shared.port_setting):
-            self.welcome_tab()
+            welcome_tab = self.WelcomeTab()
+            self.tab_widget.addTab(welcome_tab, "welcome")
 
     def port_tab_move(self, src: int, dst: int) -> None:
         # switch self.tab_list
@@ -1661,6 +1683,7 @@ class SingleSendWidget(QWidget):
         single_send_container_layout.addWidget(self.single_send_textedit, 0, 0)
         # single send suffix label
         single_send_container_layout.addWidget(self.single_send_label, 0, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        shared.port_status_widget.tab_widget.currentChanged.connect(self.suffix_refresh)
         self.suffix_refresh()
 
         # control widget
@@ -1694,6 +1717,8 @@ class SingleSendWidget(QWidget):
         self.single_send_load(shared.single_send_buffer)
 
     def suffix_refresh(self) -> None:
+        if not shared.port_setting:
+            return
         tx_suffix = shared.port_setting[shared.port_status_widget.tab_widget.currentIndex()]["tx_suffix"]
         message = self.single_send_textedit.toPlainText()
         try:
@@ -1708,7 +1733,7 @@ class SingleSendWidget(QWidget):
             self.single_send_textedit.setStyleSheet("background-color: white;")
         except:
             suffix = "NULL"
-            self.single_send_textedit.setStyleSheet("background-color: lightyellow;")
+            self.single_send_textedit.setStyleSheet("background-color: lightcoral;")
         self.single_send_label.setText(suffix)
 
     def single_send_load(self, send_buffer: str = None) -> None:

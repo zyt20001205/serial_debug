@@ -3,7 +3,7 @@ from PySide6.QtGui import QAction, QIcon, QShortcut, QKeySequence
 from PySide6.QtWidgets import QWidget, QSizePolicy, QToolBar, QDockWidget, QApplication
 
 import shared
-from log_module import SerialLogWidget
+from log_module import PortLogWidget
 from io_module import PortStatusWidget, SingleSendWidget, AdvancedSendWidget, FileSendWidget
 from shortcut_module import CommandShortcutWidget
 from data_module import DataCollectWidget
@@ -113,12 +113,12 @@ def main_gui():
     widget_init()
     # dock initialization
     dock_init()
-    # shortcut initialization
-    shortcut_init()
     # tab initialization
     tab_init()
     # layout load
     layout_load()
+    # shortcut initialization
+    shortcut_init()
     # show main window
     shared.main_window.show()
 
@@ -141,7 +141,7 @@ def language_load(refresh: bool = 0) -> None:
 
 
 def widget_init():
-    port_log_widget = SerialLogWidget()
+    port_log_widget = PortLogWidget()
     port_log_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     shared.port_log_widget = port_log_widget
 
