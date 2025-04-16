@@ -1829,7 +1829,7 @@ class AdvancedSendWidget(QWidget):
             thread.database_import_signal.connect(shared.data_collect_widget.database_import)
             thread.datatable_import_signal.connect(shared.data_collect_widget.datatable_import)
             thread.message_signal.connect(self.messagebox_show)
-            thread.finish_signal.connect(self.remove)
+            thread.finished.connect(lambda: self.remove(thread))
 
             self.threadpool.append(thread)
             self.combobox_refresh()
@@ -1837,8 +1837,12 @@ class AdvancedSendWidget(QWidget):
             thread.start()
 
         def remove(self, thread: QThread) -> None:
-            thread_id = thread.objectName()
+            # stop and delete thread
+            thread.wait()
+            thread.deleteLater()
+            # remove from thread pool
             self.threadpool.remove(thread)
+            thread_id = thread.objectName()
             shared.port_log_widget.log_insert(f"advanced send end, thread id: {thread_id}", "info")
             self.combobox_refresh()
 
@@ -1850,11 +1854,9 @@ class AdvancedSendWidget(QWidget):
             elif thread == "all":
                 for thread in self.threadpool:
                     thread.stop()
-                self.threadpool = []
                 shared.port_log_widget.log_insert("all advanced send threads manually terminated", "warning")
             else:
                 thread.stop()
-                self.threadpool.remove(thread)
                 shared.port_log_widget.log_insert(f"advanced send manually terminated, thread id: {thread_id}", "warning")
             self.combobox_refresh()
 
@@ -1903,7 +1905,6 @@ class AdvancedSendWidget(QWidget):
             database_import_signal = Signal(int, str)
             datatable_import_signal = Signal(int, str)
             message_signal = Signal(QThread, str, str, QWaitCondition)
-            finish_signal = Signal(QThread)
 
             class ThreadTerminate(Exception):
                 pass
@@ -2184,12 +2185,10 @@ class AdvancedSendWidget(QWidget):
                 return
 
             def run(self):
-                self.enable = True
                 try:
                     self.send(self.buffer)
-                    self.finish_signal.emit(self)
                 except self.ThreadTerminate:
-                    return
+                    ...
                 except Exception as e:
                     if "abort exception: " in str(e):
                         self.log_signal.emit(f"{e}", "error")
@@ -2197,14 +2196,12 @@ class AdvancedSendWidget(QWidget):
                         self.log_signal.emit(html.escape(str(e)), "error")
 
             def stop(self):
+                # stop thread
+                self.enable = False
                 # clear highlight
                 length = len(self.buffer)
                 for index in range(length):
                     self.highlight_signal.emit(length, index, "white")
-                # stop thread
-                self.enable = False
-                self.wait()
-                self.deleteLater()
 
     class AdvancedSendTableWidget(QTableWidget):
 

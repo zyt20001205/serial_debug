@@ -138,6 +138,7 @@ def language_load(refresh: bool = 0) -> None:
         widget_init()
         dock_init()
         tab_init()
+        shortcut_init()
 
 
 def widget_init():
@@ -249,18 +250,40 @@ def dock_init():
 
 
 def shortcut_init():
+    if shared.save_shortcut:
+        shared.save_shortcut.deleteLater()
     shared.save_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["save"]), shared.main_window)
     shared.save_shortcut.activated.connect(config_save)
+
+    if shared.save_as_shortcut:
+        shared.save_as_shortcut.deleteLater()
     shared.save_as_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["save_as"]), shared.main_window)
     shared.save_as_shortcut.activated.connect(config_save_as)
+
+    if shared.load_shortcut:
+        shared.load_shortcut.deleteLater()
     shared.load_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["load"]), shared.main_window)
     shared.load_shortcut.activated.connect(config_file_load_from)
+
+    if shared.quit_shortcut:
+        shared.quit_shortcut.deleteLater()
     shared.quit_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["quit"]), shared.main_window)
     shared.quit_shortcut.activated.connect(shared.main_window.close)
-    shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
-    shared.zoom_in_shortcut.activated.connect(shared.port_log_widget.log_zoom_in)
+
+    if shared.search_shortcut:
+        shared.search_shortcut.deleteLater()
+    shared.search_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["search"]), shared.main_window)
+    shared.search_shortcut.activated.connect(shared.port_log_widget.port_search_toggle)
+
+    if shared.zoom_out_shortcut:
+        shared.zoom_out_shortcut.deleteLater()
     shared.zoom_out_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_out"]), shared.main_window)
     shared.zoom_out_shortcut.activated.connect(shared.port_log_widget.log_zoom_out)
+
+    if shared.zoom_in_shortcut:
+        shared.zoom_in_shortcut.deleteLater()
+    shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
+    shared.zoom_in_shortcut.activated.connect(shared.port_log_widget.log_zoom_in)
 
 
 def tab_init():

@@ -1,5 +1,6 @@
-from PySide6.QtGui import QFont, QIcon, QKeySequence, QFontDatabase
-from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QPushButton, QSpinBox, QVBoxLayout, QFrame, QHBoxLayout, QKeySequenceEdit, QScrollArea, QMessageBox
+from PySide6.QtGui import QFont, QIcon, QKeySequence
+from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QPushButton, QSpinBox, QVBoxLayout, QFrame, QHBoxLayout, QKeySequenceEdit, QScrollArea, QMessageBox, \
+    QFontComboBox
 from PySide6.QtCore import Qt, QSize, QTimer
 
 import shared
@@ -32,7 +33,7 @@ class SettingWidget(QWidget):
         else:
             self.autosave_timer.stop()
 
-        self.family_combobox = QComboBox()
+        self.family_combobox = QFontComboBox()
         self.pointsize_spinbox = QSpinBox()
         self.bold_combobox = QComboBox()
         self.italic_combobox = QComboBox()
@@ -42,6 +43,7 @@ class SettingWidget(QWidget):
         self.save_as_sequence = QKeySequenceEdit(shared.shortcut_setting["save_as"])
         self.load_sequence = QKeySequenceEdit(shared.shortcut_setting["load"])
         self.quit_sequence = QKeySequenceEdit(shared.shortcut_setting["quit"])
+        self.search_sequence = QKeySequenceEdit(shared.shortcut_setting["search"])
         self.zoom_in_sequence = QKeySequenceEdit(shared.shortcut_setting["zoom_in"])
         self.zoom_out_sequence = QKeySequenceEdit(shared.shortcut_setting["zoom_out"])
         # draw gui
@@ -218,9 +220,9 @@ class SettingWidget(QWidget):
         font_param_layout.addWidget(family_label, 0, 0)
         self.family_combobox.setFont(self.font)
         self.family_combobox.setFixedHeight(self.height)
-        self.family_combobox.addItems(QFontDatabase.families())
-        self.family_combobox.setCurrentText(shared.font_setting["family"])
-        self.family_combobox.currentTextChanged.connect(lambda value: font_view_gui_refresh(family=value))
+        self.family_combobox.lineEdit().setFont(self.font)
+        self.family_combobox.setCurrentFont(QFont(shared.font_setting["family"]))
+        self.family_combobox.currentFontChanged.connect(lambda value: font_view_gui_refresh(family=value.family()))
         font_param_layout.addWidget(self.family_combobox, 0, 1)
         # pointsize spinbox
         pointsize_label = QLabel(self.tr("Pointsize"))
@@ -297,7 +299,9 @@ class SettingWidget(QWidget):
             elif icon == "load":
                 shortcut_icon.setPixmap(QIcon("icon:folder_open.svg").pixmap(128, 128))
             elif icon == "quit":
-                shortcut_icon.setPixmap(QIcon("icon:sign_out.svg").pixmap(128, 128))
+                shortcut_icon.setPixmap(QIcon("icon:arrow_exit.svg").pixmap(128, 128))
+            elif icon == "search":
+                shortcut_icon.setPixmap(QIcon("icon:search.svg").pixmap(128, 128))
             elif icon == "zoom_in":
                 shortcut_icon.setPixmap(QIcon("icon:zoom_in.svg").pixmap(128, 128))
             elif icon == "zoom_out":
@@ -363,22 +367,30 @@ class SettingWidget(QWidget):
         self.quit_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("quit"))
         self.quit_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
         shortcut_param_layout.addWidget(self.quit_sequence, 3, 1)
+        # search shortcut
+        search_label = QLabel(self.tr("Search"))
+        search_label.setFont(self.font)
+        shortcut_param_layout.addWidget(search_label, 4, 0)
+        self.search_sequence.setFont(self.font)
+        self.search_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("search"))
+        self.search_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
+        shortcut_param_layout.addWidget(self.search_sequence, 4, 1)
         # zoom in shortcut
         zoom_in_label = QLabel(self.tr("Zoom In"))
         zoom_in_label.setFont(self.font)
-        shortcut_param_layout.addWidget(zoom_in_label, 4, 0)
+        shortcut_param_layout.addWidget(zoom_in_label, 5, 0)
         self.zoom_in_sequence.setFont(self.font)
         self.zoom_in_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("zoom_in"))
         self.zoom_in_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
-        shortcut_param_layout.addWidget(self.zoom_in_sequence, 4, 1)
+        shortcut_param_layout.addWidget(self.zoom_in_sequence, 5, 1)
         # zoom out shortcut
         zoom_out_label = QLabel(self.tr("Zoom Out"))
         zoom_out_label.setFont(self.font)
-        shortcut_param_layout.addWidget(zoom_out_label, 5, 0)
+        shortcut_param_layout.addWidget(zoom_out_label, 6, 0)
         self.zoom_out_sequence.setFont(self.font)
         self.zoom_out_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("zoom_out"))
         self.zoom_out_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
-        shortcut_param_layout.addWidget(self.zoom_out_sequence, 5, 1)
+        shortcut_param_layout.addWidget(self.zoom_out_sequence, 6, 1)
         # shortcut view widget
         shortcut_view_widget = QWidget()
         shortcut_layout.addWidget(shortcut_view_widget)
@@ -427,6 +439,9 @@ class SettingWidget(QWidget):
         self.quit_sequence.setKeySequence("Ctrl+Q")
         shared.quit_shortcut.setKey(QKeySequence("Ctrl+Q"))
         shared.shortcut_setting["quit"] = "Ctrl+Q"
+        self.search_sequence.setKeySequence("Ctrl+F")
+        shared.search_shortcut.setKey(QKeySequence("Ctrl+F"))
+        shared.shortcut_setting["search"] = "Ctrl+F"
         self.zoom_in_sequence.setKeySequence("Ctrl+]")
         shared.zoom_in_shortcut.setKey(QKeySequence("Ctrl+]"))
         shared.shortcut_setting["zoom_in"] = "Ctrl+]"
@@ -464,6 +479,8 @@ class SettingWidget(QWidget):
         shared.shortcut_setting["load"] = self.load_sequence.keySequence().toString()
         shared.quit_shortcut.setKey(self.quit_sequence.keySequence())
         shared.shortcut_setting["quit"] = self.quit_sequence.keySequence().toString()
+        shared.search_shortcut.setKey(self.search_sequence.keySequence())
+        shared.shortcut_setting["search"] = self.search_sequence.keySequence().toString()
         shared.zoom_in_shortcut.setKey(self.zoom_in_sequence.keySequence())
         shared.shortcut_setting["zoom_in"] = self.zoom_in_sequence.keySequence().toString()
         shared.zoom_out_shortcut.setKey(self.zoom_out_sequence.keySequence())

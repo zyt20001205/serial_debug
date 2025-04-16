@@ -18,6 +18,13 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">QQ: 2376926590</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">mail: z18917941512@qq.com</span></p>
         <br>
+        <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025- v1.1 - release</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add zh_CN translation.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Multi port support.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add regex to log search widget.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Fix command shortcut fails to save after editing.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Fix thread fails to terminate correctly after finished.</span></p>
+        <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-03-27 v1.0 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Support crc8 maxim.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send module new block: <span style="color:red; font-weight: bold;">database/datatable/messagebox/log/stopwatch</span></span></p>

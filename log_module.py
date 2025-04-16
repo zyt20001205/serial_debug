@@ -24,16 +24,16 @@ class PortLogWidget(QWidget):
         # draw gui
         self.port_log_gui()
 
+    def port_search_toggle(self) -> None:
+        if self.search_widget.isVisible():
+            self.search_widget.setVisible(False)
+            self.search_lineedit.setText("")
+        else:
+            self.search_widget.setVisible(True)
+            self.search_lineedit.setFocus()
+
     def port_log_gui(self):
         port_log_layout = QVBoxLayout(self)
-
-        def toggle_search_widget():
-            if self.search_widget.isVisible():
-                self.search_widget.setVisible(False)
-                self.search_lineedit.setText("")
-            else:
-                self.search_widget.setVisible(True)
-                self.search_lineedit.setFocus()
 
         self.search_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.search_widget.setFixedHeight(28)
@@ -41,8 +41,6 @@ class PortLogWidget(QWidget):
         search_layout = QHBoxLayout(self.search_widget)
         search_layout.setContentsMargins(0, 0, 0, 0)
         port_log_layout.addWidget(self.search_widget)
-        search_shortcut = QShortcut(QKeySequence("Ctrl+F"), shared.main_window)
-        search_shortcut.activated.connect(toggle_search_widget)
 
         def log_search():
             keyword = self.search_lineedit.text()
@@ -50,6 +48,10 @@ class PortLogWidget(QWidget):
             document = self.log_textedit.document()
             # judge empty keyword
             if not keyword:
+                self.extra_selections = []
+                self.log_textedit.setExtraSelections(self.extra_selections)
+                self.statistic_label.setText(self.tr("0 results"))
+                self.current_match_index = -1
                 return
             # judge regex
             if self.regex_button.isChecked():
