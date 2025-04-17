@@ -428,28 +428,24 @@ class SettingWidget(QWidget):
         shared.file_send_widget.file_preview_font()
         # reset keyboard shortcut setting
         self.save_sequence.setKeySequence("Ctrl+S")
-        shared.save_shortcut.setKey(QKeySequence("Ctrl+S"))
         shared.shortcut_setting["save"] = "Ctrl+S"
         self.save_as_sequence.setKeySequence("Ctrl+Shift+S")
-        shared.save_as_shortcut.setKey(QKeySequence("Ctrl+Shift+S"))
         shared.shortcut_setting["save_as"] = "Ctrl+Shift+S"
         self.load_sequence.setKeySequence("Ctrl+L")
-        shared.load_shortcut.setKey(QKeySequence("Ctrl+L"))
         shared.shortcut_setting["load"] = "Ctrl+L"
         self.quit_sequence.setKeySequence("Ctrl+Q")
-        shared.quit_shortcut.setKey(QKeySequence("Ctrl+Q"))
         shared.shortcut_setting["quit"] = "Ctrl+Q"
         self.search_sequence.setKeySequence("Ctrl+F")
-        shared.search_shortcut.setKey(QKeySequence("Ctrl+F"))
         shared.shortcut_setting["search"] = "Ctrl+F"
         self.zoom_in_sequence.setKeySequence("Ctrl+]")
-        shared.zoom_in_shortcut.setKey(QKeySequence("Ctrl+]"))
         shared.shortcut_setting["zoom_in"] = "Ctrl+]"
         self.zoom_out_sequence.setKeySequence("Ctrl+[")
-        shared.zoom_out_shortcut.setKey(QKeySequence("Ctrl+["))
         shared.shortcut_setting["zoom_out"] = "Ctrl+["
         # save to config
         config_save()
+        # layout refresh
+        from gui_module import language_load
+        language_load(True)
         # messagebox
         QMessageBox.information(shared.main_window, self.tr("Reset Completed"), self.tr("The configuration has been reset to default."))
 
@@ -471,19 +467,12 @@ class SettingWidget(QWidget):
         shared.port_log_widget.font_setting()
         shared.file_send_widget.file_preview_font()
         # save keyboard shortcut setting
-        shared.save_shortcut.setKey(self.save_sequence.keySequence())
         shared.shortcut_setting["save"] = self.save_sequence.keySequence().toString()
-        shared.save_as_shortcut.setKey(self.save_as_sequence.keySequence())
         shared.shortcut_setting["save_as"] = self.save_as_sequence.keySequence().toString()
-        shared.load_shortcut.setKey(self.load_sequence.keySequence())
         shared.shortcut_setting["load"] = self.load_sequence.keySequence().toString()
-        shared.quit_shortcut.setKey(self.quit_sequence.keySequence())
         shared.shortcut_setting["quit"] = self.quit_sequence.keySequence().toString()
-        shared.search_shortcut.setKey(self.search_sequence.keySequence())
         shared.shortcut_setting["search"] = self.search_sequence.keySequence().toString()
-        shared.zoom_in_shortcut.setKey(self.zoom_in_sequence.keySequence())
         shared.shortcut_setting["zoom_in"] = self.zoom_in_sequence.keySequence().toString()
-        shared.zoom_out_shortcut.setKey(self.zoom_out_sequence.keySequence())
         shared.shortcut_setting["zoom_out"] = self.zoom_out_sequence.keySequence().toString()
         # save to config
         config_save()

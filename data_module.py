@@ -1,8 +1,8 @@
 import csv
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
-    QMessageBox, QLabel, QInputDialog
-from PySide6.QtCore import Qt, QMimeData
+    QMessageBox, QInputDialog, QColorDialog
+from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
 
 import shared
@@ -57,6 +57,19 @@ class DataCollectWidget(QWidget):
             self.target_index = self.rowAt(event.position().toPoint().y())
             self.row_relocation()
 
+        def keyPressEvent(self, event):
+            if event.key() == Qt.Key.Key_Delete:
+                self.row_remove()
+            elif event.key() == Qt.Key.Key_Insert:
+                self.row_insert()
+            elif event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_P:
+                self.row_paint()
+            elif event.key() == Qt.Key.Key_Escape:
+                self.clearSelection()
+                self.clearFocus()
+            else:
+                super().keyPressEvent(event)
+
         def row_relocation(self):
             source_index = self.source_index
             target_index = self.target_index
@@ -65,15 +78,13 @@ class DataCollectWidget(QWidget):
             shared.data_collect["database"].insert(target_index, tmp)
             self.blockSignals(True)
             # remove source row
+            move = self.takeItem(source_index, 0)
             label = self.takeItem(source_index, 1)
             value = self.takeItem(source_index, 2)
             self.removeRow(source_index)
             # insert target row
             self.insertRow(target_index)
-            move_icon = QLabel()
-            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
-            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.setCellWidget(target_index, 0, move_icon)
+            self.setItem(target_index, 0, move)
             self.setItem(target_index, 1, label)
             self.setItem(target_index, 2, value)
             # link button
@@ -85,16 +96,62 @@ class DataCollectWidget(QWidget):
 
             # print(shared.data_collect)
 
-        def keyPressEvent(self, event):
-            if event.key() == Qt.Key.Key_Delete:
-                self.parent.database_remove()
-            elif event.key() == Qt.Key.Key_Insert:
-                self.parent.database_insert()
-            elif event.key() == Qt.Key.Key_Escape:
-                self.clearSelection()
-                self.clearFocus()
-            else:
-                super().keyPressEvent(event)
+        def row_insert(self) -> None:
+            # get insert index
+            row = self.currentRow()
+            # data collect insert
+            shared.data_collect["database"].insert(row, {
+                "label": "new",
+                "link": "",
+                "color": "#ffffff"
+            })
+            # database insert
+            self.insertRow(row)
+            self.blockSignals(True)
+
+            # move_icon
+            move_icon = QTableWidgetItem()
+            move_icon.setIcon(QIcon("icon:arrow_move.svg"))
+            self.setItem(row, 0, move_icon)
+            # label
+            label = QTableWidgetItem("new")
+            self.setItem(row, 1, label)
+            # value
+            value = QTableWidgetItem()
+            self.setItem(row, 2, value)
+            # link button
+            link_button = QPushButton()
+            link_button.setIcon(QIcon("icon:link.svg"))
+            link_button.clicked.connect(self.parent.database_link)
+            self.setCellWidget(row, 3, link_button)
+
+            self.blockSignals(False)
+            # print(shared.data_collect["database"])
+
+        def row_remove(self) -> None:
+            # get remove index
+            row = self.currentRow()
+            if len(shared.data_collect["database"]) == 1:
+                return
+            shared.data_collect["database"].pop(row)
+            self.removeRow(row)
+            # print(shared.data_collect["database"])
+
+        def row_paint(self) -> None:
+            row = self.currentRow()
+            if row == -1:
+                return
+            color = QColorDialog.getColor()
+            if not color.isValid():
+                return
+            self.item(row, 0).setBackground(color)
+            self.item(row, 1).setBackground(color)
+            self.item(row, 2).setBackground(color)
+            # save to shared
+            shared.data_collect["database"][row]["color"] = color.name()
+            # clear selection
+            self.clearSelection()
+            self.clearFocus()
 
     class DatatableWidget(QTableWidget):
 
@@ -132,6 +189,7 @@ class DataCollectWidget(QWidget):
         # database
         self.database.setRowCount(len(shared.data_collect["database"]))
         self.database.setColumnCount(4)
+        self.database.setIconSize(QSize(24, 24))
         horizontal_header = self.database.horizontalHeader()
         horizontal_header.setVisible(False)
         self.database.setColumnWidth(0, 30)
@@ -143,16 +201,18 @@ class DataCollectWidget(QWidget):
         self.database.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         database_layout.addWidget(self.database)
         for i in range(len(shared.data_collect["database"])):
-            # move icon
-            move_icon = QLabel()
-            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
-            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.database.setCellWidget(i, 0, move_icon)
+            # move_icon
+            move_icon = QTableWidgetItem()
+            move_icon.setIcon(QIcon("icon:arrow_move.svg"))
+            move_icon.setBackground(QColor(shared.command_shortcut[i]["color"]))
+            self.database.setItem(i, 0, move_icon)
             # label
             label = QTableWidgetItem(shared.data_collect["database"][i]["label"])
+            label.setBackground(QColor(shared.command_shortcut[i]["color"]))
             self.database.setItem(i, 1, label)
             # value
             value = QTableWidgetItem()
+            value.setBackground(QColor(shared.command_shortcut[i]["color"]))
             self.database.setItem(i, 2, value)
             # link button
             link_button = QPushButton()
@@ -219,47 +279,6 @@ class DataCollectWidget(QWidget):
         self.database.blockSignals(True)
         self.database.item(row, 2).setText(data)
         self.database.blockSignals(False)
-
-    def database_insert(self) -> None:
-        # get insert index
-        row = self.database.currentRow()
-        # data collect insert
-        shared.data_collect["database"].insert(row, {
-            "label": "new",
-            "link": ""
-        })
-        # database insert
-        self.database.insertRow(row)
-        self.database.blockSignals(True)
-
-        # move icon
-        move_icon = QLabel()
-        move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
-        move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.database.setCellWidget(row, 0, move_icon)
-        # label
-        label = QTableWidgetItem("new")
-        self.database.setItem(row, 1, label)
-        # value
-        value = QTableWidgetItem()
-        self.database.setItem(row, 2, value)
-        # link button
-        link_button = QPushButton()
-        link_button.setIcon(QIcon("icon:link.svg"))
-        link_button.clicked.connect(self.database_link)
-        self.database.setCellWidget(row, 3, link_button)
-
-        self.database.blockSignals(False)
-        # print(shared.data_collect["database"])
-
-    def database_remove(self) -> None:
-        # get remove index
-        row = self.database.currentRow()
-        if len(shared.data_collect["database"]) == 1:
-            return
-        shared.data_collect["database"].pop(row)
-        self.database.removeRow(row)
-        # print(shared.data_collect["database"])
 
     def database_change(self, row, col) -> None:
         if col == 1:

@@ -1838,7 +1838,6 @@ class AdvancedSendWidget(QWidget):
 
         def remove(self, thread: QThread) -> None:
             # stop and delete thread
-            thread.wait()
             thread.deleteLater()
             # remove from thread pool
             self.threadpool.remove(thread)
@@ -3056,16 +3055,28 @@ class FileSendWidget(QWidget):
             super().__init__()
             self.enable = True
             self.parent = parent
+            self.finished.connect(self.finish)
 
             self.path = None
+
+            self.index = None
+            self.tx_format = None
+            self.tx_suffix = None
+            self.tx_interval = None
+            self.rx_format = None
 
         def send(self) -> None:
             current_chunk = 0
             current_line = 0
             start_line = 0
             self.path = self.parent.path_lineedit.text()
-            self.log_signal.emit("file send start", "info")
             if self.parent.file_format == "intel hex":
+                # overwrite port setting
+                shared.port_status_widget.tab_list[self.index].tx_format = "ascii"
+                shared.port_status_widget.tab_list[self.index].tx_suffix = ""
+                shared.port_status_widget.tab_list[self.index].tx_interval = 0
+                shared.port_status_widget.tab_list[self.index].rx_format = "ascii"
+                # start file send
                 with open(self.path, "r") as file:
                     lines = file.readlines()
                     while current_line < len(lines):
@@ -3081,22 +3092,28 @@ class FileSendWidget(QWidget):
                                 current_chunk += 1
                                 # file send flow control
                                 if self.parent.flow_control_groupbox.isChecked():
-                                    shared.rx_buffer_raw = b""
+                                    shared.port_status_widget.tab_list[self.index].rx_buffer = ""
                                     while True:
                                         if not self.enable:
                                             raise Exception
-                                        if shared.rx_buffer_raw == self.parent.chunk_resume_lineedit.text().encode():
+                                        if shared.port_status_widget.tab_list[self.index].rx_buffer == self.parent.chunk_resume_lineedit.text():
                                             start_line = current_line
                                             break
-                                        if shared.rx_buffer_raw == self.parent.chunk_restart_lineedit.text().encode():
+                                        if shared.port_status_widget.tab_list[self.index].rx_buffer == self.parent.chunk_restart_lineedit.text():
                                             current_line = start_line
                                             current_chunk -= 1
                                             break
                                         QThread.msleep(100)
                         self.progress_signal.emit(current_line, None, f"chunk({current_chunk}/{self.parent.file_chunk}) line({current_line}/{self.parent.file_line})")
+                        QThread.msleep(10)
                         QThread.msleep(self.parent.line_delay_spinbox.value())
-                    self.log_signal.emit(f"file send end", "info")
             else:  # self.parent.file_format == "bin"
+                # overwrite port setting
+                shared.port_status_widget.tab_list[self.index].tx_format = "hex"
+                shared.port_status_widget.tab_list[self.index].tx_suffix = ""
+                shared.port_status_widget.tab_list[self.index].tx_interval = 0
+                shared.port_status_widget.tab_list[self.index].rx_format = "hex"
+                # start file send
                 with open(self.path, "rb") as file:
                     while True:
                         buffer = file.read(16)
@@ -3107,29 +3124,35 @@ class FileSendWidget(QWidget):
                         current_line += 1
                         self.progress_signal.emit(current_line, None, f"line({current_line}/{self.parent.file_line})")
                         QThread.msleep(self.parent.line_delay_spinbox.value())
-                    self.log_signal.emit(f"file send end", "info")
 
         def run(self) -> None:
-            # open serial first
-            if not shared.port_status_widget.serial_toggle_button.isChecked():
-                shared.port_status_widget.serial_toggle_button.setChecked(True)
-                time.sleep(0.1)
-            # check if serial is opened
-            if not shared.port_status_widget.serial_toggle_button.isChecked():
-                return
+            # save port settings before file send
+            self.index = shared.port_status_widget.tab_widget.currentIndex()
+            self.tx_format = shared.port_status_widget.tab_list[self.index].tx_format
+            self.tx_suffix = shared.port_status_widget.tab_list[self.index].tx_suffix
+            self.tx_interval = shared.port_status_widget.tab_list[self.index].tx_interval
+            self.rx_format = shared.port_status_widget.tab_list[self.index].rx_format
+            # start file send thread
             self.enable = True
             try:
+                self.log_signal.emit("file send start", "info")
                 self.send()
+                self.log_signal.emit(f"file send end", "info")
                 if self.path.endswith(".tmp"):
                     os.remove(self.path)
                     self.clear_signal.emit()
-            except Exception:
+            except:
                 self.log_signal.emit("file send abort", "warning")
                 self.progress_signal.emit(0, self.parent.file_line, f"chunk(0/{self.parent.file_chunk}) line(0/{self.parent.file_line})")
 
         def stop(self) -> None:
             self.enable = False
-            self.wait()
+
+        def finish(self) -> None:
+            shared.port_status_widget.tab_list[self.index].tx_format = self.tx_format
+            shared.port_status_widget.tab_list[self.index].tx_suffix = self.tx_suffix
+            shared.port_status_widget.tab_list[self.index].tx_interval = self.tx_interval
+            shared.port_status_widget.tab_list[self.index].rx_format = self.rx_format
 
     def file_send_gui(self) -> None:
         file_send_layout = QVBoxLayout(self)
@@ -3213,6 +3236,7 @@ class FileSendWidget(QWidget):
         setting_layout.setContentsMargins(0, 0, 0, 0)
         # flow control groupbox
         self.flow_control_groupbox.setCheckable(True)
+        # self.flow_control_groupbox.setChecked(False)
         setting_layout.addWidget(self.flow_control_groupbox)
         flow_control_layout = QGridLayout(self.flow_control_groupbox)
         flow_control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
