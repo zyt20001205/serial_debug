@@ -2463,6 +2463,9 @@ class AdvancedSendWidget(QWidget):
             else:
                 super().keyPressEvent(event)
 
+        def row_insert(self) -> None:
+            ...
+
         def row_remove(self) -> None:
             # get clear index
             row = self.currentRow()
