@@ -9,7 +9,7 @@ from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer
 from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, \
-    QSpinBox, QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox, QTabWidget, QFrame
+    QSpinBox, QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox, QTabWidget, QFrame, QStackedWidget
 from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
 from PySide6.QtNetwork import QHostAddress
 
@@ -2214,6 +2214,7 @@ class AdvancedSendWidget(QWidget):
             self.setSelectionMode(self.SelectionMode.SingleSelection)
             # var init
             self.parent = parent
+            self.buffer = []
             self.source_index = None
             self.target_index = None
             # gui init
@@ -2229,6 +2230,36 @@ class AdvancedSendWidget(QWidget):
             vertical_header.setVisible(False)
             self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             self.row_load()
+            # insert window init
+            self.insert_window = QWidget(shared.main_window)
+            self.insert_window.setWindowTitle("Insert Action")
+            self.insert_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
+            self.insert_window.setFixedSize(400, 300)
+            insert_layout = QVBoxLayout(self.insert_window)
+            insert_layout.setSpacing(10)
+            self.insert_widget = QWidget()
+            insert_layout.addWidget(self.insert_widget)
+            insert_seperator = QFrame()
+            insert_seperator.setFrameShape(QFrame.Shape.HLine)
+            insert_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+            insert_layout.addWidget(insert_seperator)
+            control_widget = QWidget()
+            insert_layout.addWidget(control_widget)
+            control_layout = QGridLayout(control_widget)
+            control_layout.setColumnStretch(0, 1)
+            control_layout.setColumnStretch(1, 1)
+            control_layout.setColumnStretch(2, 1)
+            self.previous_button = QPushButton("previous")
+            control_layout.addWidget(self.previous_button, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft)
+            self.previous_button.hide()
+            self.info_label = QLabel("test")
+            control_layout.addWidget(self.info_label, 0, 1, alignment=Qt.AlignmentFlag.AlignCenter)
+            self.next_button = QPushButton("next")
+            control_layout.addWidget(self.next_button, 0, 2, alignment=Qt.AlignmentFlag.AlignRight)
+            self.next_button.hide()
+            self.finish_button = QPushButton("finish")
+            control_layout.addWidget(self.finish_button, 0, 2, alignment=Qt.AlignmentFlag.AlignRight)
+            self.finish_button.hide()
 
         @staticmethod
         def block_wheel(event):
@@ -2454,7 +2485,8 @@ class AdvancedSendWidget(QWidget):
         # key press event: insert/remove/duplicate
         def keyPressEvent(self, event) -> None:
             if event.key() == Qt.Key.Key_Insert:
-                self.parent.advanced_send_table_insert_window()
+                # self.parent.advanced_send_table_insert_window()
+                self.row_insert()
             elif event.key() == Qt.Key.Key_Delete:
                 self.row_remove()
             elif event.key() == Qt.Key.Key_Escape:
@@ -2464,7 +2496,9 @@ class AdvancedSendWidget(QWidget):
                 super().keyPressEvent(event)
 
         def row_insert(self) -> None:
-            ...
+            self.insert_window.show()
+            self.buffer = []
+            print("ready to insert", self.buffer)
 
         def row_remove(self) -> None:
             # get clear index
@@ -2497,6 +2531,11 @@ class AdvancedSendWidget(QWidget):
                 shared.advanced_send_buffer.pop(row)
                 self.removeRow(row)
             # print(shared.advanced_send_buffer)
+
+        def row_clear(self) -> None:
+            for _ in range(self.rowCount() - 1):
+                self.removeRow(0)
+            shared.advanced_send_buffer = [["tail"]]
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasFormat('application/x-qabstractitemmodeldatalist'):
@@ -2575,7 +2614,7 @@ class AdvancedSendWidget(QWidget):
         advanced_clear_button.setFixedWidth(26)
         advanced_clear_button.setIcon(QIcon("icon:delete.svg"))
         advanced_clear_button.setToolTip("clear")
-        advanced_clear_button.clicked.connect(self.advanced_send_clear)
+        advanced_clear_button.clicked.connect(self.advanced_send_table.row_clear)
         control_layout.addWidget(advanced_clear_button)
         # advanced send abort button
         abort_button = QPushButton()
@@ -2991,11 +3030,6 @@ class AdvancedSendWidget(QWidget):
         # table indent
         self.advanced_send_table_indent()
         # print(shared.advanced_send_buffer)
-
-    def advanced_send_clear(self) -> None:
-        for _ in range(len(shared.advanced_send_buffer) - 1):
-            self.advanced_send_table.removeRow(0)
-        shared.advanced_send_buffer = [["tail"]]
 
     @staticmethod
     def advanced_send_save() -> None:
