@@ -1075,17 +1075,17 @@ class PortStatusWidget(QWidget):
             self.port_toggle_button.toggled.connect(port_toggle)
             port_layout.addWidget(self.port_toggle_button)
 
-    def port_write(self, message: str, index: int) -> None:
-        # -2 broadcast
-        # -1 current port
-        # 0-n port n
-        if index == -2:
-            for i in range(self.tab_widget.count()):
-                self.tab_list[i].write(message)
-        else:
-            if index == -1:
-                index = self.tab_widget.currentIndex()
+    def port_write(self, message: str, name: str) -> None:
+        if name == "all":
+            for _ in range(self.tab_widget.count()):
+                self.tab_list[_].write(message)
+        elif name == "current":
+            index = self.tab_widget.currentIndex()
             self.tab_list[index].write(message)
+        else:
+            for _ in range(self.tab_widget.count()):
+                if self.tab_list[_].portname == name:
+                    self.tab_list[_].write(message)
 
     def port_status_gui(self) -> None:
         # port status gui
@@ -1151,8 +1151,8 @@ class PortStatusWidget(QWidget):
         def port_setting_refresh(port_name: str, index: int) -> None:
 
             def blank_gui() -> None:
-                for i in reversed(range(self.port_param_layout.count())):
-                    item = self.port_param_layout.takeAt(i)
+                for _ in reversed(range(self.port_param_layout.count())):
+                    item = self.port_param_layout.takeAt(_)
                     if item and item.widget():
                         item.widget().hide()
 
@@ -1695,7 +1695,7 @@ class SingleSendWidget(QWidget):
         # single send button
         self.single_send_button.setFixedWidth(26)
         self.single_send_button.setIcon(QIcon("icon:send.svg"))
-        self.single_send_button.clicked.connect(lambda: shared.port_status_widget.port_write(self.single_send_textedit.toPlainText(), -1))
+        self.single_send_button.clicked.connect(lambda: shared.port_status_widget.port_write(self.single_send_textedit.toPlainText(), "current"))
         self.single_send_button.setToolTip("send")
         control_layout.addWidget(self.single_send_button)
         # single save button
@@ -1899,7 +1899,7 @@ class AdvancedSendWidget(QWidget):
         class AdvancedSendThread(QThread):
             highlight_signal = Signal(int, int, str)
             log_signal = Signal(str, str)
-            send_signal = Signal(str, int)
+            send_signal = Signal(str, str)
             request_signal = Signal(QThread, str, str, QWaitCondition)
             database_import_signal = Signal(int, str)
             datatable_import_signal = Signal(int, str)
@@ -1971,7 +1971,7 @@ class AdvancedSendWidget(QWidget):
                             type = shared.command_shortcut[row]["type"]
                             if type == "single":
                                 command = shared.command_shortcut[row]["command"]
-                                self.send_signal.emit(command, -1)
+                                self.send_signal.emit(command, "current")
                             else:
                                 command = eval(shared.command_shortcut[row]["command"])
                                 self.send(command)
@@ -1987,7 +1987,7 @@ class AdvancedSendWidget(QWidget):
                                     # error highlight
                                     self.highlight_signal.emit(length, index, "red")
                                     raise e
-                            self.send_signal.emit(command, -1)
+                            self.send_signal.emit(command, "current")
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
                     elif action == "database":
@@ -2232,33 +2232,42 @@ class AdvancedSendWidget(QWidget):
             self.row_load()
             # insert window init
             self.insert_window = QWidget(shared.main_window)
-            self.insert_window.setWindowTitle("Insert Action")
-            self.insert_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
+            self.insert_window.setWindowTitle(self.tr("Insert Action"))
+            self.insert_window.setWindowFlags(Qt.WindowType.Window)
             self.insert_window.setFixedSize(400, 300)
-            insert_layout = QVBoxLayout(self.insert_window)
-            insert_layout.setSpacing(10)
-            self.insert_widget = QWidget()
-            insert_layout.addWidget(self.insert_widget)
-            insert_seperator = QFrame()
-            insert_seperator.setFrameShape(QFrame.Shape.HLine)
-            insert_seperator.setFrameShadow(QFrame.Shadow.Sunken)
-            insert_layout.addWidget(insert_seperator)
+            window_layout = QVBoxLayout(self.insert_window)
+            insert_widget = QWidget()
+            insert_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            window_layout.addWidget(insert_widget)
+            self.insert_layout = QVBoxLayout(insert_widget)
+            self.insert_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            self.insert_layout.setContentsMargins(0, 0, 0, 0)
             control_widget = QWidget()
-            insert_layout.addWidget(control_widget)
+            window_layout.addWidget(control_widget)
             control_layout = QGridLayout(control_widget)
+            control_layout.setContentsMargins(0, 0, 0, 0)
             control_layout.setColumnStretch(0, 1)
             control_layout.setColumnStretch(1, 1)
             control_layout.setColumnStretch(2, 1)
-            self.previous_button = QPushButton("previous")
-            control_layout.addWidget(self.previous_button, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft)
-            self.previous_button.hide()
-            self.info_label = QLabel("test")
-            control_layout.addWidget(self.info_label, 0, 1, alignment=Qt.AlignmentFlag.AlignCenter)
-            self.next_button = QPushButton("next")
-            control_layout.addWidget(self.next_button, 0, 2, alignment=Qt.AlignmentFlag.AlignRight)
+            self.back_button = QPushButton(self.tr(" back"))
+            self.back_button.setIcon(QIcon("icon:arrow_left.svg"))
+            self.back_button.setStyleSheet("font-size: 12pt; color: #4d5157;")
+            control_layout.addWidget(self.back_button, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft)
+            self.back_button.hide()
+            self.hint_label = QLabel()
+            self.hint_label.setStyleSheet("font-size: 12pt; color: #4d5157;")
+            control_layout.addWidget(self.hint_label, 0, 1, alignment=Qt.AlignmentFlag.AlignCenter)
+            self.next_button = QPushButton(self.tr("next "))
+            self.next_button.setIcon(QIcon("icon:arrow_right.svg"))
+            self.next_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            self.next_button.setStyleSheet("font-size: 12pt; color: #4d5157;")
+            control_layout.addWidget(self.next_button, 0, 2, alignment=Qt.AlignmentFlag.AlignLeft)
             self.next_button.hide()
-            self.finish_button = QPushButton("finish")
-            control_layout.addWidget(self.finish_button, 0, 2, alignment=Qt.AlignmentFlag.AlignRight)
+            self.finish_button = QPushButton(self.tr("finish "))
+            self.finish_button.setIcon(QIcon("icon:checkmark.svg"))
+            self.finish_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            self.finish_button.setStyleSheet("font-size: 12pt; color: #4d5157;")
+            control_layout.addWidget(self.finish_button, 0, 2, alignment=Qt.AlignmentFlag.AlignLeft)
             self.finish_button.hide()
 
         @staticmethod
@@ -2496,9 +2505,202 @@ class AdvancedSendWidget(QWidget):
                 super().keyPressEvent(event)
 
         def row_insert(self) -> None:
+            def clear_layout():
+                for _ in reversed(range(self.insert_layout.count())):
+                    item = self.insert_layout.takeAt(_)
+                    if item and item.widget():
+                        item.widget().deleteLater()
+
+            def action_page():
+                self.buffer = []
+                clear_layout()
+                action_table = QTableWidget()
+                self.insert_layout.addWidget(action_table)
+                # table init
+                action_table.setShowGrid(False)
+                action_table.setSelectionBehavior(action_table.SelectionBehavior.SelectRows)
+                action_table.setSelectionMode(action_table.SelectionMode.SingleSelection)
+                action_table.setColumnCount(2)
+                action_table.setRowCount(10)
+                action_table.setIconSize(QSize(24, 24))
+                action_table.setStyleSheet("font-size: 12pt;")
+                horizontal_header = action_table.horizontalHeader()
+                horizontal_header.setVisible(False)
+                action_table.setColumnWidth(0, 30)
+                horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+                vertical_header = action_table.verticalHeader()
+                vertical_header.setVisible(False)
+                # standard io
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:arrow_import.svg"))
+                action_table.setItem(0, 0, icon)
+                label = QTableWidgetItem(self.tr("input"))
+                label.setData(Qt.ItemDataRole.UserRole,"input")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(0, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:arrow_export_ltr.svg"))
+                action_table.setItem(1, 0, icon)
+                label = QTableWidgetItem(self.tr("command"))
+                label.setData(Qt.ItemDataRole.UserRole, "command")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(1, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:database.svg"))
+                action_table.setItem(2, 0, icon)
+                label = QTableWidgetItem(self.tr("database"))
+                label.setData(Qt.ItemDataRole.UserRole, "database")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(2, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:table.svg"))
+                action_table.setItem(3, 0, icon)
+                label = QTableWidgetItem(self.tr("datatable"))
+                label.setData(Qt.ItemDataRole.UserRole, "datatable")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(3, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:print.svg"))
+                action_table.setItem(4, 0, icon)
+                label = QTableWidgetItem(self.tr("message"))
+                label.setData(Qt.ItemDataRole.UserRole, "message")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(4, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:message.svg"))
+                action_table.setItem(5, 0, icon)
+                label = QTableWidgetItem(self.tr("messagebox"))
+                label.setData(Qt.ItemDataRole.UserRole, "messagebox")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(5, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:document.svg"))
+                action_table.setItem(6, 0, icon)
+                label = QTableWidgetItem(self.tr("log"))
+                label.setData(Qt.ItemDataRole.UserRole, "log")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(6, 1, label)
+                # statement
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:braces_variable.svg"))
+                action_table.setItem(7, 0, icon)
+                label = QTableWidgetItem(self.tr("expression"))
+                label.setData(Qt.ItemDataRole.UserRole, "expression")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(7, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:timer.svg"))
+                action_table.setItem(8, 0, icon)
+                label = QTableWidgetItem(self.tr("delay"))
+                label.setData(Qt.ItemDataRole.UserRole, "delay")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(8, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:stopwatch.svg"))
+                action_table.setItem(9, 0, icon)
+                label = QTableWidgetItem(self.tr("stopwatch"))
+                label.setData(Qt.ItemDataRole.UserRole, "stopwatch")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(9, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:arrow_repeat_all.svg"))
+                action_table.setItem(10, 0, icon)
+                label = QTableWidgetItem(self.tr("loop"))
+                label.setData(Qt.ItemDataRole.UserRole, "loop")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(10, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:branch.svg"))
+                action_table.setItem(11, 0, icon)
+                label = QTableWidgetItem(self.tr("if"))
+                label.setData(Qt.ItemDataRole.UserRole, "if")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(11, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:pause.svg"))
+                action_table.setItem(12, 0, icon)
+                label = QTableWidgetItem(self.tr("break"))
+                label.setData(Qt.ItemDataRole.UserRole, "break")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(12, 1, label)
+                icon = QTableWidgetItem()
+                icon.setIcon(QIcon("icon:stop.svg"))
+                action_table.setItem(13, 0, icon)
+                label = QTableWidgetItem(self.tr("abort"))
+                label.setData(Qt.ItemDataRole.UserRole, "abort")
+                label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                action_table.setItem(13, 1, label)
+
+                def moving_to_next_step():
+                    if action_table.currentRow() == -1:
+                        QMessageBox.warning(shared.main_window, "No Selection", "Please select an action first.")
+                        return
+                    else:
+                        action = action_table.item(action_table.currentRow(), 1).data(Qt.ItemDataRole.UserRole)
+                        self.buffer.append(action)
+                        param_page()
+
+                self.back_button.hide()
+                self.hint_label.setText("select action")
+                self.next_button.clicked.disconnect()
+                self.next_button.clicked.connect(moving_to_next_step)
+                self.next_button.show()
+                self.finish_button.hide()
+
+            def param_page() -> None:
+                clear_layout()
+                if self.buffer[0] == "input":
+                    ...
+                if self.buffer[0] == "command":
+                    def command_hint():
+                        if type_combobox.currentText() == "plain":
+                            param_lineedit.setPlaceholderText(self.tr("enter plain command"))
+                        elif type_combobox.currentText() == "expression":
+                            param_lineedit.setPlaceholderText(self.tr("enter expression command"))
+                        else:  # type_combobox.currentText()=="shortcut":
+                            param_lineedit.setPlaceholderText(self.tr("enter shortcut name"))
+
+                    def command_finish():
+                        self.buffer.append(param_lineedit.text())
+                        self.buffer.append(target_combobox.currentData())
+                        self.buffer.append(type_combobox.currentData())
+
+                    target_label = QLabel(self.tr("target port"))
+                    target_label.setStyleSheet("font-size: 12pt;")
+                    self.insert_layout.addWidget(target_label)
+                    target_combobox = QComboBox()
+                    target_combobox.addItem(self.tr("current"), "current")
+                    target_combobox.addItem(self.tr("all"), "all")
+                    for _ in range(len(shared.port_setting)):
+                        target_combobox.addItem(shared.port_setting[_]["portname"],shared.port_setting[_]["portname"])
+                    self.insert_layout.addWidget(target_combobox)
+                    type_label = QLabel(self.tr("type"))
+                    type_label.setStyleSheet("font-size: 12pt;")
+                    self.insert_layout.addWidget(type_label)
+                    type_combobox = QComboBox()
+                    type_combobox.addItem(QIcon("icon:plain_text.svg"), self.tr("plain"), "plain")
+                    type_combobox.addItem(QIcon("icon:braces_variable.svg"), self.tr("expression"), "expression")
+                    type_combobox.addItem(QIcon("icon:document_add.svg"), self.tr("shortcut"), "shortcut")
+                    type_combobox.currentIndexChanged.connect(command_hint)
+                    self.insert_layout.addWidget(type_combobox)
+                    param_label = QLabel(self.tr("param"))
+                    self.insert_layout.addWidget(param_label)
+                    param_lineedit = QLineEdit()
+                    command_hint()
+                    self.insert_layout.addWidget(param_lineedit)
+
+                    self.finish_button.clicked.disconnect()
+                    self.finish_button.clicked.connect(command_finish)
+                    self.finish_button.show()
+
+                self.back_button.clicked.disconnect()
+                self.back_button.clicked.connect(action_page)
+                self.back_button.show()
+                self.hint_label.setText(self.tr("select params"))
+                self.next_button.hide()
+
             self.insert_window.show()
-            self.buffer = []
-            print("ready to insert", self.buffer)
+            action_page()
 
         def row_remove(self) -> None:
             # get clear index
@@ -2632,8 +2834,8 @@ class AdvancedSendWidget(QWidget):
 
         def advanced_send_table_insert_window_refresh():
             # clear all widgets except action selection
-            for i in reversed(range(1, action_layout.count())):
-                item = action_layout.takeAt(i)
+            for _ in reversed(range(1, action_layout.count())):
+                item = action_layout.takeAt(_)
                 if item and item.widget():
                     item.widget().deleteLater()
             self.action_window.updateGeometry()
@@ -3084,7 +3286,7 @@ class FileSendWidget(QWidget):
 
     class FileSendThread(QThread):
         log_signal = Signal(str, str)
-        send_signal = Signal(str, int)
+        send_signal = Signal(str, str)
         progress_signal = Signal(int, int, str)
         clear_signal = Signal()
 
@@ -3122,7 +3324,7 @@ class FileSendWidget(QWidget):
                             raise Exception
                         line = lines[current_line].strip()
                         if line:
-                            self.send_signal.emit(line, -1)
+                            self.send_signal.emit(line, "current")
                             if line.startswith(":"):
                                 current_line += 1
                             if line == ":00000001FF":
@@ -3157,7 +3359,7 @@ class FileSendWidget(QWidget):
                         if not buffer:
                             break
                         line = buffer.hex()
-                        self.send_signal.emit(line, -1)
+                        self.send_signal.emit(line, "current")
                         current_line += 1
                         self.progress_signal.emit(current_line, None, f"line({current_line}/{self.parent.file_line})")
                         QThread.msleep(self.parent.line_delay_spinbox.value())
