@@ -56,10 +56,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "type": None,
             "function": "new",
             "command": "",
+            "color": "#ffffff"
         }
     ],
     "data_collect": {
-        "database": [{"label": "new", "link": ""}],
+        "database": [{"label": "new", "link": "", "color": "#ffffff"}],
         "datatable": ["new"]
     }
 }

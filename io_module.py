@@ -2203,8 +2203,8 @@ class AdvancedSendWidget(QWidget):
                     self.highlight_signal.emit(length, index, "white")
 
     class AdvancedSendTableWidget(QTableWidget):
-
         def __init__(self, parent):
+            # event init
             super().__init__()
             self.setDragEnabled(True)
             self.setAcceptDrops(True)
@@ -2212,15 +2212,191 @@ class AdvancedSendWidget(QWidget):
             self.setDragDropMode(QTableWidget.DragDropMode.InternalMove)
             self.setSelectionBehavior(self.SelectionBehavior.SelectRows)
             self.setSelectionMode(self.SelectionMode.SingleSelection)
-
-            self.setShowGrid(False)
-
+            # var init
             self.parent = parent
-
             self.source_index = None
             self.target_index = None
+            # gui init
+            self.setShowGrid(False)
+            self.setColumnCount(3)
+            self.setIconSize(QSize(24, 24))
+            horizontal_header = self.horizontalHeader()
+            horizontal_header.setVisible(False)
+            self.setColumnWidth(0, 30)
+            horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+            horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+            vertical_header = self.verticalHeader()
+            vertical_header.setVisible(False)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            self.row_load()
 
-        def startDrag(self, supportedActions):
+        @staticmethod
+        def block_wheel(event):
+            event.ignore()
+
+        def row_load(self, send_buffer: list = None) -> None:
+            if send_buffer:
+                shared.advanced_send_buffer = send_buffer
+            self.clearContents()
+            self.setRowCount(0)
+            for _ in range(len(shared.advanced_send_buffer)):
+                # add row
+                self.insertRow(_)
+                '''
+                |------------------------------------------------
+                |   action   |   param1    |  param2   | param3 |
+                |------------------------------------------------      
+                |   input    |  variable   |   label   |   \    |
+                |  command   | instruction |   type    |   \    |
+                |  database  |    data     |   label   |   \    |
+                | datatable  |    data     |   label   |   \    |
+                |  message   |   message   |   level   |   \    |
+                | messagebox |   message   |   level   |   \    |
+                |    log     |     log     | operation |   \    |
+                | expression | expression  |     \     |   \    |
+                |   delay    |    time     |   unit    |   \    | 
+                |    loop    |    count    |     \     |   \    |
+                | stopwatch  |  operation  |     \     |   \    |
+                |  endloop   |      \      |     \     |   \    |
+                |     if     |  condition  |     \     |   \    |
+                |   endif    |      \      |     \     |   \    |
+                |   break    |      \      |     \     |   \    |
+                |   abort    |   message   |     \     |   \    |
+                |    tail    |      \      |     \     |   \    |
+                -------------------------------------------------
+                '''
+                action = shared.advanced_send_buffer[_][0]
+                param1 = shared.advanced_send_buffer[_][1] if len(shared.advanced_send_buffer[_]) > 1 else None
+                param2 = shared.advanced_send_buffer[_][2] if len(shared.advanced_send_buffer[_]) > 2 else None
+                # move_icon
+                move_icon = QTableWidgetItem()
+                move_icon.setIcon(QIcon("icon:arrow_move.svg"))
+                self.setItem(_, 0, move_icon)
+                # action label
+                action_label = QTableWidgetItem(action)
+                self.setItem(_, 1, action_label)
+                # param widget
+                if action == "input":
+                    param_widget = QComboBox()
+                    param_widget.addItems(variable)
+                    param_widget.setCurrentText(param1)
+                    param_widget.currentTextChanged.connect(self.row_change)
+                elif action == "command":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "database":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "datatable":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "message":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "messagebox":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "log":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "expression":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "delay":
+                    param_widget = QSpinBox()
+                    param_widget.setRange(0, 2147483647)
+                    param_widget.setValue(param1)
+                    param_widget.setSuffix(f"{param2}")
+                    param_widget.wheelEvent = self.block_wheel
+                    param_widget.valueChanged.connect(self.row_change)
+                elif action == "stopwatch":
+                    param_widget = QComboBox()
+                    param_widget.addItem(QIcon("icon:play.svg"), "start")
+                    param_widget.addItem(QIcon("icon:stop.svg"), "restart")
+                    param_widget.addItem(QIcon("icon:pause.svg"), "elapsed")
+                    param_widget.setCurrentText(param1)
+                    param_widget.currentTextChanged.connect(self.row_change)
+                elif action == "loop":
+                    param_widget = QSpinBox()
+                    param_widget.setRange(1, 2147483647)
+                    param_widget.setValue(param1)
+                    param_widget.wheelEvent = self.block_wheel
+                    param_widget.valueChanged.connect(self.row_change)
+                elif action == "endloop":
+                    param_widget = QLineEdit()
+                    param_widget.setEnabled(False)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "if":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "endif":
+                    param_widget = QLineEdit()
+                    param_widget.setEnabled(False)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "break":
+                    param_widget = QLineEdit()
+                    param_widget.setReadOnly(True)
+                    param_widget.textChanged.connect(self.row_change)
+                elif action == "abort":
+                    param_widget = QLineEdit()
+                    param_widget.setText(param1)
+                    param_widget.textChanged.connect(self.row_change)
+                else:  # action == "tail"
+                    param_widget = QLineEdit()
+                    param_widget.setEnabled(False)
+                    param_widget.textChanged.connect(self.row_change)
+                self.setCellWidget(_, 2, param_widget)
+            # table indent
+            self.row_indent()
+
+        def row_change(self, new: str | int) -> None:
+            # get widget index
+            for _ in range(self.rowCount()):
+                if self.cellWidget(_, 2) == self.sender():
+                    shared.advanced_send_buffer[_][1] = new
+                    break
+            # print(shared.advanced_send_buffer)
+
+        def row_indent(self) -> None:
+            indent = 0
+
+            def prefix(level: int) -> str:
+                if level == 0:
+                    output = ""
+                else:
+                    output = f"{(level - 1) * 8 * ' '}" + "|----"
+                return output
+
+            # remove table indent
+            for _ in range(self.rowCount()):
+                text = self.item(_, 1).text()
+                text_formatted = text.replace(" ", "").replace("|", "").replace("-", "")
+                self.item(_, 1).setText(text_formatted)
+            # table indent
+            for _ in range(self.rowCount()):
+                text = self.item(_, 1).text()
+                if text in ["loop", "if"]:
+                    text_formatted = prefix(indent) + text
+                    self.item(_, 1).setText(text_formatted)
+                    indent += 1
+                elif text in ["endloop", "endif"]:
+                    indent -= 1
+                    text_formatted = prefix(indent) + text
+                    self.item(_, 1).setText(text_formatted)
+                else:
+                    text_formatted = prefix(indent) + text
+                    self.item(_, 1).setText(text_formatted)
+
+        # drag event: swap
+        def startDrag(self, supported_actions) -> None:
             self.source_index = self.currentRow()
             # create mime data
             mime_data = QMimeData()
@@ -2230,57 +2406,94 @@ class AdvancedSendWidget(QWidget):
             drag.setMimeData(mime_data)
             drag.exec(Qt.DropAction.MoveAction)
 
-        def dropEvent(self, event):
+        def dropEvent(self, event) -> None:
             self.target_index = self.rowAt(event.position().toPoint().y())
-            self.row_relocation()
+            self.row_swap()
 
-        def row_relocation(self):
+        def row_swap(self) -> None:
             source_index = self.source_index
             target_index = self.target_index
             # manipulate advanced send buffer
             tmp = shared.advanced_send_buffer.pop(source_index)
             shared.advanced_send_buffer.insert(target_index, tmp)
             # remove source row
+            move = self.takeItem(source_index, 0)
             action = self.takeItem(source_index, 1)
             if isinstance(self.cellWidget(source_index, 2), QLineEdit):
+                legacy = QLineEdit(self.cellWidget(source_index, 2))
                 param = QLineEdit()
-                param.setText(self.cellWidget(source_index, 2).text())
-                param.textChanged.connect(self.parent.advanced_send_buffer_refresh)
+                param.setText(legacy.text())
+                param.textChanged.connect(self.row_change)
             elif isinstance(self.cellWidget(source_index, 2), QSpinBox):
+                legacy = QSpinBox(self.cellWidget(source_index, 2))
                 param = QSpinBox()
-                param.setRange(self.cellWidget(source_index, 2).minimum(), self.cellWidget(source_index, 2).maximum())
-                param.setSingleStep(self.cellWidget(source_index, 2).singleStep())
-                param.setValue(self.cellWidget(source_index, 2).value())
-                param.valueChanged.connect(self.parent.advanced_send_buffer_refresh)
-            elif isinstance(self.cellWidget(source_index, 2), QComboBox):
+                param.setRange(legacy.minimum(), legacy.maximum())
+                param.setSingleStep(legacy.singleStep())
+                param.setValue(legacy.value())
+                param.valueChanged.connect(self.row_change)
+            else:  # isinstance(self.cellWidget(source_index, 2), QComboBox):
+                legacy = QComboBox(self.cellWidget(source_index, 2))
                 param = QComboBox()
                 param.addItems(variable)
-                param.setCurrentText(self.cellWidget(source_index, 2).currentText())
-                param.currentTextChanged.connect(self.parent.advanced_send_buffer_refresh)
+                param.setCurrentText(legacy.currentText())
+                param.currentTextChanged.connect(self.row_change)
 
             self.removeRow(source_index)
             # insert target row
             self.insertRow(target_index)
-            move_icon = QLabel()
-            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
-            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.setCellWidget(target_index, 0, move_icon)
+            self.setItem(target_index, 0, move)
             self.setItem(target_index, 1, action)
             self.setCellWidget(target_index, 2, param)
             # auto indent
-            self.parent.advanced_send_table_indent()
+            self.row_indent()
+            # clear selection
+            self.clearSelection()
+            self.clearFocus()
             # print(shared.advanced_send_buffer)
 
-        def keyPressEvent(self, event):
-            if event.key() == Qt.Key.Key_Delete:
-                self.parent.advanced_send_table_remove()
-            elif event.key() == Qt.Key.Key_Insert:
+        # key press event: insert/remove/duplicate
+        def keyPressEvent(self, event) -> None:
+            if event.key() == Qt.Key.Key_Insert:
                 self.parent.advanced_send_table_insert_window()
+            elif event.key() == Qt.Key.Key_Delete:
+                self.row_remove()
             elif event.key() == Qt.Key.Key_Escape:
                 self.clearSelection()
                 self.clearFocus()
             else:
                 super().keyPressEvent(event)
+
+        def row_remove(self) -> None:
+            # get clear index
+            row = self.currentRow()
+            if shared.advanced_send_buffer[row][0] == "loop":
+                depth = 0
+                while 1:
+                    if shared.advanced_send_buffer[row][0] == "loop":
+                        depth += 1
+                    elif shared.advanced_send_buffer[row][0] == "endloop":
+                        depth -= 1
+                    shared.advanced_send_buffer.pop(row)
+                    self.removeRow(row)
+                    if depth == 0:
+                        break
+            elif shared.advanced_send_buffer[row][0] == "if":
+                depth = 0
+                while 1:
+                    if shared.advanced_send_buffer[row][0] == "if":
+                        depth += 1
+                    elif shared.advanced_send_buffer[row][0] == "endif":
+                        depth -= 1
+                    shared.advanced_send_buffer.pop(row)
+                    self.removeRow(row)
+                    if depth == 0:
+                        break
+            elif shared.advanced_send_buffer[row][0] in ["endloop", "endif", "tail"]:
+                return
+            else:
+                shared.advanced_send_buffer.pop(row)
+                self.removeRow(row)
+            # print(shared.advanced_send_buffer)
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasFormat('application/x-qabstractitemmodeldatalist'):
@@ -2299,16 +2512,12 @@ class AdvancedSendWidget(QWidget):
             stream = QDataStream(data, QIODevice.OpenModeFlag.ReadOnly)
             # read type
             if stream.readQString() == "advanced":
-                self.advanced_send_table_load(eval(stream.readQString()))
+                self.advanced_send_table.row_load(eval(stream.readQString()))
             else:
                 QMessageBox.critical(shared.main_window, "Invalid input", "Please choose an advanced shortcut.")
                 shared.port_log_widget.log_insert("shortcut load failed", "error")
         else:
             event.ignore()
-
-    @staticmethod
-    def block_wheel(event):
-        event.ignore()
 
     def advanced_send_gui(self) -> None:
         # advanced send overlay
@@ -2333,15 +2542,6 @@ class AdvancedSendWidget(QWidget):
         advanced_send_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # advanced send table
-        self.advanced_send_table.setColumnCount(3)
-        horizontal_header = self.advanced_send_table.horizontalHeader()
-        horizontal_header.setVisible(False)
-        self.advanced_send_table.setColumnWidth(0, 30)
-        horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        vertical_header = self.advanced_send_table.verticalHeader()
-        vertical_header.setVisible(False)
-        self.advanced_send_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         advanced_send_layout.addWidget(self.advanced_send_table)
 
         control_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -2385,132 +2585,6 @@ class AdvancedSendWidget(QWidget):
         # advanced send thread combobox
         self.advanced_send_combobox.addItem("Idle", "none")
         control_splitter.addWidget(self.advanced_send_combobox)
-
-        # initialize gui
-        self.advanced_send_table_load(shared.advanced_send_buffer)
-
-    def advanced_send_table_load(self, send_buffer: list = None) -> None:
-        shared.advanced_send_buffer = send_buffer
-        self.advanced_send_table.clearContents()
-        self.advanced_send_table.setRowCount(0)
-        for i in range(len(shared.advanced_send_buffer)):
-            # add row
-            self.advanced_send_table.insertRow(i)
-            '''
-            |------------------------------------------------
-            |   action   |   param1    |  param2   | param3 |
-            |------------------------------------------------      
-            |   input    |  variable   |   label   |   \    |
-            |  command   | instruction |   type    |   \    |
-            |  database  |    data     |   label   |   \    |
-            | datatable  |    data     |   label   |   \    |
-            |  message   |   message   |   level   |   \    |
-            | messagebox |   message   |   level   |   \    |
-            |    log     |     log     | operation |   \    |
-            | expression | expression  |     \     |   \    |
-            |   delay    |    time     |   unit    |   \    | 
-            |    loop    |    count    |     \     |   \    |
-            | stopwatch  |  operation  |     \     |   \    |
-            |  endloop   |      \      |     \     |   \    |
-            |     if     |  condition  |     \     |   \    |
-            |   endif    |      \      |     \     |   \    |
-            |   break    |      \      |     \     |   \    |
-            |   abort    |   message   |     \     |   \    |
-            |    tail    |      \      |     \     |   \    |
-            -------------------------------------------------
-            '''
-            action = shared.advanced_send_buffer[i][0]
-            param1 = shared.advanced_send_buffer[i][1] if len(shared.advanced_send_buffer[i]) > 1 else None
-            param2 = shared.advanced_send_buffer[i][2] if len(shared.advanced_send_buffer[i]) > 2 else None
-            # move icon
-            move_icon = QLabel()
-            move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
-            move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.advanced_send_table.setCellWidget(i, 0, move_icon)
-            # action label
-            action_label = QTableWidgetItem(action)
-            self.advanced_send_table.setItem(i, 1, action_label)
-            # param widget
-            if action == "input":
-                param_widget = QComboBox()
-                param_widget.addItems(variable)
-                param_widget.setCurrentText(param1)
-                param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "command":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "database":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "datatable":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "message":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "messagebox":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "log":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "expression":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "delay":
-                param_widget = QSpinBox()
-                param_widget.setRange(0, 2147483647)
-                param_widget.setValue(param1)
-                param_widget.setSuffix(f"{param2}")
-                param_widget.wheelEvent = self.block_wheel
-                param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "stopwatch":
-                param_widget = QComboBox()
-                param_widget.addItem(QIcon("icon:play.svg"), "start")
-                param_widget.addItem(QIcon("icon:stop.svg"), "restart")
-                param_widget.addItem(QIcon("icon:pause.svg"), "elapsed")
-                param_widget.setCurrentText(param1)
-                param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "loop":
-                param_widget = QSpinBox()
-                param_widget.setRange(1, 2147483647)
-                param_widget.setValue(param1)
-                param_widget.wheelEvent = self.block_wheel
-                param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "endloop":
-                param_widget = QLineEdit()
-                param_widget.setEnabled(False)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "if":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "endif":
-                param_widget = QLineEdit()
-                param_widget.setEnabled(False)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "break":
-                param_widget = QLineEdit()
-                param_widget.setReadOnly(True)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            elif action == "abort":
-                param_widget = QLineEdit()
-                param_widget.setText(param1)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            else:  # action == "tail"
-                param_widget = QLineEdit()
-                param_widget.setEnabled(False)
-                param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
-            self.advanced_send_table.setCellWidget(i, 2, param_widget)
-        # table indent
-        self.advanced_send_table_indent()
 
     def advanced_send_table_insert_window(self) -> None:
 
@@ -2703,13 +2777,12 @@ class AdvancedSendWidget(QWidget):
         # shortcut table insert
         self.advanced_send_table.insertRow(row)
 
-        action = self.action_combobox.currentText()
-        # move icon
-        move_icon = QLabel()
-        move_icon.setPixmap(QIcon("icon:arrow_move.svg").pixmap(24, 24))
-        move_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.advanced_send_table.setCellWidget(row, 0, move_icon)
+        # move_icon
+        move_icon = QTableWidgetItem()
+        move_icon.setIcon(QIcon("icon:arrow_move.svg"))
+        self.advanced_send_table.setItem(row, 0, move_icon)
         # action/command
+        action = self.action_combobox.currentText()
         if action == "input":
             param1 = self.input_param1_combobox.currentText()
             param2 = self.input_param2_lineedit.text()
@@ -2721,7 +2794,7 @@ class AdvancedSendWidget(QWidget):
             param_widget = QComboBox()
             param_widget.addItems(variable)
             param_widget.setCurrentText(param1)
-            param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.currentTextChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "command":
             param1 = self.command_param1_lineedit.text()
@@ -2733,7 +2806,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "database":
             param1 = self.database_param1_lineedit.text()
@@ -2745,7 +2818,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "datatable":
             param1 = self.datatable_param1_lineedit.text()
@@ -2757,7 +2830,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "message":
             param1 = self.message_param1_lineedit.text()
@@ -2769,7 +2842,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "messagebox":
             param1 = self.messagebox_param1_lineedit.text()
@@ -2781,7 +2854,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "log":
             param1 = self.log_param1_lineedit.text()
@@ -2793,7 +2866,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "expression":
             param1 = self.expression_param1_lineedit.text()
@@ -2804,7 +2877,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "delay":
             param1 = self.delay_param1_spinbox.value()
@@ -2819,7 +2892,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.setValue(param1)
             param_widget.setSuffix(f"{param2}")
             param_widget.wheelEvent = self.block_wheel
-            param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.valueChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "stopwatch":
             param1 = self.stopwatch_param1_combobox.currentText()
@@ -2833,7 +2906,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.addItem(QIcon("icon:stop.svg"), "restart")
             param_widget.addItem(QIcon("icon:pause.svg"), "elapsed")
             param_widget.setCurrentText(param1)
-            param_widget.currentTextChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.currentTextChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "loop":
             param1 = self.loop_param1_spinbox.value()
@@ -2862,7 +2935,7 @@ class AdvancedSendWidget(QWidget):
             param_widget.setRange(1, 2147483647)
             param_widget.setValue(param1)
             param_widget.wheelEvent = self.block_wheel
-            param_widget.valueChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.valueChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "if":
             param1 = self.if_param1_lineedit.text()
@@ -2889,7 +2962,7 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         elif action == "break":
             # add to action slot
@@ -2909,85 +2982,12 @@ class AdvancedSendWidget(QWidget):
             self.advanced_send_table.setItem(row, 1, action_label)
             param_widget = QLineEdit()
             param_widget.setText(param1)
-            param_widget.textChanged.connect(self.advanced_send_buffer_refresh)
+            param_widget.textChanged.connect(self.row_change)
             self.advanced_send_table.setCellWidget(row, 2, param_widget)
         self.action_window.close()
         # table indent
         self.advanced_send_table_indent()
         # print(shared.advanced_send_buffer)
-
-    def advanced_send_table_remove(self) -> None:
-        # get clear index
-        row = self.advanced_send_table.currentRow()
-        if row == -1:
-            QMessageBox.warning(shared.main_window, "Clear Shortcut", "Please select a row first.")
-            return
-        if shared.advanced_send_buffer[row][0] == "loop":
-            depth = 0
-            while 1:
-                if shared.advanced_send_buffer[row][0] == "loop":
-                    depth += 1
-                elif shared.advanced_send_buffer[row][0] == "endloop":
-                    depth -= 1
-                shared.advanced_send_buffer.pop(row)
-                self.advanced_send_table.removeRow(row)
-                if depth == 0:
-                    break
-        elif shared.advanced_send_buffer[row][0] == "if":
-            depth = 0
-            while 1:
-                if shared.advanced_send_buffer[row][0] == "if":
-                    depth += 1
-                elif shared.advanced_send_buffer[row][0] == "endif":
-                    depth -= 1
-                shared.advanced_send_buffer.pop(row)
-                self.advanced_send_table.removeRow(row)
-                if depth == 0:
-                    break
-        elif shared.advanced_send_buffer[row][0] in ["endloop", "endif", "tail"]:
-            return
-        else:
-            shared.advanced_send_buffer.pop(row)
-            self.advanced_send_table.removeRow(row)
-        # print(shared.advanced_send_buffer)
-
-    def advanced_send_buffer_refresh(self, new: str | int) -> None:
-        # get widget index
-        for row in range(self.advanced_send_table.rowCount()):
-            if self.advanced_send_table.cellWidget(row, 2) == self.sender():
-                shared.advanced_send_buffer[row][1] = new
-                break
-        # print(shared.advanced_send_buffer)
-
-    def advanced_send_table_indent(self) -> None:
-        indent = 0
-
-        def prefix(indent: int) -> str:
-            if indent == 0:
-                output = ""
-            else:
-                output = f"{(indent - 1) * 8 * ' '}" + "|----"
-            return output
-
-        # remove table indent
-        for row in range(self.advanced_send_table.rowCount()):
-            text = self.advanced_send_table.item(row, 1).text()
-            text_formatted = text.replace(" ", "").replace("|", "").replace("-", "")
-            self.advanced_send_table.item(row, 1).setText(text_formatted)
-        # table indent
-        for row in range(self.advanced_send_table.rowCount()):
-            text = self.advanced_send_table.item(row, 1).text()
-            if text in ["loop", "if"]:
-                text_formatted = prefix(indent) + text
-                self.advanced_send_table.item(row, 1).setText(text_formatted)
-                indent += 1
-            elif text in ["endloop", "endif"]:
-                indent -= 1
-                text_formatted = prefix(indent) + text
-                self.advanced_send_table.item(row, 1).setText(text_formatted)
-            else:
-                text_formatted = prefix(indent) + text
-                self.advanced_send_table.item(row, 1).setText(text_formatted)
 
     def advanced_send_clear(self) -> None:
         for _ in range(len(shared.advanced_send_buffer) - 1):

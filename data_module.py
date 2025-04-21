@@ -6,7 +6,6 @@ from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
 
 import shared
-from shared import port_log_widget
 
 tx_buffer = None
 rx_buffer = None
@@ -15,35 +14,105 @@ rx_buffer = None
 class DataCollectWidget(QWidget):
     def __init__(self):
         super().__init__()
-        # instance variables
+        # var init
         self.database = self.DatabaseWidget(self)
-
         self.datatable = self.DatatableWidget(self)
-
         self.dataplot = pg.PlotWidget()
-
-        self.toggle_button = QPushButton()
-
         # draw gui
         self.data_collect_gui()
 
     class DatabaseWidget(QTableWidget):
-
         def __init__(self, parent):
             super().__init__()
+            # event init
             self.setDragEnabled(True)
             self.setAcceptDrops(True)
             self.setDropIndicatorShown(True)
             self.setDragDropMode(QTableWidget.DragDropMode.InternalMove)
             self.setSelectionBehavior(self.SelectionBehavior.SelectRows)
             self.setSelectionMode(self.SelectionMode.SingleSelection)
-
+            # var init
             self.parent = parent
-
             self.source_index = None
             self.target_index = None
+            # gui init
+            self.setRowCount(len(shared.data_collect["database"]))
+            self.setColumnCount(4)
+            self.setIconSize(QSize(24, 24))
+            horizontal_header = self.horizontalHeader()
+            horizontal_header.setVisible(False)
+            self.setColumnWidth(0, 30)
+            horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+            horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+            self.setColumnWidth(3, 30)
+            vertical_header = self.verticalHeader()
+            vertical_header.setVisible(False)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            self.row_load()
+            self.cellChanged.connect(self.row_change)
 
-        def startDrag(self, supportedActions):
+        def row_load(self) -> None:
+            for _ in range(len(shared.data_collect["database"])):
+                # move_icon
+                move_icon = QTableWidgetItem()
+                move_icon.setIcon(QIcon("icon:arrow_move.svg"))
+                move_icon.setBackground(QColor(shared.command_shortcut[_]["color"]))
+                self.setItem(_, 0, move_icon)
+                # label
+                label = QTableWidgetItem(shared.data_collect["database"][_]["label"])
+                label.setBackground(QColor(shared.command_shortcut[_]["color"]))
+                self.setItem(_, 1, label)
+                # value
+                value = QTableWidgetItem()
+                value.setBackground(QColor(shared.command_shortcut[_]["color"]))
+                self.setItem(_, 2, value)
+                # link button
+                link_button = QPushButton()
+                link_button.setIcon(QIcon("icon:link.svg"))
+                link_button.clicked.connect(self.row_link)
+                self.setCellWidget(_, 3, link_button)
+
+        def row_change(self, row, col) -> None:
+            if col == 1:
+                # save cell
+                shared.data_collect["database"][row]["label"] = self.item(row, 1).text()
+            else:  # if col == 2:
+                link = shared.data_collect["database"][row]["link"]
+                if not link:
+                    return
+                row = -1
+                for _ in range(len(shared.command_shortcut)):
+                    if link == shared.command_shortcut[_]["function"]:
+                        row = _
+                if row == -1:
+                    # error highlight
+                    shared.port_log_widget.log_insert(self.tr("cannot find shortcut %s") % link, "error")
+                    return
+                type = shared.command_shortcut[row]["type"]
+                function = shared.command_shortcut[row]["function"]
+                command = shared.command_shortcut[row]["command"]
+                if type == "single":
+                    shared.port_status_widget.port_write(command, -1)
+                else:  # type == "advanced"
+                    buffer = eval(command)
+                    shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
+            # print(shared.data_collect["database"])
+
+        def row_link(self) -> None:
+            # get widget index
+            index = None
+            for row in range(len(shared.data_collect["database"])):
+                if self.cellWidget(row, 3) == self.sender():
+                    index = row
+                    break
+            if index is None:
+                return
+            link, ok = QInputDialog.getText(shared.main_window, self.tr("Link To A Shortcut"), self.tr("shortcut:"), text=shared.data_collect["database"][index]["link"])
+            if ok:
+                shared.data_collect["database"][index]["link"] = link
+
+        # drag event: swap
+        def startDrag(self, supported_actions):
             self.source_index = self.currentRow()
             # create mime data
             mime_data = QMimeData()
@@ -55,22 +124,9 @@ class DataCollectWidget(QWidget):
 
         def dropEvent(self, event):
             self.target_index = self.rowAt(event.position().toPoint().y())
-            self.row_relocation()
+            self.row_swap()
 
-        def keyPressEvent(self, event):
-            if event.key() == Qt.Key.Key_Delete:
-                self.row_remove()
-            elif event.key() == Qt.Key.Key_Insert:
-                self.row_insert()
-            elif event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_P:
-                self.row_paint()
-            elif event.key() == Qt.Key.Key_Escape:
-                self.clearSelection()
-                self.clearFocus()
-            else:
-                super().keyPressEvent(event)
-
-        def row_relocation(self):
+        def row_swap(self):
             source_index = self.source_index
             target_index = self.target_index
             # manipulate shared data collect
@@ -90,11 +146,27 @@ class DataCollectWidget(QWidget):
             # link button
             link_button = QPushButton()
             link_button.setIcon(QIcon("icon:link.svg"))
-            link_button.clicked.connect(self.parent.database_link)
+            link_button.clicked.connect(self.row_link)
             self.setCellWidget(target_index, 3, link_button)
             self.blockSignals(False)
-
+            # clear selection
+            self.clearSelection()
+            self.clearFocus()
             # print(shared.data_collect)
+
+        # key press event: insert/remove/paint
+        def keyPressEvent(self, event):
+            if event.key() == Qt.Key.Key_Insert:
+                self.row_insert()
+            elif event.key() == Qt.Key.Key_Delete:
+                self.row_remove()
+            elif event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_P:
+                self.row_paint()
+            elif event.key() == Qt.Key.Key_Escape:
+                self.clearSelection()
+                self.clearFocus()
+            else:
+                super().keyPressEvent(event)
 
         def row_insert(self) -> None:
             # get insert index
@@ -122,7 +194,7 @@ class DataCollectWidget(QWidget):
             # link button
             link_button = QPushButton()
             link_button.setIcon(QIcon("icon:link.svg"))
-            link_button.clicked.connect(self.parent.database_link)
+            link_button.clicked.connect(self.row_link)
             self.setCellWidget(row, 3, link_button)
 
             self.blockSignals(False)
@@ -187,40 +259,7 @@ class DataCollectWidget(QWidget):
         database_layout = QVBoxLayout(database_tab)
         database_layout.setContentsMargins(0, 0, 0, 0)
         # database
-        self.database.setRowCount(len(shared.data_collect["database"]))
-        self.database.setColumnCount(4)
-        self.database.setIconSize(QSize(24, 24))
-        horizontal_header = self.database.horizontalHeader()
-        horizontal_header.setVisible(False)
-        self.database.setColumnWidth(0, 30)
-        horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.database.setColumnWidth(3, 30)
-        vertical_header = self.database.verticalHeader()
-        vertical_header.setVisible(False)
-        self.database.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         database_layout.addWidget(self.database)
-        for i in range(len(shared.data_collect["database"])):
-            # move_icon
-            move_icon = QTableWidgetItem()
-            move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-            move_icon.setBackground(QColor(shared.command_shortcut[i]["color"]))
-            self.database.setItem(i, 0, move_icon)
-            # label
-            label = QTableWidgetItem(shared.data_collect["database"][i]["label"])
-            label.setBackground(QColor(shared.command_shortcut[i]["color"]))
-            self.database.setItem(i, 1, label)
-            # value
-            value = QTableWidgetItem()
-            value.setBackground(QColor(shared.command_shortcut[i]["color"]))
-            self.database.setItem(i, 2, value)
-            # link button
-            link_button = QPushButton()
-            link_button.setIcon(QIcon("icon:link.svg"))
-            link_button.clicked.connect(self.database_link)
-            self.database.setCellWidget(i, 3, link_button)
-        # cell change event
-        self.database.cellChanged.connect(self.database_change)
 
         # datatable tab
         datatable_tab = QWidget()
@@ -279,47 +318,6 @@ class DataCollectWidget(QWidget):
         self.database.blockSignals(True)
         self.database.item(row, 2).setText(data)
         self.database.blockSignals(False)
-
-    def database_change(self, row, col) -> None:
-        if col == 1:
-            # save cell
-            shared.data_collect["database"][row]["label"] = self.database.item(row, 1).text()
-            # print(shared.data_collect["database"])
-        else:  # if col == 2:
-            link = shared.data_collect["database"][row]["link"]
-            if not link:
-                return
-            row = -1
-            for i in range(len(shared.command_shortcut)):
-                if link == shared.command_shortcut[i]["function"]:
-                    row = i
-            if row == -1:
-                # error highlight
-                shared.port_log_widget.log_insert(self.tr("cannot find shortcut %s") % link, "error")
-                return
-            type = shared.command_shortcut[row]["type"]
-            function = shared.command_shortcut[row]["function"]
-            command = shared.command_shortcut[row]["command"]
-            if type == "single":
-                shared.port_status_widget.port_write(command, -1)
-            else:  # type == "advanced"
-                buffer = eval(command)
-                shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
-
-    def database_link(self) -> None:
-        # get widget index
-        index = None
-        for row in range(len(shared.data_collect["database"])):
-            if self.database.cellWidget(row, 3) == self.sender():
-                index = row
-                break
-        if index is None:
-            return
-        link, ok = QInputDialog.getText(shared.main_window, self.tr("Link To A Shortcut"), self.tr("shortcut:"), text=shared.data_collect["database"][index]["link"])
-        if ok:
-            shared.data_collect["database"][index]["link"] = link
-        else:
-            return
 
     def datatable_import(self, col: int, data: str) -> None:
         row_count = self.datatable.rowCount()
