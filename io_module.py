@@ -2214,7 +2214,7 @@ class AdvancedSendWidget(QWidget):
             self.setSelectionMode(self.SelectionMode.SingleSelection)
             # var init
             self.parent = parent
-            self.buffer = []
+            self.action = None
             self.source_index = None
             self.target_index = None
             # gui init
@@ -2512,7 +2512,7 @@ class AdvancedSendWidget(QWidget):
                         item.widget().deleteLater()
 
             def action_page():
-                self.buffer = []
+                self.action = None
                 clear_layout()
                 action_table = QTableWidget()
                 self.insert_layout.addWidget(action_table)
@@ -2535,7 +2535,7 @@ class AdvancedSendWidget(QWidget):
                 icon.setIcon(QIcon("icon:arrow_import.svg"))
                 action_table.setItem(0, 0, icon)
                 label = QTableWidgetItem(self.tr("input"))
-                label.setData(Qt.ItemDataRole.UserRole,"input")
+                label.setData(Qt.ItemDataRole.UserRole, "input")
                 label.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 action_table.setItem(0, 1, label)
                 icon = QTableWidgetItem()
@@ -2633,15 +2633,15 @@ class AdvancedSendWidget(QWidget):
 
                 def moving_to_next_step():
                     if action_table.currentRow() == -1:
-                        QMessageBox.warning(shared.main_window, "No Selection", "Please select an action first.")
+                        QMessageBox.warning(shared.main_window, self.tr("No Selection"), self.tr("Please select an action first."))
                         return
                     else:
                         action = action_table.item(action_table.currentRow(), 1).data(Qt.ItemDataRole.UserRole)
-                        self.buffer.append(action)
+                        self.action = action
                         param_page()
 
                 self.back_button.hide()
-                self.hint_label.setText("select action")
+                self.hint_label.setText(self.tr("select action"))
                 self.next_button.clicked.disconnect()
                 self.next_button.clicked.connect(moving_to_next_step)
                 self.next_button.show()
@@ -2649,32 +2649,49 @@ class AdvancedSendWidget(QWidget):
 
             def param_page() -> None:
                 clear_layout()
-                if self.buffer[0] == "input":
+                if self.action == "input":
                     ...
-                if self.buffer[0] == "command":
+                if self.action == "command":
                     def command_hint():
-                        if type_combobox.currentText() == "plain":
+                        if type_combobox.currentData() == "plain":
                             param_lineedit.setPlaceholderText(self.tr("enter plain command"))
-                        elif type_combobox.currentText() == "expression":
+                        elif type_combobox.currentData() == "expression":
                             param_lineedit.setPlaceholderText(self.tr("enter expression command"))
-                        else:  # type_combobox.currentText()=="shortcut":
+                        else:  # type_combobox.currentData()=="shortcut":
                             param_lineedit.setPlaceholderText(self.tr("enter shortcut name"))
 
                     def command_finish():
-                        self.buffer.append(param_lineedit.text())
-                        self.buffer.append(target_combobox.currentData())
-                        self.buffer.append(type_combobox.currentData())
+                        # get insert row
+                        row = self.currentRow()
+                        # insert to shared
+                        param = param_lineedit.text()
+                        target = target_combobox.currentData()
+                        type = type_combobox.currentData()
+                        shared.advanced_send_buffer.insert(row, ["command", param, target, type])
+                        # insert to table
+                        self.insertRow(row)
+                        move_icon = QTableWidgetItem()
+                        move_icon.setIcon(QIcon("icon:arrow_move.svg"))
+                        self.setItem(row, 0, move_icon)
+                        action_label = QTableWidgetItem("command")
+                        self.setItem(row, 1, action_label)
+                        param_widget = QLineEdit()
+                        param_widget.setText(param)
+                        param_widget.textChanged.connect(self.row_change)
+                        self.setCellWidget(row, 2, param_widget)
+                        # close window
+                        self.insert_window.close()
 
                     target_label = QLabel(self.tr("target port"))
                     target_label.setStyleSheet("font-size: 12pt;")
                     self.insert_layout.addWidget(target_label)
                     target_combobox = QComboBox()
-                    target_combobox.addItem(self.tr("current"), "current")
-                    target_combobox.addItem(self.tr("all"), "all")
+                    target_combobox.addItem(self.tr("current port"), "current")
+                    target_combobox.addItem(self.tr("all ports"), "all")
                     for _ in range(len(shared.port_setting)):
-                        target_combobox.addItem(shared.port_setting[_]["portname"],shared.port_setting[_]["portname"])
+                        target_combobox.addItem(shared.port_setting[_]["portname"], shared.port_setting[_]["portname"])
                     self.insert_layout.addWidget(target_combobox)
-                    type_label = QLabel(self.tr("type"))
+                    type_label = QLabel(self.tr("command type"))
                     type_label.setStyleSheet("font-size: 12pt;")
                     self.insert_layout.addWidget(type_label)
                     type_combobox = QComboBox()
@@ -2683,7 +2700,8 @@ class AdvancedSendWidget(QWidget):
                     type_combobox.addItem(QIcon("icon:document_add.svg"), self.tr("shortcut"), "shortcut")
                     type_combobox.currentIndexChanged.connect(command_hint)
                     self.insert_layout.addWidget(type_combobox)
-                    param_label = QLabel(self.tr("param"))
+                    param_label = QLabel(self.tr("command param"))
+                    param_label.setStyleSheet("font-size: 12pt;")
                     self.insert_layout.addWidget(param_label)
                     param_lineedit = QLineEdit()
                     command_hint()
