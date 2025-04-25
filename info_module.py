@@ -22,6 +22,7 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add zh_CN translation.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Multi port support.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add regex to log search widget.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add debug mode to advanced send widget.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add paint function to command shortcut and database.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Fix command shortcut fails to save after editing.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Fix thread fails to terminate correctly after finished.</span></p>

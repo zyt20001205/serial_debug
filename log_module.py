@@ -105,7 +105,7 @@ class PortLogWidget(QWidget):
         # search lineedit
         self.search_lineedit.setStyleSheet("background-color: white;margin: 0px;")
         self.search_lineedit.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.search_lineedit.customContextMenuRequested.connect(lambda checked: self.search_lineedit.clear())
+        self.search_lineedit.setClearButtonEnabled(True)
         self.search_lineedit.textChanged.connect(log_search)
         search_entry_layout.addWidget(self.search_lineedit)
         # match case button

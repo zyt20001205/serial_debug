@@ -1,3 +1,5 @@
+import copy
+
 from PySide6.QtCore import Qt, QMimeData, QDataStream, QByteArray, QIODevice, QSize
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QPushButton, QHeaderView, QLabel, QTableWidgetItem, QColorDialog
@@ -198,7 +200,8 @@ class CommandShortcutWidget(QWidget):
             # get insert index
             row = self.currentRow()
             # command shortcut insert
-            shared.command_shortcut.insert(row, shared.command_shortcut[row])
+            tmp = copy.deepcopy(shared.command_shortcut[row])
+            shared.command_shortcut.insert(row, tmp)
             # shortcut table insert
             self.insertRow(row)
             self.blockSignals(True)
@@ -275,7 +278,7 @@ class CommandShortcutWidget(QWidget):
         function = shared.command_shortcut[index]["function"]
         command = shared.command_shortcut[index]["command"]
         if type == "single":
-            shared.port_status_widget.port_write(command, "current")
+            shared.port_status_widget.port_write(command, "CURRENT")
         else:  # type == "advanced"
             buffer = eval(command)
             shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)

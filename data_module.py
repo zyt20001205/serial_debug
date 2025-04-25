@@ -92,7 +92,7 @@ class DataCollectWidget(QWidget):
                 function = shared.command_shortcut[row]["function"]
                 command = shared.command_shortcut[row]["command"]
                 if type == "single":
-                    shared.port_status_widget.port_write(command, "current")
+                    shared.port_status_widget.port_write(command, "CURRENT")
                 else:  # type == "advanced"
                     buffer = eval(command)
                     shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
