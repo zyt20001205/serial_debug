@@ -2396,6 +2396,9 @@ class AdvancedSendWidget(QWidget):
             control_layout.addWidget(self.finish_button, 0, 2, alignment=Qt.AlignmentFlag.AlignLeft)
             self.finish_button.hide()
 
+            self.enter_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Return), self.insert_window)
+            self.enter_shortcut.activated.connect(self.handle_enter)
+
         @staticmethod
         def block_wheel(event):
             event.ignore()
@@ -2698,19 +2701,16 @@ class AdvancedSendWidget(QWidget):
             else:
                 super().keyPressEvent(event)
 
+        def handle_enter(self)->None:
+            if self.next_button.isVisible():
+                # print(1)
+                self.next_button.click()
+            elif self.finish_button.isVisible():
+                self.finish_button.click()
+
         def row_insert(self, legacy: list = None) -> None:
             # get insert row
             row = self.currentRow()
-
-            # bind enter to buttons
-            def handle_enter():
-                if self.next_button.isVisible():
-                    self.next_button.click()
-                elif self.finish_button.isVisible():
-                    self.finish_button.click()
-
-            enter_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Return), self.insert_window)
-            enter_shortcut.activated.connect(handle_enter)
 
             def clear_layout() -> None:
                 for _ in reversed(range(self.insert_layout.count())):
