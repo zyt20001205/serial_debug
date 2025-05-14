@@ -7,7 +7,7 @@ import tempfile
 import socket
 # import pysoem
 from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption, QIntValidator, QShortcut, QStandardItemModel, QStandardItem
-from PySide6.QtNetwork import QTcpSocket, QTcpServer
+from PySide6.QtNetwork import QTcpSocket, QTcpServer, QUdpSocket
 from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, \
     QSpinBox, QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox, QTabWidget, QFrame, QTreeView
@@ -183,9 +183,6 @@ class PortStatusWidget(QWidget):
             # check if serial is opened
             if not self.port_toggle_button.isChecked():
                 return
-
-            # message strip
-            message = message.strip()
             # suffix generate
             if self.tx_suffix == "crlf":
                 suffix = f"0d0a"
@@ -495,9 +492,6 @@ class PortStatusWidget(QWidget):
             # check if serial is opened
             if not self.port_toggle_button.isChecked():
                 return
-
-            # message strip
-            message = message.strip()
             # suffix generate
             if self.tx_suffix == "crlf":
                 suffix = f"0d0a"
@@ -713,7 +707,7 @@ class PortStatusWidget(QWidget):
         def __init__(self, parent: "PortStatusWidget", port_setting: dict):
             super().__init__()
             self.parent = parent
-            # tcp client setting
+            # tcp server setting
             self.tcp_server = QTcpServer()
             self.tcp_peer = []
 
@@ -766,12 +760,12 @@ class PortStatusWidget(QWidget):
                 shared.port_log_widget.log_insert("server stopped listening", "info")
                 for peer in self.tcp_server.findChildren(QTcpSocket):
                     peer.disconnectFromHost()
-                shared.port_log_widget.log_insert("all client disconnected", "info")
+                shared.port_log_widget.log_insert("all clients disconnected", "info")
             except AttributeError:
                 shared.port_log_widget.log_insert("tcp client close failed", "error")
 
         def find_peer(self):
-            peer = self.tcp_server.nextPendingConnection()
+            peer: QTcpSocket = self.tcp_server.nextPendingConnection()
             if self.tcp_peer:
                 peer_list = ("\n".join(f"|{'remote ipv4':^30}|{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}|" for peer in self.tcp_peer)
                              + f"\n|{'remote ipv4 (new)':^30}|<b>{f'{peer.peerAddress().toString()}:{peer.peerPort()}':^30}</b>|\n")
@@ -823,9 +817,6 @@ class PortStatusWidget(QWidget):
             # check if serial is opened
             if not self.port_toggle_button.isChecked():
                 return
-
-            # message strip
-            message = message.strip()
             # suffix generate
             if self.tx_suffix == "crlf":
                 suffix = f"0d0a"
@@ -1076,6 +1067,286 @@ class PortStatusWidget(QWidget):
             self.port_toggle_button.toggled.connect(port_toggle)
             port_layout.addWidget(self.port_toggle_button)
 
+    class UdpSocketTab(QWidget):
+        def __init__(self, parent: "PortStatusWidget", port_setting: dict):
+            super().__init__()
+            self.parent = parent
+            # udp socket setting
+            self.udp_socket = QUdpSocket()
+
+            self.portname = port_setting["portname"]
+            self.localipv4 = port_setting["localipv4"]
+            self.localport = int(port_setting["localport"])
+            self.remoteipv4 = port_setting["remoteipv4"]
+            self.remoteport = int(port_setting["remoteport"])
+            self.timeout = port_setting["timeout"]
+
+            self.tx_buffer = None
+            self.tx_format = port_setting["tx_format"]
+            self.tx_suffix = port_setting["tx_suffix"]
+            self.tx_interval = port_setting["tx_interval"]
+
+            self.tx_queue = []
+            self.tx_timer = QTimer()
+            self.tx_timer.setSingleShot(True)
+            self.tx_timer.timeout.connect(self.write_trigger)
+
+            self.rx_buffer = None
+            self.rx_buffer_raw = None
+            self.rx_format = port_setting["rx_format"]
+            self.rx_size = port_setting["rx_size"]
+
+            self.timer = QTimer()
+            # draw gui
+            self.port_toggle_button = QPushButton()
+            self.peer_combobox = QComboBox()
+            self.tx_buffer_lineedit = QLineEdit()
+            self.rx_buffer_lineedit = QLineEdit()
+            self.gui()
+
+        def open(self) -> None:
+            try:
+                self.udp_socket.bind(QHostAddress(self.localipv4), self.localport)
+                shared.port_log_widget.log_insert(f"\n---------------------------------------------------------------\n"
+                                                  f"|{'udp socket':^61}|\n"
+                                                  f"---------------------------------------------------------------\n"
+                                                  f"""|{'local ipv4':^30}|{f'{self.localipv4}:{self.localport}':^30}|\n"""
+                                                  f"""|{'remote ipv4':^30}|{f'{self.remoteipv4}:{self.remoteport}':^30}|\n"""
+                                                  f"""|{'timeout':^30}|{f'{self.timeout}ms':^30}|\n"""
+                                                  f"---------------------------------------------------------------",
+                                                  "info")
+                self.udp_socket.readyRead.connect(self.read_timer)
+            except Exception as e:
+                shared.port_log_widget.log_insert(f"{e}", "error")
+
+        def close(self) -> None:
+            try:
+                self.udp_socket.close()
+                shared.port_log_widget.log_insert("udp socket closed", "info")
+            except AttributeError:
+                shared.port_log_widget.log_insert("udp socket close failed", "error")
+
+        def write(self, message: str) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+            # suffix generate
+            if self.tx_suffix == "crlf":
+                suffix = f"0d0a"
+            elif self.tx_suffix == "crc8 maxim":
+                try:
+                    suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
+                except:
+                    suffix = "NULL"
+            elif self.tx_suffix == "crc16 modbus":
+                try:
+                    suffix = f"{crc16_modbus(bytes.fromhex(message)):04X}"
+                except:
+                    suffix = "NULL"
+            else:  # self.tx_suffix == none
+                suffix = ""
+            message += suffix
+            # message reformat
+            if self.tx_format == "hex":
+                message = bytes.fromhex(message)
+            elif self.tx_format == "ascii":
+                message = message.encode("ascii")
+            else:  # self.tx_format == "utf-8"
+                message = message.encode("utf-8")
+            self.tx_queue.append(message)
+            if not self.tx_timer.isActive():
+                self.write_trigger()
+
+        def write_trigger(self):
+            if self.tx_queue:
+                message = self.tx_queue.pop(0)
+            else:
+                return
+            # write message to ip address
+            self.udp_socket.writeDatagram(message, QHostAddress(self.remoteipv4), self.remoteport)
+            # start timer
+            self.tx_timer.start(self.tx_interval)
+            # save message to shared.tx_buffer
+            if self.tx_format == "hex":
+                self.tx_buffer = message.hex().upper()
+            elif self.tx_format == "ascii":
+                try:
+                    # raw to ascii
+                    self.tx_buffer = message.decode("ascii")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            else:  # self.tx_format == "utf-8":
+                try:
+                    # raw to utf-8
+                    self.tx_buffer = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            # change tx buffer lineedit
+            self.tx_buffer_lineedit.setText(self.tx_buffer)
+            # append log
+            if self.tx_format == "hex":
+                message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                if "crc16" in self.tx_suffix:
+                    message_data = message[:-5]
+                    message_suffix = message[-5:]
+                else:  # none/"\r\n"
+                    message_data = message
+                    message_suffix = ""
+            else:
+                message_data = self.tx_buffer
+                message_suffix = ""
+            shared.port_log_widget.log_insert(
+                f"[{self.localipv4}:{self.localport}]-&gt;[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                "send")
+
+        def read_timer(self) -> None:
+            self.timer.setSingleShot(True)
+            self.timer.timeout.connect(self.read)
+            self.timer.start(self.timeout)
+
+        def read(self):
+            if self.rx_size == 0:
+                datagram = self.udp_socket.receiveDatagram()
+                rx_message = datagram.data().data()
+                self.rx_buffer_raw = rx_message
+                if rx_message:
+                    # save message to shared.rx_buffer
+                    if self.rx_format == "hex":
+                        self.rx_buffer = rx_message.hex().upper()
+                    elif self.rx_format == "ascii":
+                        try:
+                            # raw to ascii
+                            self.rx_buffer = rx_message.decode("ascii")
+                        except UnicodeDecodeError:
+                            self.rx_buffer = rx_message.hex().upper()
+                    else:  # self.rx_format == "utf-8":
+                        try:
+                            # raw to utf-8
+                            self.rx_buffer = rx_message.decode("utf-8")
+                        except UnicodeDecodeError:
+                            self.rx_buffer = rx_message.hex().upper()
+                    # change rx buffer lineedit
+                    self.rx_buffer_lineedit.setText(shared.rx_buffer)
+                    # append log
+                    if self.rx_format == "hex":
+                        message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                        if "crc16" in self.tx_suffix:
+                            message_data = message[:-5]
+                            message_suffix = message[-5:]
+                        else:  # none/"\r\n"
+                            message_data = message
+                            message_suffix = ""
+                    else:
+                        message_data = self.rx_buffer
+                        message_suffix = ""
+                    shared.port_log_widget.log_insert(
+                        f"[{self.localipv4}:{self.localport}]&lt;-[{datagram.senderAddress().toString()}:{datagram.senderPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                        "receive")
+            else:
+                while self.udp_socket.pendingDatagramSize() >= self.rx_size:
+                    datagram = self.udp_socket.receiveDatagram(self.rx_size)
+                    rx_message = datagram.data().data()
+                    self.rx_buffer_raw = rx_message
+                    if rx_message:
+                        # save message to shared.rx_buffer
+                        if self.rx_format == "hex":
+                            self.rx_buffer = rx_message.hex().upper()
+                        elif self.rx_format == "ascii":
+                            try:
+                                # raw to ascii
+                                self.rx_buffer = rx_message.decode("ascii")
+                            except UnicodeDecodeError:
+                                self.rx_buffer = rx_message.hex().upper()
+                        else:  # shared.io_setting["rx_format"] == "utf-8":
+                            try:
+                                # raw to utf-8
+                                self.rx_buffer = rx_message.decode("utf-8")
+                            except UnicodeDecodeError:
+                                self.rx_buffer = rx_message.hex().upper()
+                        # change rx buffer lineedit
+                        shared.port_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        # append log
+                        if self.rx_format == "hex":
+                            message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
+                            if "crc16" in self.tx_suffix:
+                                message_data = message[:-5]
+                                message_suffix = message[-5:]
+                            else:  # none/"\r\n"
+                                message_data = message
+                                message_suffix = ""
+                        else:
+                            message_data = self.rx_buffer
+                            message_suffix = ""
+                        shared.port_log_widget.log_insert(
+                            f"[{self.localipv4}:{self.localport}]&lt;-[{datagram.senderAddress().toString()}:{datagram.senderPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                            "receive")
+                self.udp_socket.receiveDatagram()
+
+        def gui(self):
+            port_layout = QHBoxLayout(self)
+            port_layout.setContentsMargins(0, 10, 0, 0)
+            # port status
+            status_widget = QWidget()
+            port_layout.addWidget(status_widget)
+            status_layout = QVBoxLayout(status_widget)
+            status_layout.setContentsMargins(0, 0, 0, 0)
+
+            # setting widget
+            setting_widget = QWidget()
+            status_layout.addWidget(setting_widget)
+            setting_layout = QHBoxLayout(setting_widget)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            port_label = QLabel("port info")
+            setting_layout.addWidget(port_label)
+            self.peer_combobox.setFixedWidth(168)
+            setting_layout.addWidget(self.peer_combobox)
+            setting_button = QPushButton()
+            setting_button.setFixedWidth(26)
+            setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
+            setting_layout.addWidget(setting_button)
+            # tx buffer widget
+            tx_buffer_widget = QWidget()
+            status_layout.addWidget(tx_buffer_widget)
+            tx_buffer_layout = QHBoxLayout(tx_buffer_widget)
+            tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            tx_buffer_label = QLabel("tx buffer")
+            tx_buffer_layout.addWidget(tx_buffer_label)
+            self.tx_buffer_lineedit.setFixedWidth(200)
+            tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
+            # rx buffer widget
+            rx_buffer_widget = QWidget()
+            status_layout.addWidget(rx_buffer_widget)
+            rx_buffer_layout = QHBoxLayout(rx_buffer_widget)
+            rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
+            rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            rx_buffer_label = QLabel("rx buffer")
+            rx_buffer_layout.addWidget(rx_buffer_label)
+            self.rx_buffer_lineedit.setFixedWidth(200)
+            rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
+
+            # stretch
+            port_layout.addStretch()
+
+            # port toggle button
+            def port_toggle(on: bool) -> None:
+                if on:
+                    self.open()
+                else:
+                    self.close()
+
+            self.port_toggle_button.setIcon(QIcon("icon:power.svg"))
+            self.port_toggle_button.setIconSize(QSize(80, 80))
+            self.port_toggle_button.setCheckable(True)
+            self.port_toggle_button.toggled.connect(port_toggle)
+            port_layout.addWidget(self.port_toggle_button)
+
     def port_write(self, message: str, name: str) -> None:
         if name == "ALL":
             for _ in range(self.tab_widget.count()):
@@ -1125,6 +1396,11 @@ class PortStatusWidget(QWidget):
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
                     self.tab_widget.setTabIcon(i, QIcon("icon:server.svg"))
+                elif port_name == "UDP SOCKET":
+                    port_tab = self.UdpSocketTab(self, shared.port_setting[i])
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, port_name)
+                    self.tab_widget.setTabIcon(i, QIcon("icon:plug_connected.svg"))
                 else:
                     port_tab = self.SerialPortTab(self, shared.port_setting[i])
                     self.tab_list.append(port_tab)
@@ -1311,10 +1587,75 @@ class PortStatusWidget(QWidget):
                                                    ">0: Blocks for the specified time (ms)."))
                 self.port_param_layout.addWidget(timeout_spinbox, 2, 1)
 
+            def udp_socket_gui() -> None:
+                # add current ipv4 address to combobox
+                def localipv4_get():
+                    ip_list = []
+                    hostname = socket.gethostname()
+                    for info in socket.getaddrinfo(hostname, None, family=socket.AF_INET):
+                        ip = info[4][0]
+                        if ip not in ip_list:
+                            ip_list.append(ip)
+                    return ip_list
+
+                blank_gui()
+
+                # local ip address entry
+                localipv4_label = QLabel(self.tr("Local IPv4"))
+                self.port_param_layout.addWidget(localipv4_label, 0, 0)
+                localipv4_combobox.show()
+                localipv4_combobox.clear()
+                localipv4_combobox.addItems([""] + localipv4_get())
+                localipv4_combobox.setEditable(True)
+                if index != -1:
+                    localipv4_combobox.setCurrentText(shared.port_setting[index]["localipv4"])
+                self.port_param_layout.addWidget(localipv4_combobox, 0, 1)
+
+                # local port entry
+                localport_label = QLabel(self.tr("Local Port"))
+                self.port_param_layout.addWidget(localport_label, 1, 0)
+                localport_lineedit.show()
+                if index != -1:
+                    localport_lineedit.setText(shared.port_setting[index]["localport"])
+                self.port_param_layout.addWidget(localport_lineedit, 1, 1)
+
+                # remote ip address entry
+                remoteipv4_label = QLabel(self.tr("Remote IPv4"))
+                self.port_param_layout.addWidget(remoteipv4_label, 2, 0)
+                remoteipv4_lineedit.show()
+                if index != -1:
+                    remoteipv4_lineedit.setText(shared.port_setting[index]["remoteipv4"])
+                self.port_param_layout.addWidget(remoteipv4_lineedit, 2, 1)
+
+                # remote port entry
+                remoteport_label = QLabel(self.tr("Remote Port"))
+                self.port_param_layout.addWidget(remoteport_label, 3, 0)
+                remoteport_lineedit.show()
+                if index != -1:
+                    remoteport_lineedit.setText(shared.port_setting[index]["remoteport"])
+                self.port_param_layout.addWidget(remoteport_lineedit, 3, 1)
+
+                # timeout value
+                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                self.port_param_layout.addWidget(timeout_label, 4, 0)
+                timeout_spinbox = QSpinBox()
+                timeout_spinbox.setRange(0, 100)
+                timeout_spinbox.setSingleStep(1)
+                if index == -1:
+                    timeout_spinbox.setValue(0)
+                else:
+                    timeout_spinbox.setValue(shared.port_setting[index]["timeout"])
+                timeout_spinbox.setToolTip(self.tr("Specifies the read timeout for the serial port in milliseconds.\n"
+                                                   "0: None-blocking mode (immediate return).\n"
+                                                   ">0: Blocks for the specified time (ms)."))
+                self.port_param_layout.addWidget(timeout_spinbox, 4, 1)
+
             if port_name == "TCP CLIENT":
                 tcp_client_gui()
             elif port_name == "TCP SERVER":
                 tcp_server_gui()
+            elif port_name == "UDP SOCKET":
+                udp_socket_gui()
             else:
                 serial_gui()
 
@@ -1384,6 +1725,31 @@ class PortStatusWidget(QWidget):
                     self.tab_widget.insertTab(index, port_tab, "TCP SERVER")
                     self.tab_widget.setTabIcon(index, QIcon("icon:server.svg"))
                     shared.port_setting.insert(index, port_setting)
+            elif port_name == "UDP SOCKET":
+                port_setting = {
+                    "portname": port_name,
+                    "localipv4": localipv4_combobox.currentText(),
+                    "localport": localport_lineedit.text(),
+                    "remoteipv4": remoteipv4_lineedit.text(),
+                    "remoteport": remoteport_lineedit.text(),
+                    "timeout": timeout_spinbox.value(),
+                    "tx_format": tx_format_combobox.currentText(),
+                    "tx_suffix": tx_suffix_combobox.currentText(),
+                    "tx_interval": tx_interval_spinbox.value(),
+                    "rx_format": rx_format_combobox.currentText(),
+                    "rx_size": rx_size_spinbox.value()
+                }
+                port_tab = self.UdpSocketTab(self, port_setting)
+                if index == -1:
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, "UDP SOCKET")
+                    self.tab_widget.setTabIcon(len(shared.port_setting), QIcon("icon:plug_connected.svg"))
+                    shared.port_setting.append(port_setting)
+                else:
+                    self.tab_list.insert(index, port_tab)
+                    self.tab_widget.insertTab(index, port_tab, "UDP SOCKET")
+                    self.tab_widget.setTabIcon(index, QIcon("icon:plug_connected.svg"))
+                    shared.port_setting.insert(index, port_setting)
             else:
                 port_setting = {
                     "portname": port_name,
@@ -1447,7 +1813,11 @@ class PortStatusWidget(QWidget):
             port_name_combobox.addItem(f"{port_info.portName()} - {port_info.description()}", port_info.portName())
         port_name_combobox.addItem("TCP CLIENT", "TCP CLIENT")
         port_name_combobox.addItem("TCP SERVER", "TCP SERVER")
+        port_name_combobox.addItem("UDP SOCKET", "UDP SOCKET")
         if index != -1:
+            i = port_name_combobox.findData(shared.port_setting[index]["portname"])
+            if i >= 0:
+                port_name_combobox.setCurrentIndex(i)
             port_name_combobox.setEnabled(False)
         port_name_combobox.currentIndexChanged.connect(lambda: port_setting_refresh(port_name_combobox.currentData(), index))
         port_name_layout.addWidget(port_name_combobox, 0, 1)
@@ -1571,11 +1941,6 @@ class PortStatusWidget(QWidget):
         save_button.setShortcut(QKeySequence(Qt.Key.Key_Return))
         save_button.clicked.connect(lambda: port_setting_save(index))
         port_add_layout.addWidget(save_button)
-
-        if index != -1:
-            i = port_name_combobox.findData(shared.port_setting[index]["portname"])
-            if i >= 0:
-                port_name_combobox.setCurrentIndex(i)
 
         port_add_window.show()
         port_add_window.move(port_add_window.parentWidget().geometry().center() - port_add_window.rect().center())
@@ -2701,7 +3066,7 @@ class AdvancedSendWidget(QWidget):
             else:
                 super().keyPressEvent(event)
 
-        def handle_enter(self)->None:
+        def handle_enter(self) -> None:
             if self.next_button.isVisible():
                 # print(1)
                 self.next_button.click()

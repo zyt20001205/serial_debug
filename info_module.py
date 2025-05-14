@@ -21,6 +21,7 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025- v1.1 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add zh_CN translation.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Multi port support.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">UDP support.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add regex to log search widget.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add debug mode to advanced send widget.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add paint function to command shortcut and database.</span></p>

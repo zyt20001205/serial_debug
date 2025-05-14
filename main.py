@@ -1,7 +1,9 @@
 import sys
+import asyncio
 import qdarktheme
 from PySide6.QtWidgets import QMainWindow, QApplication
 from PySide6.QtCore import QDir
+import PySide6.QtAsyncio as QtAsyncio
 
 import shared
 from gui_module import main_gui
@@ -38,7 +40,7 @@ class MainWindow(QMainWindow):
                 file_path = urls[0].toLocalFile()
                 if file_path.endswith(".json"):
                     config_file_load_from(file_path)
-                elif file_path.endswith(".hex"):
+                elif file_path.endswith((".hex", ".bin")):
                     shared.file_send_widget.file_send_load(file_path)
                 else:
                     shared.port_log_widget.log_insert("unknown file dropped", "error")
@@ -69,6 +71,8 @@ if __name__ == "__main__":
     config_to_shared(config)
     # gui draw
     main_gui()
+    # run asyncio event loop(future feature)
+    # QtAsyncio.run(handle_sigint=True)
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)
