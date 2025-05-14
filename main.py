@@ -8,6 +8,7 @@ import PySide6.QtAsyncio as QtAsyncio
 import shared
 from gui_module import main_gui
 from document_module import config_file_load, config_file_load_from, config_to_shared, config_save_on_closed
+from update_module import check_update
 
 
 class MainWindow(QMainWindow):
@@ -73,6 +74,8 @@ if __name__ == "__main__":
     main_gui()
     # run asyncio event loop(future feature)
     # QtAsyncio.run(handle_sigint=True)
+    # check update
+    check_update()
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)

@@ -1,3 +1,4 @@
+version = None
 main_window = None
 
 rx_buffer = None

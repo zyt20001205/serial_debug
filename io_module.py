@@ -624,7 +624,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        shared.port_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        self.rx_buffer_lineedit.setText(shared.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -988,7 +988,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        shared.port_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        self.rx_buffer_lineedit.setText(shared.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -1268,7 +1268,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        shared.port_status_widget.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        self.rx_buffer_lineedit.setText(shared.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))

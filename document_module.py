@@ -10,6 +10,7 @@ import shared
 CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
+    "version": "0.0.1",
     "layout": {
         "tab": "send_tab",
         "geometry": None,
@@ -169,6 +170,7 @@ def config_file_save_as(config):
 
 def config_to_shared(config):
     try:
+        shared.version = config["version"]
         shared.layout = config["layout"]
         shared.language_setting = config["language_setting"]
         shared.autosave_setting = config["autosave_setting"]
