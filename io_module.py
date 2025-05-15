@@ -3021,19 +3021,20 @@ class AdvancedSendWidget(QWidget):
             move = self.takeItem(source_index, 0)
             action = self.takeItem(source_index, 1)
             if isinstance(self.cellWidget(source_index, 2), QLineEdit):
-                legacy = QLineEdit(self.cellWidget(source_index, 2))
+                legacy = self.cellWidget(source_index, 2)
                 param = QLineEdit()
                 param.setText(legacy.text())
                 param.textChanged.connect(self.row_change)
             elif isinstance(self.cellWidget(source_index, 2), QSpinBox):
-                legacy = QSpinBox(self.cellWidget(source_index, 2))
+                legacy = self.cellWidget(source_index, 2)
                 param = QSpinBox()
                 param.setRange(legacy.minimum(), legacy.maximum())
                 param.setSingleStep(legacy.singleStep())
                 param.setValue(legacy.value())
+                param.setSuffix(legacy.suffix())
                 param.valueChanged.connect(self.row_change)
             else:  # isinstance(self.cellWidget(source_index, 2), QComboBox):
-                legacy = QComboBox(self.cellWidget(source_index, 2))
+                legacy = self.cellWidget(source_index, 2)
                 param = QComboBox()
                 param.addItems(variable)
                 param.setCurrentText(legacy.currentText())
@@ -3916,8 +3917,11 @@ class AdvancedSendWidget(QWidget):
                 self.action = None
                 action_page()
             else:
-                self.action = legacy[0]
-                param_page()
+                if legacy[0] in ["endloop","endif","tail"]:
+                    self.insert_window.close()
+                else:
+                    self.action = legacy[0]
+                    param_page()
 
         def row_remove(self) -> None:
             # get clear index

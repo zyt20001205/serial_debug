@@ -5,9 +5,9 @@
 - `main.py`: The main entry point of the project.
 - `gui_module.py`: The gui plot control module.
 - `log_module.py`: The log recording module.
-- `serial_module.py`: The serial control module.
-- `io_module.py`: The serial I/O module(send setting/single send/advanced send/file send).
-- `suffix_module.py`: The serial send suffix calculate module.
+- `setting_module.py`: The setting module.
+- `io_module.py`: The port I/O module(send setting/single send/advanced send/file send).
+- `suffix_module.py`: The port send suffix calculate module.
 - `shortcut_module.py`: The command shortcut module.
 - `data_module`: The data collect and process module.
 - `document_module`: The document save and load module.
@@ -17,7 +17,7 @@
 - `\translations`: The folder contains lang files.
 
 ## Requirements
-- `pyinstaller`               6.11.1
+- `Nuitka`                    2.6.9
 - `PySide6`                   6.8.1.1
 - `pyqtdarktheme`             2.1.0
 - `pyqtgraph`                 0.13.7
