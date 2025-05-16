@@ -185,7 +185,7 @@ class PortStatusWidget(QWidget):
                 return
             # suffix generate
             if self.tx_suffix == "crlf":
-                suffix = f"0d0a"
+                suffix = "\r\n"
             elif self.tx_suffix == "crc8 maxim":
                 try:
                     suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
@@ -199,6 +199,7 @@ class PortStatusWidget(QWidget):
             else:  # self.tx_suffix == none
                 suffix = ""
             message += suffix
+            print(message)
             # message reformat
             if self.tx_format == "hex":
                 message = bytes.fromhex(message)
@@ -494,7 +495,7 @@ class PortStatusWidget(QWidget):
                 return
             # suffix generate
             if self.tx_suffix == "crlf":
-                suffix = f"0d0a"
+                suffix = "\r\n"
             elif self.tx_suffix == "crc8 maxim":
                 try:
                     suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
@@ -819,7 +820,7 @@ class PortStatusWidget(QWidget):
                 return
             # suffix generate
             if self.tx_suffix == "crlf":
-                suffix = f"0d0a"
+                suffix = "\r\n"
             elif self.tx_suffix == "crc8 maxim":
                 try:
                     suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
@@ -1136,7 +1137,7 @@ class PortStatusWidget(QWidget):
                 return
             # suffix generate
             if self.tx_suffix == "crlf":
-                suffix = f"0d0a"
+                suffix = "\r\n"
             elif self.tx_suffix == "crc8 maxim":
                 try:
                     suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
@@ -1347,6 +1348,117 @@ class PortStatusWidget(QWidget):
             self.port_toggle_button.toggled.connect(port_toggle)
             port_layout.addWidget(self.port_toggle_button)
 
+    class PortBridgeTab(QWidget):
+        def __init__(self, parent: "PortStatusWidget", port_setting: dict):
+            super().__init__()
+            self.parent = parent
+            # port setting
+            self.name1 = port_setting["name1"]
+            self.name2 = port_setting["name2"]
+            self.port1 = None
+            self.port2 = None
+
+            # draw gui
+            self.name1_combobox = QComboBox()
+            self.name2_combobox = QComboBox()
+            self.port_toggle_button = QPushButton()
+            self.gui()
+
+        def open(self) -> None:
+            index1 = -1
+            index2 = -1
+            for index, item in enumerate(shared.port_setting):
+                if item.get("portname") == self.name1_combobox.currentText():
+                    index1 = index
+            for index, item in enumerate(shared.port_setting):
+                if item.get("portname") == self.name2_combobox.currentText():
+                    index2 = index
+            if index1 == -1 or index2 == -1:
+                return
+            print(shared.port_status_widget.tab_list[index1].__class__.__name__)
+            print(shared.port_status_widget.tab_list[index2].__class__.__name__)
+
+        def close(self) -> None:
+            ...
+
+        def port_load(self) -> None:
+            self.name1_combobox.clear()
+            self.name2_combobox.clear()
+            self.name1_combobox.addItem("")
+            self.name2_combobox.addItem("")
+            for _ in range(len(shared.port_setting)):
+                portname = shared.port_setting[_]["portname"]
+                if portname != "PORT BRIDGE":
+                    self.name1_combobox.addItem(shared.port_setting[_]["portname"])
+                    self.name2_combobox.addItem(shared.port_setting[_]["portname"])
+
+        def gui(self) -> None:
+            port_layout = QHBoxLayout(self)
+            port_layout.setContentsMargins(0, 10, 0, 0)
+            # port status
+            status_widget = QWidget()
+            port_layout.addWidget(status_widget)
+            status_layout = QVBoxLayout(status_widget)
+            status_layout.setContentsMargins(0, 0, 0, 0)
+            # setting widget
+            setting_widget = QWidget()
+            status_layout.addWidget(setting_widget)
+            setting_layout = QVBoxLayout(setting_widget)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+            def name1_change(index: int, new_port: str) -> None:
+                # close port first
+                if self.port_toggle_button.isChecked():
+                    self.port_toggle_button.setChecked(False)
+                    time.sleep(0.1)
+                # check if port is closed
+                if self.port_toggle_button.isChecked():
+                    return
+                self.name1 = new_port
+                shared.port_setting[index]["name1"] = new_port
+
+            self.name1_combobox.setFixedWidth(180)
+            self.name1_combobox.currentIndexChanged.connect(lambda: name1_change(self.parent.tab_widget.indexOf(self), self.name1_combobox.currentData()))
+            setting_layout.addWidget(self.name1_combobox)
+
+            bridge_label = QLabel()
+            bridge_label.setPixmap(QIcon("icon:arrow_swap.svg").pixmap(24, 24))
+            bridge_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            setting_layout.addWidget(bridge_label)
+
+            def name2_change(index: int, new_port: str) -> None:
+                # close port first
+                if self.port_toggle_button.isChecked():
+                    self.port_toggle_button.setChecked(False)
+                    time.sleep(0.1)
+                # check if port is closed
+                if self.port_toggle_button.isChecked():
+                    return
+                self.name2 = new_port
+                shared.port_setting[index]["name2"] = new_port
+
+            self.name2_combobox.setFixedWidth(180)
+            self.name2_combobox.currentIndexChanged.connect(lambda: name2_change(self.parent.tab_widget.indexOf(self), self.name2_combobox.currentData()))
+            setting_layout.addWidget(self.name2_combobox)
+
+            self.port_load()
+            # stretch
+            port_layout.addStretch()
+
+            # port toggle button
+            def port_toggle(on: bool) -> None:
+                if on:
+                    self.open()
+                else:
+                    self.close()
+
+            self.port_toggle_button.setIcon(QIcon("icon:power.svg"))
+            self.port_toggle_button.setIconSize(QSize(80, 80))
+            self.port_toggle_button.setCheckable(True)
+            self.port_toggle_button.toggled.connect(port_toggle)
+            port_layout.addWidget(self.port_toggle_button)
+
     def port_write(self, message: str, name: str) -> None:
         if name == "ALL":
             for _ in range(self.tab_widget.count()):
@@ -1401,6 +1513,11 @@ class PortStatusWidget(QWidget):
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
                     self.tab_widget.setTabIcon(i, QIcon("icon:plug_connected.svg"))
+                elif port_name == "PORT BRIDGE":
+                    port_tab = self.PortBridgeTab(self, shared.port_setting[i])
+                    self.tab_list.append(port_tab)
+                    self.tab_widget.addTab(port_tab, port_name)
+                    self.tab_widget.setTabIcon(i, QIcon("icon:arrow_swap.svg"))
                 else:
                     port_tab = self.SerialPortTab(self, shared.port_setting[i])
                     self.tab_list.append(port_tab)
@@ -2085,11 +2202,13 @@ class SingleSendWidget(QWidget):
     def suffix_refresh(self) -> None:
         if not shared.port_setting:
             return
+        if shared.port_setting[shared.port_status_widget.tab_widget.currentIndex()]["portname"] in ["PORT BRIDGE"]:
+            return
         tx_suffix = shared.port_setting[shared.port_status_widget.tab_widget.currentIndex()]["tx_suffix"]
         message = self.single_send_textedit.toPlainText()
         try:
             if tx_suffix == "crlf":
-                suffix = f"0d0a"
+                suffix = "\r\n"
             elif tx_suffix == "crc8 maxim":
                 suffix = f"{crc8_maxim(bytes.fromhex(message)):02X}"
             elif tx_suffix == "crc16 modbus":
@@ -3917,7 +4036,7 @@ class AdvancedSendWidget(QWidget):
                 self.action = None
                 action_page()
             else:
-                if legacy[0] in ["endloop","endif","tail"]:
+                if legacy[0] in ["endloop", "endif", "tail"]:
                     self.insert_window.close()
                 else:
                     self.action = legacy[0]
@@ -4294,7 +4413,7 @@ class FileSendWidget(QWidget):
             if self.parent.file_format == "intel hex":
                 # overwrite port setting
                 shared.port_status_widget.tab_list[self.index].tx_format = "ascii"
-                shared.port_status_widget.tab_list[self.index].tx_suffix = ""
+                shared.port_status_widget.tab_list[self.index].tx_suffix = "crlf"
                 shared.port_status_widget.tab_list[self.index].tx_interval = 0
                 shared.port_status_widget.tab_list[self.index].rx_format = "ascii"
                 # start file send
