@@ -1,10 +1,6 @@
 version = None
 main_window = None
 
-rx_buffer = None
-rx_buffer_raw = None
-tx_buffer = None
-
 port_log_widget = None
 port_status_widget = None
 single_send_widget = None

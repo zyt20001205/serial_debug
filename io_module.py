@@ -79,6 +79,7 @@ class PortStatusWidget(QWidget):
             self.serial_port = QSerialPort()
 
             self.portname = port_setting["portname"]
+            self.forward = port_setting["forward"]
             self.baudrate = port_setting["baudrate"]
             self.databits = self.DATABITS_MAPPING.get(port_setting["databits"])
             self.parity = self.PARITY_MAPPING.get(port_setting["parity"])
@@ -96,7 +97,6 @@ class PortStatusWidget(QWidget):
             self.tx_timer.timeout.connect(self.write_trigger)
 
             self.rx_buffer = None
-            self.rx_buffer_raw = None
             self.rx_format = port_setting["rx_format"]
             self.rx_size = port_setting["rx_size"]
 
@@ -141,7 +141,7 @@ class PortStatusWidget(QWidget):
             except AttributeError:
                 shared.port_log_widget.log_insert("serial close failed", "error")
 
-        def exception_handler(self):
+        def exception_handler(self) -> None:
             if self.serial_port.error() == QSerialPort.SerialPortError.NoError:
                 return
             elif self.serial_port.error() == QSerialPort.SerialPortError.DeviceNotFoundError:
@@ -175,7 +175,47 @@ class PortStatusWidget(QWidget):
                 self.port_toggle_button.setChecked(False)
                 raise Exception(f"operation attempted on {self.portname} while port is not open")
 
-        def write(self, message: str) -> None:
+        def write_immediate(self, message: bytes) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+            self.serial_port.write(message)
+            # save message to self.tx_buffer
+            if self.tx_format == "hex":
+                self.tx_buffer = message.hex().upper()
+            elif self.tx_format == "ascii":
+                try:
+                    # raw to ascii
+                    self.tx_buffer = message.decode("ascii")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            else:  # self.tx_format == "utf-8":
+                try:
+                    # raw to utf-8
+                    self.tx_buffer = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            # change tx buffer lineedit
+            self.tx_buffer_lineedit.setText(self.tx_buffer)
+            # append log
+            if self.tx_format == "hex":
+                message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                if "crc16" in self.tx_suffix:
+                    message_data = message[:-5]
+                    message_suffix = message[-5:]
+                else:  # none/"\r\n"
+                    message_data = message
+                    message_suffix = ""
+            else:
+                message_data = self.tx_buffer
+                message_suffix = ""
+            shared.port_log_widget.log_insert(f"[{self.portname}]-&gt; {message_data}<span style='color:orange;'>{message_suffix}</span>", "send")
+
+        def write_queue(self, message: str) -> None:
             # open serial first
             if not self.port_toggle_button.isChecked():
                 self.port_toggle_button.setChecked(True)
@@ -199,7 +239,6 @@ class PortStatusWidget(QWidget):
             else:  # self.tx_suffix == none
                 suffix = ""
             message += suffix
-            print(message)
             # message reformat
             if self.tx_format == "hex":
                 message = bytes.fromhex(message)
@@ -211,7 +250,7 @@ class PortStatusWidget(QWidget):
             if not self.tx_timer.isActive():
                 self.write_trigger()
 
-        def write_trigger(self):
+        def write_trigger(self) -> None:
             if self.tx_queue:
                 message = self.tx_queue.pop(0)
             else:
@@ -253,14 +292,16 @@ class PortStatusWidget(QWidget):
 
         def read_timer(self) -> None:
             self.timer.setSingleShot(True)
-            self.timer.timeout.connect(self.read)
+            self.timer.timeout.connect(self.read_trigger)
             self.timer.start(self.timeout)
 
-        def read(self):
+        def read_trigger(self) -> None:
             if self.rx_size == 0:
                 rx_message = self.serial_port.readAll().data()
-                self.rx_buffer_raw = rx_message
                 if rx_message:
+                    # forward check
+                    if self.forward:
+                        self.port_forward(rx_message)
                     # save message to self.rx_buffer
                     if self.rx_format == "hex":
                         self.rx_buffer = rx_message.hex().upper()
@@ -294,8 +335,10 @@ class PortStatusWidget(QWidget):
             else:
                 while self.serial_port.bytesAvailable() >= self.rx_size:
                     rx_message = self.serial_port.read(self.rx_size).data()
-                    shared.rx_buffer_raw = rx_message
                     if rx_message:
+                        # forward check
+                        if self.forward:
+                            self.port_forward(rx_message)
                         # save message to self.rx_buffer
                         if self.rx_format == "hex":
                             self.rx_buffer = rx_message.hex().upper()
@@ -312,7 +355,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        shared.port_status_widget.rx_buffer_lineedit.setText(self.rx_buffer)
+                        self.rx_buffer_lineedit.setText(self.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -327,6 +370,14 @@ class PortStatusWidget(QWidget):
                             message_suffix = ""
                         shared.port_log_widget.log_insert(f"[{self.portname}]&lt;- {message_data}<span style='color:orange;'>{message_suffix}</span>", "receive")
                 self.serial_port.readAll()
+
+        def port_forward(self, message: bytes) -> None:
+            index = None
+            for _, item in enumerate(shared.port_setting):
+                if item.get("portname") == self.forward:
+                    index = _
+            if index is not None:
+                shared.port_status_widget.tab_list[index].write_immediate(message)
 
         def gui(self):
             port_layout = QHBoxLayout(self)
@@ -417,6 +468,7 @@ class PortStatusWidget(QWidget):
             self.tcp_client = QTcpSocket()
 
             self.portname = port_setting["portname"]
+            self.forward = port_setting["forward"]
             self.remoteipv4 = port_setting["remoteipv4"]
             self.remoteport = int(port_setting["remoteport"])
             self.timeout = port_setting["timeout"]
@@ -432,7 +484,6 @@ class PortStatusWidget(QWidget):
             self.tx_timer.timeout.connect(self.write_trigger)
 
             self.rx_buffer = None
-            self.rx_buffer_raw = None
             self.rx_format = port_setting["rx_format"]
             self.rx_size = port_setting["rx_size"]
 
@@ -485,7 +536,49 @@ class PortStatusWidget(QWidget):
                                               f"---------------------------------------------------------------",
                                               "info")
 
-        def write(self, message: str) -> None:
+        def write_immediate(self, message: bytes) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+            self.tcp_client.write(message)
+            # save message to self.tx_buffer
+            if self.tx_format == "hex":
+                self.tx_buffer = message.hex().upper()
+            elif self.tx_format == "ascii":
+                try:
+                    # raw to ascii
+                    self.tx_buffer = message.decode("ascii")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            else:  # self.tx_format == "utf-8":
+                try:
+                    # raw to utf-8
+                    self.tx_buffer = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            # change tx buffer lineedit
+            self.tx_buffer_lineedit.setText(self.tx_buffer)
+            # append log
+            if self.tx_format == "hex":
+                message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                if "crc16" in self.tx_suffix:
+                    message_data = message[:-5]
+                    message_suffix = message[-5:]
+                else:  # none/"\r\n"
+                    message_data = message
+                    message_suffix = ""
+            else:
+                message_data = self.tx_buffer
+                message_suffix = ""
+            shared.port_log_widget.log_insert(
+                f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]-&gt;[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                "send")
+
+        def write_queue(self, message: str) -> None:
             # open serial first
             if not self.port_toggle_button.isChecked():
                 self.port_toggle_button.setChecked(True)
@@ -564,14 +657,16 @@ class PortStatusWidget(QWidget):
 
         def read_timer(self) -> None:
             self.timer.setSingleShot(True)
-            self.timer.timeout.connect(self.read)
+            self.timer.timeout.connect(self.read_trigger)
             self.timer.start(self.timeout)
 
-        def read(self):
+        def read_trigger(self):
             if self.rx_size == 0:
                 rx_message = self.tcp_client.readAll().data()
-                self.rx_buffer_raw = rx_message
                 if rx_message:
+                    # forward check
+                    if self.forward:
+                        self.port_forward(rx_message)
                     # save message to shared.rx_buffer
                     if self.rx_format == "hex":
                         self.rx_buffer = rx_message.hex().upper()
@@ -607,8 +702,10 @@ class PortStatusWidget(QWidget):
             else:
                 while self.tcp_client.bytesAvailable() >= self.rx_size:
                     rx_message = self.tcp_client.read(self.rx_size).data()
-                    self.rx_buffer_raw = rx_message
                     if rx_message:
+                        # forward check
+                        if self.forward:
+                            self.port_forward(rx_message)
                         # save message to shared.rx_buffer
                         if self.rx_format == "hex":
                             shared.rx_buffer = rx_message.hex().upper()
@@ -625,7 +722,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        self.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        self.rx_buffer_lineedit.setText(self.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -642,6 +739,14 @@ class PortStatusWidget(QWidget):
                             f"[{self.tcp_client.localAddress().toString()}:{self.tcp_client.localPort()}]&lt;-[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                             "receive")
             self.tcp_client.readAll()
+
+        def port_forward(self, message: bytes) -> None:
+            index = None
+            for _, item in enumerate(shared.port_setting):
+                if item.get("portname") == self.forward:
+                    index = _
+            if index is not None:
+                shared.port_status_widget.tab_list[index].write_immediate(message)
 
         def gui(self):
             port_layout = QHBoxLayout(self)
@@ -713,6 +818,7 @@ class PortStatusWidget(QWidget):
             self.tcp_peer = []
 
             self.portname = port_setting["portname"]
+            self.forward = port_setting["forward"]
             self.localipv4 = port_setting["localipv4"]
             self.localport = int(port_setting["localport"])
             self.timeout = port_setting["timeout"]
@@ -728,7 +834,6 @@ class PortStatusWidget(QWidget):
             self.tx_timer.timeout.connect(self.write_trigger)
 
             self.rx_buffer = None
-            self.rx_buffer_raw = None
             self.rx_format = port_setting["rx_format"]
             self.rx_size = port_setting["rx_size"]
 
@@ -810,7 +915,86 @@ class PortStatusWidget(QWidget):
                 for peer in self.tcp_peer:
                     self.peer_combobox.addItem(f"{peer.peerAddress().toString()}:{peer.peerPort()}", peer)
 
-        def write(self, message: str) -> None:
+        def write_immediate(self, message: bytes) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+            if self.peer_combobox.currentData() == "broadcast":
+                for peer in self.tcp_peer:
+                    peer.write(message)
+                # save message to shared.tx_buffer
+                if self.tx_format == "hex":
+                    self.tx_buffer = message.hex().upper()
+                elif self.tx_format == "ascii":
+                    try:
+                        # raw to ascii
+                        self.tx_buffer = message.decode("ascii")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                else:  # self.tx_format == "utf-8":
+                    try:
+                        # raw to utf-8
+                        self.tx_buffer = message.decode("utf-8")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                # change tx buffer lineedit
+                self.tx_buffer_lineedit.setText(self.tx_buffer)
+                # append log
+                if self.tx_format == "hex":
+                    message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                    if "crc16" in self.tx_suffix:
+                        message_data = message[:-5]
+                        message_suffix = message[-5:]
+                    else:  # none/"\r\n"
+                        message_data = message
+                        message_suffix = ""
+                else:
+                    message_data = self.tx_buffer
+                    message_suffix = ""
+                shared.port_log_widget.log_insert(
+                    f"[{self.localipv4}:{self.localport}]-&gt;[broadcast] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                    "send")
+            else:
+                peer = self.peer_combobox.currentData()
+                peer.write(message)
+                # save message to shared.tx_buffer
+                if self.tx_format == "hex":
+                    self.tx_buffer = message.hex().upper()
+                elif self.tx_format == "ascii":
+                    try:
+                        # raw to ascii
+                        self.tx_buffer = message.decode("ascii")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                else:  # self.tx_format == "utf-8":
+                    try:
+                        # raw to utf-8
+                        self.tx_buffer = message.decode("utf-8")
+                    except UnicodeDecodeError:
+                        self.tx_buffer = message.hex().upper()
+                # change tx buffer lineedit
+                self.tx_buffer_lineedit.setText(self.tx_buffer)
+                # append log
+                if self.tx_format == "hex":
+                    message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                    if "crc16" in self.tx_suffix:
+                        message_data = message[:-5]
+                        message_suffix = message[-5:]
+                    else:  # none/"\r\n"
+                        message_data = message
+                        message_suffix = ""
+                else:
+                    message_data = self.tx_buffer
+                    message_suffix = ""
+                shared.port_log_widget.log_insert(
+                    f"[{self.localipv4}:{self.localport}]-&gt;[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                    "send")
+
+        def write_queue(self, message: str) -> None:
             # open serial first
             if not self.port_toggle_button.isChecked():
                 self.port_toggle_button.setChecked(True)
@@ -928,14 +1112,16 @@ class PortStatusWidget(QWidget):
 
         def read_timer(self, peer) -> None:
             self.timer.setSingleShot(True)
-            self.timer.timeout.connect(lambda: self.read(peer))
+            self.timer.timeout.connect(lambda: self.read_trigger(peer))
             self.timer.start(self.timeout)
 
-        def read(self, peer):
+        def read_trigger(self, peer):
             if self.rx_size == 0:
                 rx_message = peer.readAll().data()
-                self.rx_buffer_raw = rx_message
                 if rx_message:
+                    # forward check
+                    if self.forward:
+                        self.port_forward(rx_message)
                     # save message to shared.rx_buffer
                     if self.rx_format == "hex":
                         self.rx_buffer = rx_message.hex().upper()
@@ -952,7 +1138,7 @@ class PortStatusWidget(QWidget):
                         except UnicodeDecodeError:
                             self.rx_buffer = rx_message.hex().upper()
                     # change rx buffer lineedit
-                    self.rx_buffer_lineedit.setText(shared.rx_buffer)
+                    self.rx_buffer_lineedit.setText(self.rx_buffer)
                     # append log
                     if self.rx_format == "hex":
                         message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -971,8 +1157,10 @@ class PortStatusWidget(QWidget):
             else:
                 while peer.bytesAvailable() >= self.rx_size:
                     rx_message = peer.read(self.rx_size).data()
-                    self.rx_buffer_raw = rx_message
                     if rx_message:
+                        # forward check
+                        if self.forward:
+                            self.port_forward(rx_message)
                         # save message to shared.rx_buffer
                         if self.rx_format == "hex":
                             self.rx_buffer = rx_message.hex().upper()
@@ -989,7 +1177,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        self.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        self.rx_buffer_lineedit.setText(self.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -1006,6 +1194,14 @@ class PortStatusWidget(QWidget):
                             f"[{self.localipv4}:{self.localport}]&lt;-[{peer.peerAddress().toString()}:{peer.peerPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                             "receive")
                 peer.readAll()
+
+        def port_forward(self, message: bytes) -> None:
+            index = None
+            for _, item in enumerate(shared.port_setting):
+                if item.get("portname") == self.forward:
+                    index = _
+            if index is not None:
+                shared.port_status_widget.tab_list[index].write_immediate(message)
 
         def gui(self):
             port_layout = QHBoxLayout(self)
@@ -1076,6 +1272,7 @@ class PortStatusWidget(QWidget):
             self.udp_socket = QUdpSocket()
 
             self.portname = port_setting["portname"]
+            self.forward = port_setting["forward"]
             self.localipv4 = port_setting["localipv4"]
             self.localport = int(port_setting["localport"])
             self.remoteipv4 = port_setting["remoteipv4"]
@@ -1093,7 +1290,6 @@ class PortStatusWidget(QWidget):
             self.tx_timer.timeout.connect(self.write_trigger)
 
             self.rx_buffer = None
-            self.rx_buffer_raw = None
             self.rx_format = port_setting["rx_format"]
             self.rx_size = port_setting["rx_size"]
 
@@ -1127,7 +1323,49 @@ class PortStatusWidget(QWidget):
             except AttributeError:
                 shared.port_log_widget.log_insert("udp socket close failed", "error")
 
-        def write(self, message: str) -> None:
+        def write_immediate(self, message: bytes) -> None:
+            # open serial first
+            if not self.port_toggle_button.isChecked():
+                self.port_toggle_button.setChecked(True)
+                time.sleep(0.1)
+            # check if serial is opened
+            if not self.port_toggle_button.isChecked():
+                return
+            self.udp_socket.writeDatagram(message, QHostAddress(self.remoteipv4), self.remoteport)
+            # save message to self.tx_buffer
+            if self.tx_format == "hex":
+                self.tx_buffer = message.hex().upper()
+            elif self.tx_format == "ascii":
+                try:
+                    # raw to ascii
+                    self.tx_buffer = message.decode("ascii")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            else:  # self.tx_format == "utf-8":
+                try:
+                    # raw to utf-8
+                    self.tx_buffer = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.tx_buffer = message.hex().upper()
+            # change tx buffer lineedit
+            self.tx_buffer_lineedit.setText(self.tx_buffer)
+            # append log
+            if self.tx_format == "hex":
+                message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
+                if "crc16" in self.tx_suffix:
+                    message_data = message[:-5]
+                    message_suffix = message[-5:]
+                else:  # none/"\r\n"
+                    message_data = message
+                    message_suffix = ""
+            else:
+                message_data = self.tx_buffer
+                message_suffix = ""
+            shared.port_log_widget.log_insert(
+                f"[{self.localipv4}:{self.localport}]-&gt;[{self.remoteipv4}:{self.remoteport}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
+                "send")
+
+        def write_queue(self, message: str) -> None:
             # open serial first
             if not self.port_toggle_button.isChecked():
                 self.port_toggle_button.setChecked(True)
@@ -1171,7 +1409,7 @@ class PortStatusWidget(QWidget):
             self.udp_socket.writeDatagram(message, QHostAddress(self.remoteipv4), self.remoteport)
             # start timer
             self.tx_timer.start(self.tx_interval)
-            # save message to shared.tx_buffer
+            # save message to self.tx_buffer
             if self.tx_format == "hex":
                 self.tx_buffer = message.hex().upper()
             elif self.tx_format == "ascii":
@@ -1206,15 +1444,17 @@ class PortStatusWidget(QWidget):
 
         def read_timer(self) -> None:
             self.timer.setSingleShot(True)
-            self.timer.timeout.connect(self.read)
+            self.timer.timeout.connect(self.read_trigger)
             self.timer.start(self.timeout)
 
-        def read(self):
+        def read_trigger(self):
             if self.rx_size == 0:
                 datagram = self.udp_socket.receiveDatagram()
                 rx_message = datagram.data().data()
-                self.rx_buffer_raw = rx_message
                 if rx_message:
+                    # forward check
+                    if self.forward:
+                        self.port_forward(rx_message)
                     # save message to shared.rx_buffer
                     if self.rx_format == "hex":
                         self.rx_buffer = rx_message.hex().upper()
@@ -1231,7 +1471,7 @@ class PortStatusWidget(QWidget):
                         except UnicodeDecodeError:
                             self.rx_buffer = rx_message.hex().upper()
                     # change rx buffer lineedit
-                    self.rx_buffer_lineedit.setText(shared.rx_buffer)
+                    self.rx_buffer_lineedit.setText(self.rx_buffer)
                     # append log
                     if self.rx_format == "hex":
                         message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -1251,8 +1491,10 @@ class PortStatusWidget(QWidget):
                 while self.udp_socket.pendingDatagramSize() >= self.rx_size:
                     datagram = self.udp_socket.receiveDatagram(self.rx_size)
                     rx_message = datagram.data().data()
-                    self.rx_buffer_raw = rx_message
                     if rx_message:
+                        # forward check
+                        if self.forward:
+                            self.port_forward(rx_message)
                         # save message to shared.rx_buffer
                         if self.rx_format == "hex":
                             self.rx_buffer = rx_message.hex().upper()
@@ -1269,7 +1511,7 @@ class PortStatusWidget(QWidget):
                             except UnicodeDecodeError:
                                 self.rx_buffer = rx_message.hex().upper()
                         # change rx buffer lineedit
-                        self.rx_buffer_lineedit.setText(shared.rx_buffer)
+                        self.rx_buffer_lineedit.setText(self.rx_buffer)
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
@@ -1286,6 +1528,14 @@ class PortStatusWidget(QWidget):
                             f"[{self.localipv4}:{self.localport}]&lt;-[{datagram.senderAddress().toString()}:{datagram.senderPort()}] {message_data}<span style='color:orange;'>{message_suffix}</span>",
                             "receive")
                 self.udp_socket.receiveDatagram()
+
+        def port_forward(self, message: bytes) -> None:
+            index = None
+            for _, item in enumerate(shared.port_setting):
+                if item.get("portname") == self.forward:
+                    index = _
+            if index is not None:
+                shared.port_status_widget.tab_list[index].write_immediate(message)
 
         def gui(self):
             port_layout = QHBoxLayout(self)
@@ -1348,128 +1598,17 @@ class PortStatusWidget(QWidget):
             self.port_toggle_button.toggled.connect(port_toggle)
             port_layout.addWidget(self.port_toggle_button)
 
-    class PortBridgeTab(QWidget):
-        def __init__(self, parent: "PortStatusWidget", port_setting: dict):
-            super().__init__()
-            self.parent = parent
-            # port setting
-            self.name1 = port_setting["name1"]
-            self.name2 = port_setting["name2"]
-            self.port1 = None
-            self.port2 = None
-
-            # draw gui
-            self.name1_combobox = QComboBox()
-            self.name2_combobox = QComboBox()
-            self.port_toggle_button = QPushButton()
-            self.gui()
-
-        def open(self) -> None:
-            index1 = -1
-            index2 = -1
-            for index, item in enumerate(shared.port_setting):
-                if item.get("portname") == self.name1_combobox.currentText():
-                    index1 = index
-            for index, item in enumerate(shared.port_setting):
-                if item.get("portname") == self.name2_combobox.currentText():
-                    index2 = index
-            if index1 == -1 or index2 == -1:
-                return
-            print(shared.port_status_widget.tab_list[index1].__class__.__name__)
-            print(shared.port_status_widget.tab_list[index2].__class__.__name__)
-
-        def close(self) -> None:
-            ...
-
-        def port_load(self) -> None:
-            self.name1_combobox.clear()
-            self.name2_combobox.clear()
-            self.name1_combobox.addItem("")
-            self.name2_combobox.addItem("")
-            for _ in range(len(shared.port_setting)):
-                portname = shared.port_setting[_]["portname"]
-                if portname != "PORT BRIDGE":
-                    self.name1_combobox.addItem(shared.port_setting[_]["portname"])
-                    self.name2_combobox.addItem(shared.port_setting[_]["portname"])
-
-        def gui(self) -> None:
-            port_layout = QHBoxLayout(self)
-            port_layout.setContentsMargins(0, 10, 0, 0)
-            # port status
-            status_widget = QWidget()
-            port_layout.addWidget(status_widget)
-            status_layout = QVBoxLayout(status_widget)
-            status_layout.setContentsMargins(0, 0, 0, 0)
-            # setting widget
-            setting_widget = QWidget()
-            status_layout.addWidget(setting_widget)
-            setting_layout = QVBoxLayout(setting_widget)
-            setting_layout.setContentsMargins(0, 0, 0, 0)
-            setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-            def name1_change(index: int, new_port: str) -> None:
-                # close port first
-                if self.port_toggle_button.isChecked():
-                    self.port_toggle_button.setChecked(False)
-                    time.sleep(0.1)
-                # check if port is closed
-                if self.port_toggle_button.isChecked():
-                    return
-                self.name1 = new_port
-                shared.port_setting[index]["name1"] = new_port
-
-            self.name1_combobox.setFixedWidth(180)
-            self.name1_combobox.currentIndexChanged.connect(lambda: name1_change(self.parent.tab_widget.indexOf(self), self.name1_combobox.currentData()))
-            setting_layout.addWidget(self.name1_combobox)
-
-            bridge_label = QLabel()
-            bridge_label.setPixmap(QIcon("icon:arrow_swap.svg").pixmap(24, 24))
-            bridge_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            setting_layout.addWidget(bridge_label)
-
-            def name2_change(index: int, new_port: str) -> None:
-                # close port first
-                if self.port_toggle_button.isChecked():
-                    self.port_toggle_button.setChecked(False)
-                    time.sleep(0.1)
-                # check if port is closed
-                if self.port_toggle_button.isChecked():
-                    return
-                self.name2 = new_port
-                shared.port_setting[index]["name2"] = new_port
-
-            self.name2_combobox.setFixedWidth(180)
-            self.name2_combobox.currentIndexChanged.connect(lambda: name2_change(self.parent.tab_widget.indexOf(self), self.name2_combobox.currentData()))
-            setting_layout.addWidget(self.name2_combobox)
-
-            self.port_load()
-            # stretch
-            port_layout.addStretch()
-
-            # port toggle button
-            def port_toggle(on: bool) -> None:
-                if on:
-                    self.open()
-                else:
-                    self.close()
-
-            self.port_toggle_button.setIcon(QIcon("icon:power.svg"))
-            self.port_toggle_button.setIconSize(QSize(80, 80))
-            self.port_toggle_button.setCheckable(True)
-            self.port_toggle_button.toggled.connect(port_toggle)
-            port_layout.addWidget(self.port_toggle_button)
-
     def port_write(self, message: str, name: str) -> None:
         if name == "ALL":
             for _ in range(self.tab_widget.count()):
-                self.tab_list[_].write(message)
+                self.tab_list[_].write_queue(message)
         elif name == "CURRENT":
             index = self.tab_widget.currentIndex()
-            self.tab_list[index].write(message)
+            self.tab_list[index].write_queue(message)
         else:
             for _ in range(self.tab_widget.count()):
                 if self.tab_list[_].portname == name:
-                    self.tab_list[_].write(message)
+                    self.tab_list[_].write_queue(message)
 
     def port_status_gui(self) -> None:
         # port status gui
@@ -1534,8 +1673,11 @@ class PortStatusWidget(QWidget):
 
         baudrate_lineedit = QLineEdit()
         databits_combobox = QComboBox()
+        databits_combobox.addItems(["5", "6", "7", "8"])
         parity_combobox = QComboBox()
+        parity_combobox.addItems(["None", "Even", "Odd", "Mark", "Space"])
         stopbits_combobox = QComboBox()
+        stopbits_combobox.addItems(["1", "1.5", "2"])
         remoteipv4_lineedit = QLineEdit()
         remoteport_lineedit = QLineEdit()
         localipv4_combobox = QComboBox()
@@ -1569,7 +1711,6 @@ class PortStatusWidget(QWidget):
                 databits_label = QLabel(self.tr("Data Bits"))
                 self.port_param_layout.addWidget(databits_label, 1, 0)
                 databits_combobox.show()
-                databits_combobox.addItems(["5", "6", "7", "8"])
                 if index == -1:
                     databits_combobox.setCurrentText("8")
                 else:
@@ -1581,7 +1722,6 @@ class PortStatusWidget(QWidget):
                 parity_label = QLabel(self.tr("Parity"))
                 self.port_param_layout.addWidget(parity_label, 2, 0)
                 parity_combobox.show()
-                parity_combobox.addItems(["None", "Even", "Odd", "Mark", "Space"])
                 if index == -1:
                     parity_combobox.setCurrentText("None")
                 else:
@@ -1597,7 +1737,6 @@ class PortStatusWidget(QWidget):
                 stopbits_label = QLabel(self.tr("Stop Bits"))
                 self.port_param_layout.addWidget(stopbits_label, 3, 0)
                 stopbits_combobox.show()
-                stopbits_combobox.addItems(["1", "1.5", "2"])
                 if index == -1:
                     stopbits_combobox.setCurrentText("1")
                 else:
@@ -1799,6 +1938,7 @@ class PortStatusWidget(QWidget):
             elif port_name == "TCP CLIENT":
                 port_setting = {
                     "portname": port_name,
+                    "forward": forward_port_combobox.currentText(),
                     "remoteipv4": remoteipv4_lineedit.text(),
                     "remoteport": remoteport_lineedit.text(),
                     "timeout": timeout_spinbox.value(),
@@ -1822,6 +1962,7 @@ class PortStatusWidget(QWidget):
             elif port_name == "TCP SERVER":
                 port_setting = {
                     "portname": port_name,
+                    "forward": forward_port_combobox.currentText(),
                     "localipv4": localipv4_combobox.currentText(),
                     "localport": localport_lineedit.text(),
                     "timeout": timeout_spinbox.value(),
@@ -1845,6 +1986,7 @@ class PortStatusWidget(QWidget):
             elif port_name == "UDP SOCKET":
                 port_setting = {
                     "portname": port_name,
+                    "forward": forward_port_combobox.currentText(),
                     "localipv4": localipv4_combobox.currentText(),
                     "localport": localport_lineedit.text(),
                     "remoteipv4": remoteipv4_lineedit.text(),
@@ -1867,9 +2009,10 @@ class PortStatusWidget(QWidget):
                     self.tab_widget.insertTab(index, port_tab, "UDP SOCKET")
                     self.tab_widget.setTabIcon(index, QIcon("icon:plug_connected.svg"))
                     shared.port_setting.insert(index, port_setting)
-            else:
+            else:  # port_name == "COMX":
                 port_setting = {
                     "portname": port_name,
+                    "forward": forward_port_combobox.currentText(),
                     "baudrate": int(baudrate_lineedit.text()),
                     "databits": databits_combobox.currentText(),
                     "parity": parity_combobox.currentText(),
@@ -2048,6 +2191,39 @@ class PortStatusWidget(QWidget):
         rx_size_spinbox.setToolTip(self.tr("0: automatic buffer size\n"
                                            "n: set buffer size to n bytes"))
         rx_param_layout.addWidget(rx_size_spinbox, 1, 1)
+
+        # forward setting widget
+        forward_setting_widget = QWidget()
+        port_add_layout.addWidget(forward_setting_widget)
+        forward_setting_layout = QVBoxLayout(forward_setting_widget)
+        forward_setting_layout.setContentsMargins(0, 0, 0, 0)
+        forward_setting_label = QLabel(self.tr("Forward Setting"))
+        forward_setting_label.setStyleSheet("font-weight: bold;")
+        forward_setting_layout.addWidget(forward_setting_label)
+        forward_setting_seperator = QFrame()
+        forward_setting_seperator.setFrameShape(QFrame.Shape.HLine)
+        forward_setting_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+        forward_setting_layout.addWidget(forward_setting_seperator)
+        forward_param_widget = QWidget()
+        forward_param_widget.setFixedWidth(400)
+        forward_setting_layout.addWidget(forward_param_widget)
+        forward_param_layout = QGridLayout(forward_param_widget)
+        forward_param_layout.setContentsMargins(0, 5, 0, 0)
+        forward_param_layout.setSpacing(10)
+        forward_param_layout.setColumnStretch(0, 1)
+        forward_param_layout.setColumnStretch(1, 3)
+        forward_port_label = QLabel(self.tr("forward port"))
+        forward_param_layout.addWidget(forward_port_label, 0, 0)
+        forward_port_combobox = QComboBox()
+        forward_port_combobox.addItem("DISABLE")
+        for _ in range(len(shared.port_setting)):
+            forward_port_combobox.addItem(shared.port_setting[_]["portname"])
+        if index == -1:
+            forward_port_combobox.setCurrentText("DISABLE")
+        else:
+            forward_port_combobox.setCurrentText(shared.port_setting[index]["forward"])
+        forward_port_combobox.setToolTip(self.tr("select forward port"))
+        forward_param_layout.addWidget(forward_port_combobox, 0, 1)
 
         # save button
         save_seperator = QFrame()
