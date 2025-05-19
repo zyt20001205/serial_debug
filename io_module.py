@@ -3413,7 +3413,6 @@ class AdvancedSendWidget(QWidget):
 
         def handle_enter(self) -> None:
             if self.next_button.isVisible():
-                # print(1)
                 self.next_button.click()
             elif self.finish_button.isVisible():
                 self.finish_button.click()
@@ -3436,6 +3435,7 @@ class AdvancedSendWidget(QWidget):
                 action_table.setShowGrid(False)
                 action_table.setSelectionBehavior(action_table.SelectionBehavior.SelectRows)
                 action_table.setSelectionMode(action_table.SelectionMode.SingleSelection)
+                action_table.itemDoubleClicked.connect(self.next_button.click)
                 action_table.setColumnCount(2)
                 action_table.setRowCount(14)
                 action_table.setIconSize(QSize(24, 24))
