@@ -204,7 +204,10 @@ class PortStatusWidget(QWidget):
             # append log
             if self.tx_format == "hex":
                 message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                if "crc16" in self.tx_suffix:
+                if "crc8" in self.tx_suffix:
+                    message_data = message[:-2]
+                    message_suffix = message[-2:]
+                elif "crc16" in self.tx_suffix:
                     message_data = message[:-5]
                     message_suffix = message[-5:]
                 else:  # none/"\r\n"
@@ -279,7 +282,10 @@ class PortStatusWidget(QWidget):
             # append log
             if self.tx_format == "hex":
                 message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                if "crc16" in self.tx_suffix:
+                if "crc8" in self.tx_suffix:
+                    message_data = message[:-2]
+                    message_suffix = message[-2:]
+                elif "crc16" in self.tx_suffix:
                     message_data = message[:-5]
                     message_suffix = message[-5:]
                 else:  # none/"\r\n"
@@ -322,7 +328,10 @@ class PortStatusWidget(QWidget):
                     # append log
                     if self.rx_format == "hex":
                         message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                        if "crc16" in self.tx_suffix:
+                        if "crc8" in self.tx_suffix:
+                            message_data = message[:-2]
+                            message_suffix = message[-2:]
+                        elif "crc16" in self.tx_suffix:
                             message_data = message[:-5]
                             message_suffix = message[-5:]
                         else:  # none/"\r\n"
@@ -359,7 +368,10 @@ class PortStatusWidget(QWidget):
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                            if "crc16" in self.tx_suffix:
+                            if "crc8" in self.tx_suffix:
+                                message_data = message[:-2]
+                                message_suffix = message[-2:]
+                            elif "crc16" in self.tx_suffix:
                                 message_data = message[:-5]
                                 message_suffix = message[-5:]
                             else:  # none/"\r\n"
@@ -565,7 +577,10 @@ class PortStatusWidget(QWidget):
             # append log
             if self.tx_format == "hex":
                 message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                if "crc16" in self.tx_suffix:
+                if "crc8" in self.tx_suffix:
+                    message_data = message[:-2]
+                    message_suffix = message[-2:]
+                elif "crc16" in self.tx_suffix:
                     message_data = message[:-5]
                     message_suffix = message[-5:]
                 else:  # none/"\r\n"
@@ -642,7 +657,10 @@ class PortStatusWidget(QWidget):
             # append log
             if self.tx_format == "hex":
                 message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                if "crc16" in self.tx_suffix:
+                if "crc8" in self.tx_suffix:
+                    message_data = message[:-2]
+                    message_suffix = message[-2:]
+                elif "crc16" in self.tx_suffix:
                     message_data = message[:-5]
                     message_suffix = message[-5:]
                 else:  # none/"\r\n"
@@ -687,7 +705,10 @@ class PortStatusWidget(QWidget):
                     # append log
                     if self.rx_format == "hex":
                         message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                        if "crc16" in self.tx_suffix:
+                        if "crc8" in self.tx_suffix:
+                            message_data = message[:-2]
+                            message_suffix = message[-2:]
+                        elif "crc16" in self.tx_suffix:
                             message_data = message[:-5]
                             message_suffix = message[-5:]
                         else:  # none/"\r\n"
@@ -726,7 +747,10 @@ class PortStatusWidget(QWidget):
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                            if "crc16" in self.tx_suffix:
+                            if "crc8" in self.tx_suffix:
+                                message_data = message[:-2]
+                                message_suffix = message[-2:]
+                            elif "crc16" in self.tx_suffix:
                                 message_data = message[:-5]
                                 message_suffix = message[-5:]
                             else:  # none/"\r\n"
@@ -946,7 +970,10 @@ class PortStatusWidget(QWidget):
                 # append log
                 if self.tx_format == "hex":
                     message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                    if "crc16" in self.tx_suffix:
+                    if "crc8" in self.tx_suffix:
+                        message_data = message[:-2]
+                        message_suffix = message[-2:]
+                    elif "crc16" in self.tx_suffix:
                         message_data = message[:-5]
                         message_suffix = message[-5:]
                     else:  # none/"\r\n"
@@ -981,7 +1008,10 @@ class PortStatusWidget(QWidget):
                 # append log
                 if self.tx_format == "hex":
                     message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                    if "crc16" in self.tx_suffix:
+                    if "crc8" in self.tx_suffix:
+                        message_data = message[:-2]
+                        message_suffix = message[-2:]
+                    elif "crc16" in self.tx_suffix:
                         message_data = message[:-5]
                         message_suffix = message[-5:]
                     else:  # none/"\r\n"
@@ -1060,7 +1090,10 @@ class PortStatusWidget(QWidget):
                 # append log
                 if self.tx_format == "hex":
                     message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                    if "crc16" in self.tx_suffix:
+                    if "crc8" in self.tx_suffix:
+                        message_data = message[:-2]
+                        message_suffix = message[-2:]
+                    elif "crc16" in self.tx_suffix:
                         message_data = message[:-5]
                         message_suffix = message[-5:]
                     else:  # none/"\r\n"
@@ -1097,7 +1130,10 @@ class PortStatusWidget(QWidget):
                 # append log
                 if self.tx_format == "hex":
                     message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                    if "crc16" in self.tx_suffix:
+                    if "crc8" in self.tx_suffix:
+                        message_data = message[:-2]
+                        message_suffix = message[-2:]
+                    elif "crc16" in self.tx_suffix:
                         message_data = message[:-5]
                         message_suffix = message[-5:]
                     else:  # none/"\r\n"
@@ -1142,7 +1178,10 @@ class PortStatusWidget(QWidget):
                     # append log
                     if self.rx_format == "hex":
                         message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                        if "crc16" in self.tx_suffix:
+                        if "crc8" in self.tx_suffix:
+                            message_data = message[:-2]
+                            message_suffix = message[-2:]
+                        elif "crc16" in self.tx_suffix:
                             message_data = message[:-5]
                             message_suffix = message[-5:]
                         else:  # none/"\r\n"
@@ -1181,7 +1220,10 @@ class PortStatusWidget(QWidget):
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                            if "crc16" in self.tx_suffix:
+                            if "crc8" in self.tx_suffix:
+                                message_data = message[:-2]
+                                message_suffix = message[-2:]
+                            elif "crc16" in self.tx_suffix:
                                 message_data = message[:-5]
                                 message_suffix = message[-5:]
                             else:  # none/"\r\n"
@@ -1352,7 +1394,10 @@ class PortStatusWidget(QWidget):
             # append log
             if self.tx_format == "hex":
                 message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                if "crc16" in self.tx_suffix:
+                if "crc8" in self.tx_suffix:
+                    message_data = message[:-2]
+                    message_suffix = message[-2:]
+                elif "crc16" in self.tx_suffix:
                     message_data = message[:-5]
                     message_suffix = message[-5:]
                 else:  # none/"\r\n"
@@ -1429,7 +1474,10 @@ class PortStatusWidget(QWidget):
             # append log
             if self.tx_format == "hex":
                 message = " ".join(self.tx_buffer[i:i + 2] for i in range(0, len(self.tx_buffer), 2))
-                if "crc16" in self.tx_suffix:
+                if "crc8" in self.tx_suffix:
+                    message_data = message[:-2]
+                    message_suffix = message[-2:]
+                elif "crc16" in self.tx_suffix:
                     message_data = message[:-5]
                     message_suffix = message[-5:]
                 else:  # none/"\r\n"
@@ -1475,7 +1523,10 @@ class PortStatusWidget(QWidget):
                     # append log
                     if self.rx_format == "hex":
                         message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                        if "crc16" in self.tx_suffix:
+                        if "crc8" in self.tx_suffix:
+                            message_data = message[:-2]
+                            message_suffix = message[-2:]
+                        elif "crc16" in self.tx_suffix:
                             message_data = message[:-5]
                             message_suffix = message[-5:]
                         else:  # none/"\r\n"
@@ -1515,7 +1566,10 @@ class PortStatusWidget(QWidget):
                         # append log
                         if self.rx_format == "hex":
                             message = " ".join(self.rx_buffer[i:i + 2] for i in range(0, len(self.rx_buffer), 2))
-                            if "crc16" in self.tx_suffix:
+                            if "crc8" in self.tx_suffix:
+                                message_data = message[:-2]
+                                message_suffix = message[-2:]
+                            elif "crc16" in self.tx_suffix:
                                 message_data = message[:-5]
                                 message_suffix = message[-5:]
                             else:  # none/"\r\n"
@@ -1652,11 +1706,6 @@ class PortStatusWidget(QWidget):
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
                     self.tab_widget.setTabIcon(i, QIcon("icon:plug_connected.svg"))
-                elif port_name == "PORT BRIDGE":
-                    port_tab = self.PortBridgeTab(self, shared.port_setting[i])
-                    self.tab_list.append(port_tab)
-                    self.tab_widget.addTab(port_tab, port_name)
-                    self.tab_widget.setTabIcon(i, QIcon("icon:arrow_swap.svg"))
                 else:
                     port_tab = self.SerialPortTab(self, shared.port_setting[i])
                     self.tab_list.append(port_tab)
@@ -4505,6 +4554,20 @@ class AdvancedSendWidget(QWidget):
         abort_button.setToolTip("abort")
         abort_button.clicked.connect(self.advanced_send_threadpool.stop)
         control_layout.addWidget(abort_button)
+
+        def global_abort_window() -> None:
+            abort_window = QWidget(shared.main_window)
+            abort_window.setWindowTitle(self.tr("Send Abort"))
+            abort_window.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
+            abort_window.show()
+            abort_layout = QVBoxLayout(abort_window)
+            global_abort_button = QPushButton()
+            global_abort_button.setIcon(QIcon("icon:stop_button.svg"))
+            global_abort_button.setIconSize(QSize(80, 80))
+            global_abort_button.clicked.connect(self.advanced_send_threadpool.stop)
+            abort_layout.addWidget(global_abort_button)
+
+        global_abort_window()
 
         # advanced send thread combobox
         self.advanced_send_combobox.addItem("Idle", "none")

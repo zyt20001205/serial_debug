@@ -21,9 +21,10 @@
 - `PySide6`                   6.8.1.1
 - `pyqtdarktheme`             2.1.0
 - `pyqtgraph`                 0.13.7
+- `requests`                  2.32.3
+
 
 ## Pack Command
-pyinstaller --onedir --noconsole --add-data "icon/*;icon" main.py
 nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --include-data-dir=icon=icon --include-data-dir=translations=translations --output-dir=dist main.py
 
 [//]: # (nuitka --standalone --enable-plugin=upx --upx-binary="D:\Program Files\upx-5.0.0-win64\upx.exe" --enable-plugin=pyside6 --windows-console-mode=disable --include-data-dir=icon=icon --include-data-dir=translations=translations --output-dir=dist main.py)
@@ -32,5 +33,3 @@ nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --inc
 pyside6-lupdate data_module.py document_module.py gui_module.py io_module.py log_module.py setting_module.py -ts translations/zh_CN.ts
 pyside6-linguist translations/zh_CN.ts
 pyside6-lrelease translations/zh_CN.ts -qm translations/zh_CN.qm
-
-[//]: # (pyinstaller --onedir --noconsole --add-data "icon/*;icon" --icon=icon.ico main.py)

@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QP
     QMessageBox, QInputDialog, QColorDialog
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
+from pyqtgraph import InfiniteLine, TextItem
 
 import shared
 
@@ -17,7 +18,7 @@ class DataCollectWidget(QWidget):
         # var init
         self.database = self.DatabaseWidget(self)
         self.datatable = self.DatatableWidget(self)
-        self.dataplot = pg.PlotWidget()
+        self.dataplot = self.DataPlotWidget()
         # draw gui
         self.data_collect_gui()
 
@@ -56,15 +57,15 @@ class DataCollectWidget(QWidget):
                 # move_icon
                 move_icon = QTableWidgetItem()
                 move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-                move_icon.setBackground(QColor(shared.command_shortcut[_]["color"]))
+                move_icon.setBackground(QColor(shared.data_collect["database"][_]["color"]))
                 self.setItem(_, 0, move_icon)
                 # label
                 label = QTableWidgetItem(shared.data_collect["database"][_]["label"])
-                label.setBackground(QColor(shared.command_shortcut[_]["color"]))
+                label.setBackground(QColor(shared.data_collect["database"][_]["color"]))
                 self.setItem(_, 1, label)
                 # value
                 value = QTableWidgetItem()
-                value.setBackground(QColor(shared.command_shortcut[_]["color"]))
+                value.setBackground(QColor(shared.data_collect["database"][_]["color"]))
                 self.setItem(_, 2, value)
                 # link button
                 link_button = QPushButton()
@@ -242,6 +243,98 @@ class DataCollectWidget(QWidget):
                 self.clearFocus()
             else:
                 super().keyPressEvent(event)
+
+    class DataPlotWidget(pg.PlotWidget):
+        def __init__(self):
+            super().__init__()
+            # x cursor
+            self.x_cursor1 = InfiniteLine(angle=90, movable=True, label="x1", pen='r', labelOpts={
+                'color': 'r',
+                'movable': True,
+                'position': 0.05
+            })
+            self.x_cursor2 = InfiniteLine(angle=90, movable=True, label="x2", pen='r', labelOpts={
+                'color': 'r',
+                'movable': True,
+                'position': 0.05
+            })
+            self.x_label = TextItem(color='r', anchor=(0.5, 0))
+            self.x_visible = False
+            # y cursor
+            self.y_cursor1 = InfiniteLine(angle=0, movable=True, label="y1", pen='r', labelOpts={
+                'color': 'r',
+                'movable': True,
+                'position': 0.05
+            })
+            self.y_cursor2 = InfiniteLine(angle=0, movable=True, label="y2", pen='r', labelOpts={
+                'color': 'r',
+                'movable': True,
+                'position': 0.05
+            })
+            self.y_label = TextItem(color='r', anchor=(1, 0.5))
+            self.y_visible = False
+
+        def keyPressEvent(self, event):
+            if event.key() == Qt.Key.Key_H:
+                self.x_cursor_toggle()
+            elif event.key() == Qt.Key.Key_V:
+                self.y_cursor_toggle()
+            else:
+                super().keyPressEvent(event)
+
+        def x_cursor_toggle(self):
+            def x_label_refresh():
+                x1 = self.x_cursor1.value()
+                self.x_cursor1.label.setText(f"x1={x1:.2f}")
+                x2 = self.x_cursor2.value()
+                self.x_cursor2.label.setText(f"x2={x2:.2f}")
+                dx = x2 - x1
+                self.x_label.setText(f"Δx={dx:.2f}")
+                self.x_label.setPos(x1 + dx / 2, self.viewRange()[1][1])
+
+            if self.x_visible:
+                self.removeItem(self.x_cursor1)
+                self.removeItem(self.x_cursor2)
+                self.removeItem(self.x_label)
+                self.x_visible = False
+            else:
+                self.x_cursor1.setPos(0.9 * self.viewRange()[0][0] + 0.1 * self.viewRange()[0][1])
+                self.x_cursor2.setPos(0.1 * self.viewRange()[0][0] + 0.9 * self.viewRange()[0][1])
+                self.addItem(self.x_cursor1)
+                self.addItem(self.x_cursor2)
+                self.addItem(self.x_label)
+                self.x_cursor1.sigDragged.connect(x_label_refresh)
+                self.x_cursor2.sigDragged.connect(x_label_refresh)
+                self.getPlotItem().vb.sigRangeChanged.connect(x_label_refresh)
+                x_label_refresh()
+                self.x_visible = True
+
+        def y_cursor_toggle(self):
+            def y_label_refresh():
+                y1 = self.y_cursor1.value()
+                self.y_cursor1.label.setText(f"y1={y1:.2f}")
+                y2 = self.y_cursor2.value()
+                self.y_cursor2.label.setText(f"y2={y2:.2f}")
+                dy = y2 - y1
+                self.y_label.setText(f"Δy={dy:.2f}")
+                self.y_label.setPos(self.viewRange()[0][1], y1 + dy / 2)
+
+            if self.y_visible:
+                self.removeItem(self.y_cursor1)
+                self.removeItem(self.y_cursor2)
+                self.removeItem(self.y_label)
+                self.y_visible = False
+            else:
+                self.y_cursor1.setPos(0.9 * self.viewRange()[1][0] + 0.1 * self.viewRange()[1][1])
+                self.y_cursor2.setPos(0.1 * self.viewRange()[1][0] + 0.9 * self.viewRange()[1][1])
+                self.addItem(self.y_cursor1)
+                self.addItem(self.y_cursor2)
+                self.addItem(self.y_label)
+                self.y_cursor1.sigDragged.connect(y_label_refresh)
+                self.y_cursor2.sigDragged.connect(y_label_refresh)
+                self.getPlotItem().vb.sigRangeChanged.connect(y_label_refresh)
+                y_label_refresh()
+                self.y_visible = True
 
     def data_collect_gui(self) -> None:
         # data collect gui
