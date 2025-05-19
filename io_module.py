@@ -4561,9 +4561,11 @@ class AdvancedSendWidget(QWidget):
             abort_window.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
             abort_window.show()
             abort_layout = QVBoxLayout(abort_window)
+            abort_layout.setContentsMargins(0, 0, 0, 0)
             global_abort_button = QPushButton()
-            global_abort_button.setIcon(QIcon("icon:stop_button.svg"))
-            global_abort_button.setIconSize(QSize(80, 80))
+            global_abort_button.setStyleSheet("""border: none; padding: 0px;""")
+            global_abort_button.setIcon(QIcon("icon:stop_sign.svg"))
+            global_abort_button.setIconSize(QSize(96, 96))
             global_abort_button.clicked.connect(self.advanced_send_threadpool.stop)
             abort_layout.addWidget(global_abort_button)
 

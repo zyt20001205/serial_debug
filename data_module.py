@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QP
     QMessageBox, QInputDialog, QColorDialog
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
-from pyqtgraph import InfiniteLine, TextItem
+from pyqtgraph import PlotWidget, InfiniteLine, TextItem
 
 import shared
 
@@ -244,7 +244,7 @@ class DataCollectWidget(QWidget):
             else:
                 super().keyPressEvent(event)
 
-    class DataPlotWidget(pg.PlotWidget):
+    class DataPlotWidget(PlotWidget):
         def __init__(self):
             super().__init__()
             # x cursor
