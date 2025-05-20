@@ -75,7 +75,8 @@ if __name__ == "__main__":
     # run asyncio event loop(future feature)
     # QtAsyncio.run(handle_sigint=True)
     # check update
-    # check_update()
+    if shared.check:
+        check_update()
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)

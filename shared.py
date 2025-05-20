@@ -1,4 +1,5 @@
 version = None
+check = None
 main_window = None
 
 port_log_widget = None

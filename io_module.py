@@ -4558,7 +4558,7 @@ class AdvancedSendWidget(QWidget):
 
         def global_abort_window() -> None:
             abort_window = QWidget(shared.main_window)
-            abort_window.setWindowTitle(self.tr("Send Abort"))
+            abort_window.setWindowTitle(self.tr("Abort"))
             abort_window.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
             abort_window.show()
             abort_layout = QVBoxLayout(abort_window)

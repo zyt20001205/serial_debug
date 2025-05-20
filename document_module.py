@@ -11,6 +11,7 @@ CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "version": "1.1.0",
+    "check": True,
     "layout": {
         "tab": "send_tab",
         "geometry": None,
@@ -171,6 +172,7 @@ def config_file_save_as(config):
 def config_to_shared(config):
     try:
         shared.version = config["version"]
+        shared.check = config["check"]
         shared.layout = config["layout"]
         shared.language_setting = config["language_setting"]
         shared.autosave_setting = config["autosave_setting"]
@@ -189,6 +191,7 @@ def config_to_shared(config):
 
 
 def shared_to_config(config):
+    config["check"] = shared.check
     config["layout"] = shared.layout
     config["layout"]["geometry"] = shared.main_window.saveGeometry().data().hex()
     if shared.layout["tab"] == "send_tab":

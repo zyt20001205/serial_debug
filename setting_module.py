@@ -23,6 +23,8 @@ class SettingWidget(QWidget):
         self.setting_scroll_widget = QWidget()
         self.setting_scroll_layout = QVBoxLayout(self.setting_scroll_widget)
 
+        self.check_button = QPushButton()
+
         self.language_combobox = QComboBox()
 
         self.autosave_spinbox = QSpinBox()
@@ -48,6 +50,7 @@ class SettingWidget(QWidget):
         self.zoom_out_sequence = QKeySequenceEdit(shared.shortcut_setting["zoom_out"])
         # draw gui
         self.setting_gui()
+        self.version_setting_gui()
         self.language_setting_gui()
         self.autosave_setting_gui()
         self.font_setting_gui()
@@ -89,6 +92,67 @@ class SettingWidget(QWidget):
         save_button.setIconSize(QSize(32, 32))
         save_button.clicked.connect(self.setting_save)
         control_layout.addWidget(save_button)
+
+    def version_setting_gui(self) -> None:
+        # version setting
+        version_setting_widget = QWidget()
+        self.setting_scroll_layout.addWidget(version_setting_widget)
+        version_setting_layout = QVBoxLayout(version_setting_widget)
+        # title
+        version_label = QLabel(self.tr("Version Setting"))
+        version_label.setFont(self.title)
+        version_setting_layout.addWidget(version_label)
+        # line
+        version_line = QFrame()
+        version_line.setFrameShape(QFrame.Shape.HLine)
+        version_line.setFrameShadow(QFrame.Shadow.Sunken)
+        version_setting_layout.addWidget(version_line)
+        # widget
+        version_widget = QWidget()
+        version_setting_layout.addWidget(version_widget)
+        version_layout = QHBoxLayout(version_widget)
+        # version param widget
+        version_param_widget = QWidget()
+        version_param_widget.setFixedWidth(800)
+        version_layout.addWidget(version_param_widget)
+        version_param_layout = QGridLayout(version_param_widget)
+        version_param_layout.setContentsMargins(0, 0, 0, 0)
+        version_param_layout.setSpacing(10)
+        version_param_layout.setColumnStretch(0, 2)
+        version_param_layout.setColumnStretch(1, 3)
+        # check select
+        check_label = QLabel(self.tr("Auto Check"))
+        check_label.setFont(self.font)
+        check_label.setFixedHeight(self.height)
+        version_param_layout.addWidget(check_label, 0, 0)
+        self.check_button.setCheckable(True)
+        self.check_button.setFont(self.font)
+        self.check_button.setFixedHeight(self.height)
+        if shared.check:
+            self.check_button.setText(self.tr("ON"))
+            self.check_button.setChecked(True)
+        else:
+            self.check_button.setText(self.tr("OFF"))
+            self.check_button.setChecked(False)
+        def checkbutton_toggle(checked)->None:
+            if checked:
+                self.check_button.setText(self.tr("ON"))
+            else:
+                self.check_button.setText(self.tr("OFF"))
+        self.check_button.toggled.connect(checkbutton_toggle)
+        version_param_layout.addWidget(self.check_button, 0, 1)
+
+        # version view widget
+        version_view_widget = QWidget()
+        version_layout.addWidget(version_view_widget)
+        version_view_layout = QVBoxLayout(version_view_widget)
+        version_view_layout.setContentsMargins(0, 0, 0, 0)
+        # version label
+        version_label = QLabel(shared.version)
+        version_label.setFont(self.font)
+        version_label.setFixedHeight(self.height)
+        version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        version_view_layout.addWidget(version_label)
 
     def language_setting_gui(self) -> None:
         language_setting_widget = QWidget()
@@ -403,6 +467,9 @@ class SettingWidget(QWidget):
         shortcut_view_layout.addWidget(shortcut_icon)
 
     def setting_reset(self) -> None:
+        # save version setting
+        shared.check = True
+        self.check_button.setChecked(True)
         # reset language setting
         shared.language_setting = "en_US"
         self.language_combobox.setCurrentText("English")
@@ -450,6 +517,8 @@ class SettingWidget(QWidget):
         QMessageBox.information(shared.main_window, self.tr("Reset Completed"), self.tr("The configuration has been reset to default."))
 
     def setting_save(self) -> None:
+        # save version setting
+        shared.check = self.check_button.isChecked()
         # save language setting
         shared.language_setting = self.language_combobox.currentData()
         # save autosave setting
