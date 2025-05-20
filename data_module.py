@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QP
     QMessageBox, QInputDialog, QColorDialog
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
-from pyqtgraph import PlotWidget, InfiniteLine, TextItem
+from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem
 
 import shared
 
@@ -19,6 +19,7 @@ class DataCollectWidget(QWidget):
         self.database = self.DatabaseWidget(self)
         self.datatable = self.DatatableWidget(self)
         self.dataplot = self.DataPlotWidget()
+        self.datacurve = []
         # draw gui
         self.data_collect_gui()
 
@@ -247,30 +248,55 @@ class DataCollectWidget(QWidget):
     class DataPlotWidget(PlotWidget):
         def __init__(self):
             super().__init__()
+            # plot
+            self.setLabel("left", "data")
+            self.setLabel("bottom", "index")
+            self.setBackground(None)
+            self.showGrid(x=True, y=True)
             # x cursor
-            self.x_cursor1 = InfiniteLine(angle=90, movable=True, label="x1", pen='r', labelOpts={
-                'color': 'r',
-                'movable': True,
-                'position': 0.05
-            })
-            self.x_cursor2 = InfiniteLine(angle=90, movable=True, label="x2", pen='r', labelOpts={
-                'color': 'r',
-                'movable': True,
-                'position': 0.05
-            })
+            self.x_cursor1 = InfiniteLine(angle=90, movable=True, label="x1",
+                                          pen={
+                                              'color': 'r',
+                                              'width': 3
+                                          },
+                                          labelOpts={
+                                              'color': 'r',
+                                              'movable': True,
+                                              'position': 0.05
+                                          })
+            self.x_cursor2 = InfiniteLine(angle=90, movable=True, label="x2",
+                                          pen={
+                                              'color': 'r',
+                                              'width': 3
+                                          },
+                                          labelOpts={
+                                              'color': 'r',
+                                              'movable': True,
+                                              'position': 0.05
+                                          })
             self.x_label = TextItem(color='r', anchor=(0.5, 0))
             self.x_visible = False
             # y cursor
-            self.y_cursor1 = InfiniteLine(angle=0, movable=True, label="y1", pen='r', labelOpts={
-                'color': 'r',
-                'movable': True,
-                'position': 0.05
-            })
-            self.y_cursor2 = InfiniteLine(angle=0, movable=True, label="y2", pen='r', labelOpts={
-                'color': 'r',
-                'movable': True,
-                'position': 0.05
-            })
+            self.y_cursor1 = InfiniteLine(angle=0, movable=True, label="y1",
+                                          pen={
+                                              'color': 'r',
+                                              'width': 3
+                                          },
+                                          labelOpts={
+                                              'color': 'r',
+                                              'movable': True,
+                                              'position': 0.05
+                                          })
+            self.y_cursor2 = InfiniteLine(angle=0, movable=True, label="y2",
+                                          pen={
+                                              'color': 'r',
+                                              'width': 3
+                                          },
+                                          labelOpts={
+                                              'color': 'r',
+                                              'movable': True,
+                                              'position': 0.05
+                                          })
             self.y_label = TextItem(color='r', anchor=(1, 0.5))
             self.y_visible = False
 
@@ -342,7 +368,7 @@ class DataCollectWidget(QWidget):
         # data collect tab widget
         tab_widget = QTabWidget()
         tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
-        tab_widget.currentChanged.connect(self.dataplot_refresh)
+        # tab_widget.currentChanged.connect(self.dataplot_refresh)
         data_collect_layout.addWidget(tab_widget)
 
         # database tab
@@ -402,28 +428,28 @@ class DataCollectWidget(QWidget):
         dataplot_layout.setContentsMargins(0, 0, 0, 0)
         # data plot
         dataplot_layout.addWidget(self.dataplot)
-        self.dataplot.setLabel("left", "data")
-        self.dataplot.setLabel("bottom", "index")
-        self.dataplot.setBackground(None)
-        self.dataplot.showGrid(x=True, y=True)
+        self.dataplot_init()
 
     def database_import(self, row: int, data: str) -> None:
         self.database.blockSignals(True)
         self.database.item(row, 2).setText(data)
         self.database.blockSignals(False)
 
-    def datatable_import(self, col: int, data: str) -> None:
+    def datatable_import(self, col: int, data: float) -> None:
+        # import to datatable
         row_count = self.datatable.rowCount()
         try:
             first_empty_row = next(
                 row for row in range(row_count)
                 if self.datatable.item(row, col) is None
             )
-            self.datatable.setItem(first_empty_row, col, QTableWidgetItem(data))
+            self.datatable.setItem(first_empty_row, col, QTableWidgetItem(str(data)))
         except:
             self.datatable.insertRow(row_count)
-            cell = QTableWidgetItem(data)
+            cell = QTableWidgetItem(str(data))
             self.datatable.setItem(row_count, col, cell)
+        # add data to plot
+        self.dataplot_refresh(col, data)
 
     def datatable_insert(self) -> None:
         # get insert index
@@ -448,6 +474,7 @@ class DataCollectWidget(QWidget):
         shared.data_collect["datatable"].pop(col)
         self.datatable.removeColumn(col)
         # print(shared.data_collect["datatable"])
+        self.dataplot_init()
 
     def datatable_rename(self) -> None:
         # get insert index
@@ -501,28 +528,59 @@ class DataCollectWidget(QWidget):
         self.datatable.clearContents()
         self.datatable.setRowCount(1)
 
-    def dataplot_refresh(self, index: int) -> None:
-        if index == 2:
-            self.dataplot.clear()
-            # draw legend
-            legend = self.dataplot.addLegend(offset=(10, 10))
-            legend.setLabelTextColor('#FFFFFF')
-            legend.setBrush(pg.mkBrush(QColor(0, 0, 0, 96)))
-            for i in range(self.datatable.columnCount()):
-                header = self.datatable.horizontalHeaderItem(i)
-                legend_name = header.text()
-                data = []
-                for row in range(self.datatable.rowCount()):
-                    item = self.datatable.item(row, i)
-                    data.append(float(item.text()) if item and item.text() else 0.0)
-                curve = pg.PlotCurveItem(
-                    name=legend_name,
-                    pen=pg.mkPen(
-                        pg.intColor(index=i, hues=12),
-                        width=2
-                    )
+    def dataplot_init(self) -> None:
+        self.dataplot.clear()
+        self.datacurve = []
+        legend = self.dataplot.addLegend(offset=(10, 10))
+        legend.setLabelTextColor('#FFFFFF')
+        legend.setBrush(pg.mkBrush(QColor(0, 0, 0, 96)))
+        for _ in range(self.datatable.columnCount()):
+            # generate curve
+            header = self.datatable.horizontalHeaderItem(_)
+            legend = header.text()
+            curve = PlotCurveItem(
+                name=legend,
+                pen=pg.mkPen(
+                    pg.intColor(index=_, hues=12),
+                    width=2
                 )
-                curve.setData(y=data, x=list(range(len(data))))
-                self.dataplot.addItem(curve)
+            )
+            # add curve to dataplot
+            self.dataplot.addItem(curve)
+            # add curve to curve list
+            self.datacurve.append({
+                "curve": curve,
+                "x": [],
+                "y": []
+            })
 
-            self.dataplot.autoRange()
+    def dataplot_refresh(self, index: int, data: float) -> None:
+        self.datacurve[index]["y"].append(data)
+        self.datacurve[index]["x"].append(len(self.datacurve[index]["y"]))
+        self.datacurve[index]["curve"].setData(x=self.datacurve[index]["x"], y=self.datacurve[index]["y"])
+
+# def dataplot_refresh(self, index: int) -> None:
+#     if index == 2:
+#         self.dataplot.clear()
+#         # draw legend
+#         legend = self.dataplot.addLegend(offset=(10, 10))
+#         legend.setLabelTextColor('#FFFFFF')
+#         legend.setBrush(pg.mkBrush(QColor(0, 0, 0, 96)))
+#         for i in range(self.datatable.columnCount()):
+#             header = self.datatable.horizontalHeaderItem(i)
+#             legend_name = header.text()
+#             data = []
+#             for row in range(self.datatable.rowCount()):
+#                 item = self.datatable.item(row, i)
+#                 data.append(float(item.text()) if item and item.text() else 0.0)
+#             curve = pg.PlotCurveItem(
+#                 name=legend_name,
+#                 pen=pg.mkPen(
+#                     pg.intColor(index=i, hues=12),
+#                     width=2
+#                 )
+#             )
+#             curve.setData(y=data, x=list(range(len(data))))
+#             self.dataplot.addItem(curve)
+#
+#         self.dataplot.autoRange()
