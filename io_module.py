@@ -11,7 +11,7 @@ from PySide6.QtGui import QKeySequence, QDrag, QIcon, QColor, QFont, QTextOption
 from PySide6.QtNetwork import QTcpSocket, QTcpServer, QUdpSocket
 from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, QPlainTextEdit, QPushButton, QWidget, QSizePolicy, QMessageBox, \
-    QSpinBox, QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox, QTabWidget, QFrame, QTreeView
+    QSpinBox, QProgressBar, QFileDialog, QTableWidget, QHeaderView, QTableWidgetItem, QInputDialog, QTextEdit, QSplitter, QGroupBox, QTabWidget, QFrame, QTreeView, QApplication
 from PySide6.QtCore import Qt, QMimeData, QTimer, QThread, Signal, QObject, QDataStream, QIODevice, QMutex, QWaitCondition, QSize, QElapsedTimer
 from PySide6.QtNetwork import QHostAddress
 
@@ -4563,7 +4563,7 @@ class AdvancedSendWidget(QWidget):
             abort_window = QWidget(shared.main_window)
             abort_window.setWindowTitle(self.tr("Abort"))
             abort_window.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
-            abort_window.show()
+
             abort_layout = QVBoxLayout(abort_window)
             abort_layout.setContentsMargins(0, 0, 0, 0)
             global_abort_button = QPushButton()
@@ -4572,6 +4572,11 @@ class AdvancedSendWidget(QWidget):
             global_abort_button.setIconSize(QSize(96, 96))
             global_abort_button.clicked.connect(self.advanced_send_threadpool.stop)
             abort_layout.addWidget(global_abort_button)
+
+            abort_window.show()
+            x = QApplication.primaryScreen().availableGeometry().right() - 128
+            y = QApplication.primaryScreen().availableGeometry().bottom() - 128
+            abort_window.move(x, y)
 
         global_abort_window()
 
