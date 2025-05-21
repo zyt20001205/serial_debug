@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit
 
 
 class InfoWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # instance variables
         self.info_textedit = QTextEdit(self)

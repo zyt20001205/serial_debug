@@ -3,88 +3,90 @@ import socket
 import os
 
 import requests
-from PySide6.QtCore import QStandardPaths, QThread, Signal
-from PySide6.QtWidgets import QMessageBox, QProgressDialog
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton
 
 import shared
 
 
-def check_update() -> None:
-    try:
-        socket.create_connection(("api.github.com", 443), timeout=0.3)
-        api_url = "https://api.github.com/repos/zyt20001205/serial_debug/releases/latest"
-        response = requests.get(api_url, timeout=1)
-        latest_data = json.loads(response.text)
-        latest_version = latest_data['tag_name'].lstrip('v').replace('.', '')
-        local_version = shared.version.replace('.', '')
+class UpdateWidget(QWidget):
+    def __init__(self) -> None:
+        super().__init__()
+        self.update_check()
 
-        def update_messagebox() -> None:
-            msg_box = QMessageBox(shared.main_window)
-            msg_box.setWindowTitle("Software Update")
-            msg_box.setIcon(QMessageBox.Icon.Information)
-            msg_box.setText("There's a newer version available!"
-                            f"\nlatest version: {latest_data['tag_name']}")
-            download_btn = msg_box.addButton("Download", QMessageBox.ButtonRole.ActionRole)
-            ignore_btn = msg_box.addButton("Ignore", QMessageBox.ButtonRole.RejectRole)
-            msg_box.setDefaultButton(download_btn)
-            msg_box.exec_()
-
-            if msg_box.clickedButton() == download_btn:
-                download_url = latest_data['assets'][0]['browser_download_url']
-                download_update(download_url)
-            elif msg_box.clickedButton() == ignore_btn:
-                return
-
-        if latest_version > local_version:
-            QMessageBox.information(shared.main_window, "Software Update", "There's a newer version available!"
-                                                                           f"\nlatest version: {latest_data['tag_name']}")
-            # update_messagebox()
-        else:
-            QMessageBox.information(shared.main_window, "Software Update", "You are up to date."
-                                                                           f"\ncurrent version: {latest_data['tag_name']}")
-    except Exception as e:
-        print(f"{e}")
-        QMessageBox.critical(shared.main_window, "Software Update", "Update check failed."
-                                                                    "\nPlease check your network connection.")
-
-
-def download_update(url: str) -> None:
-    class DownloadThread(QThread):
-        progress_signal = Signal(int)
-        finished = Signal(str)
-
-        def __init__(self, download_url, save_path):
+    class UpdateWindow(QWidget):
+        def __init__(self, response_data) -> None:
             super().__init__()
-            self.url = download_url
-            self.path = save_path
+            self.setParent(shared.main_window)
+            self.setWindowTitle(self.tr("Software Update"))
+            self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
 
-        def run(self):
-            try:
-                response = requests.get(self.url, stream=True, timeout=(10, 30))
-                total_size = int(response.headers.get('content-length', 0))
-                chunk_size = 1024 * 1024  # 1MB
-                downloaded = 0
+            self.response_data = response_data
+            self.gui()
 
-                with open(self.path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=chunk_size):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-                            progress = int((downloaded / total_size) * 100) if total_size > 0 else 0
-                            self.progress_signal.emit(progress)
-            except Exception as e:
-                ...
+        def update_download(self) -> None:
+            print("download")
 
-    progress = QProgressDialog("Downloading update...", "Cancel", 0, 100, shared.main_window)
-    progress.setWindowTitle("Download Progress")
-    progress.setAutoClose(True)
+        def gui(self) -> None:
+            update_layout = QVBoxLayout(self)
+            update_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            update_layout.setSpacing(10)
 
-    file_name = url.split('/')[-1].split('?')[0]
-    save_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
-    save_path = os.path.join(save_dir, file_name)
+            info_label = QLabel(self.tr("New Version Available"))
+            info_label.setStyleSheet("font-size: 24px; font-weight: bold;")
+            info_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            update_layout.addWidget(info_label)
+            info_seperator = QFrame()
+            info_seperator.setFrameShape(QFrame.Shape.HLine)
+            info_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+            update_layout.addWidget(info_seperator)
+            version_label = QLabel(self.tr("%s changelog") % self.response_data["tag_name"])
+            version_label.setStyleSheet("font-size: 20px; font-weight: bold;")
+            update_layout.addWidget(version_label)
+            changelog_label = QLabel(self.response_data["body"])
+            changelog_label.setStyleSheet("font-size: 16px")
+            update_layout.addWidget(changelog_label)
 
-    worker = DownloadThread(url, save_path)
-    # worker.progress_signal.connect(progress.setValue)
-    worker.start()
+            # stretch
+            update_layout.addStretch()
 
-    progress.show()
+            version_seperator = QFrame()
+            version_seperator.setFrameShape(QFrame.Shape.HLine)
+            version_seperator.setFrameShadow(QFrame.Shadow.Sunken)
+            update_layout.addWidget(version_seperator)
+
+            control_widget = QWidget()
+            update_layout.addWidget(control_widget)
+            control_layout = QHBoxLayout(control_widget)
+            control_layout.setContentsMargins(0, 0, 0, 0)
+            control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+            # download button
+            download_button = QPushButton(self.tr("Download"))
+            download_button.clicked.connect(self.update_download)
+            control_layout.addWidget(download_button)
+            # ignore button
+            ignore_button = QPushButton(self.tr("Ignore"))
+            ignore_button.clicked.connect(self.close)
+            control_layout.addWidget(ignore_button)
+
+    def update_check(self) -> None:
+        def version_to_list(version: str) -> list[int]:
+            return [int(part) for part in version.split('.')]
+
+        try:
+            socket.create_connection(("api.github.com", 443), timeout=0.3)
+            api_url = "https://api.github.com/repos/zyt20001205/serial_debug/releases/latest"
+            response = requests.get(api_url, timeout=1)
+            response_data = json.loads(response.text)
+            latest_version = version_to_list(response_data['tag_name'].lstrip('v'))
+            local_version = version_to_list(shared.version)
+
+            if latest_version > local_version:
+                update_window = self.UpdateWindow(response_data)
+                update_window.show()
+            else:
+                QMessageBox.information(shared.main_window, "Software Update", "You are up to date."
+                                                                               f"\ncurrent version: {response_data['tag_name']}")
+        except:
+            QMessageBox.critical(shared.main_window, "Software Update", "Update check failed."
+                                                                        "\nPlease check your network connection.")

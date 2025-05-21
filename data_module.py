@@ -13,7 +13,7 @@ rx_buffer = None
 
 
 class DataCollectWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # var init
         self.database = self.DatabaseWidget(self)
@@ -246,7 +246,7 @@ class DataCollectWidget(QWidget):
                 super().keyPressEvent(event)
 
     class DataPlotWidget(PlotWidget):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             # plot
             self.setLabel("left", "data")
@@ -474,7 +474,7 @@ class DataCollectWidget(QWidget):
         shared.data_collect["datatable"].pop(col)
         self.datatable.removeColumn(col)
         # print(shared.data_collect["datatable"])
-        self.dataplot_init()
+
 
     def datatable_rename(self) -> None:
         # get insert index
@@ -527,6 +527,7 @@ class DataCollectWidget(QWidget):
     def datatable_clear(self) -> None:
         self.datatable.clearContents()
         self.datatable.setRowCount(1)
+        self.dataplot_init()
 
     def dataplot_init(self) -> None:
         self.dataplot.clear()

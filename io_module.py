@@ -31,7 +31,7 @@ stopwatch = None
 
 
 class PortStatusWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.tab_widget = QTabWidget()
         self.tab_list = []
@@ -39,7 +39,7 @@ class PortStatusWidget(QWidget):
         self.port_status_gui()
 
     class WelcomeTab(QWidget):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self.gui()
 
@@ -1690,28 +1690,28 @@ class PortStatusWidget(QWidget):
             welcome_tab = self.WelcomeTab()
             self.tab_widget.addTab(welcome_tab, "welcome")
         else:
-            for i in range(len(shared.port_setting)):
-                port_name = shared.port_setting[i]["portname"]
+            for _ in range(len(shared.port_setting)):
+                port_name = shared.port_setting[_]["portname"]
                 if port_name == "TCP CLIENT":
-                    port_tab = self.TcpClientTab(self, shared.port_setting[i])
+                    port_tab = self.TcpClientTab(self, shared.port_setting[_])
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
-                    self.tab_widget.setTabIcon(i, QIcon("icon:desktop.svg"))
+                    self.tab_widget.setTabIcon(_, QIcon("icon:desktop.svg"))
                 elif port_name == "TCP SERVER":
-                    port_tab = self.TcpServerTab(self, shared.port_setting[i])
+                    port_tab = self.TcpServerTab(self, shared.port_setting[_])
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
-                    self.tab_widget.setTabIcon(i, QIcon("icon:server.svg"))
+                    self.tab_widget.setTabIcon(_, QIcon("icon:server.svg"))
                 elif port_name == "UDP SOCKET":
-                    port_tab = self.UdpSocketTab(self, shared.port_setting[i])
+                    port_tab = self.UdpSocketTab(self, shared.port_setting[_])
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
-                    self.tab_widget.setTabIcon(i, QIcon("icon:plug_connected.svg"))
+                    self.tab_widget.setTabIcon(_, QIcon("icon:plug_connected.svg"))
                 else:
-                    port_tab = self.SerialPortTab(self, shared.port_setting[i])
+                    port_tab = self.SerialPortTab(self, shared.port_setting[_])
                     self.tab_list.append(port_tab)
                     self.tab_widget.addTab(port_tab, port_name)
-                    self.tab_widget.setTabIcon(i, QIcon("icon:serial_port.svg"))
+                    self.tab_widget.setTabIcon(_, QIcon("icon:serial_port.svg"))
 
     def port_tab_edit(self, index: int) -> None:
         port_add_window = QWidget(shared.main_window)
@@ -2309,7 +2309,7 @@ class PortStatusWidget(QWidget):
 
 
 class SingleSendWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setAcceptDrops(True)
         # instance variables
@@ -2322,7 +2322,7 @@ class SingleSendWidget(QWidget):
         self.single_send_gui()
 
     class SingleSendPlainTextEdit(QPlainTextEdit):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
 
         def keyPressEvent(self, event):
@@ -2480,7 +2480,7 @@ class SingleSendWidget(QWidget):
 
 
 class AdvancedSendWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setAcceptDrops(True)
         # instance variables
@@ -4600,7 +4600,7 @@ class AdvancedSendWidget(QWidget):
 
 
 class FileSendWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # instance variables
         self.path_lineedit = QLineEdit()

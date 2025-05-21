@@ -8,11 +8,11 @@ import PySide6.QtAsyncio as QtAsyncio
 import shared
 from gui_module import main_gui
 from document_module import config_file_load, config_file_load_from, config_to_shared, config_save_on_closed
-from update_module import check_update
+from update_module import UpdateWidget
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("serial debug")
         self.resize(1600, 900)
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # QtAsyncio.run(handle_sigint=True)
     # check update
     if shared.check:
-        check_update()
+        update_widget = UpdateWidget()
     # exit app
     exit_code = app.exec()
     sys.exit(exit_code)

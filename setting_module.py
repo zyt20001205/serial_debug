@@ -8,7 +8,7 @@ from document_module import config_save
 
 
 class SettingWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # instance variables
         self.height = 40

@@ -69,7 +69,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
 
 class DocumentWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # instance variables
         # draw gui
