@@ -10,7 +10,6 @@ from gui_module import main_gui
 from document_module import config_file_load, config_file_load_from, config_to_shared, config_save_on_closed
 from update_module import UpdateWidget
 
-
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
