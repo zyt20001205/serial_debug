@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+# IDE
+.idea/
+# Virtual Environment
+.venv/
+# Build
+dist/
+build/
+# Config
+config.json 
+# Translations
+translations/zh_CN.ts

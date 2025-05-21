@@ -407,6 +407,7 @@ class PortStatusWidget(QWidget):
             setting_layout.setContentsMargins(0, 0, 0, 0)
             setting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
             port_label = QLabel(self.tr("port num"))
+            port_label.setFixedWidth(60)
             setting_layout.addWidget(port_label)
 
             def port_change(index: int, new_port: str) -> None:
@@ -443,6 +444,7 @@ class PortStatusWidget(QWidget):
             tx_buffer_layout.setContentsMargins(0, 0, 0, 0)
             tx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
             tx_buffer_label = QLabel(self.tr("tx buffer"))
+            tx_buffer_label.setFixedWidth(60)
             tx_buffer_layout.addWidget(tx_buffer_label)
             self.tx_buffer_lineedit.setFixedWidth(200)
             tx_buffer_layout.addWidget(self.tx_buffer_lineedit)
@@ -453,6 +455,7 @@ class PortStatusWidget(QWidget):
             rx_buffer_layout.setContentsMargins(0, 0, 0, 0)
             rx_buffer_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
             rx_buffer_label = QLabel(self.tr("rx buffer"))
+            rx_buffer_label.setFixedWidth(60)
             rx_buffer_layout.addWidget(rx_buffer_label)
             self.rx_buffer_lineedit.setFixedWidth(200)
             rx_buffer_layout.addWidget(self.rx_buffer_lineedit)
