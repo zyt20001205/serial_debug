@@ -281,7 +281,7 @@ class CommandShortcutWidget(QWidget):
             shared.port_status_widget.port_write(command, "CURRENT")
         else:  # type == "advanced"
             buffer = eval(command)
-            shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, False)
+            shared.advanced_send_widget.advanced_send_threadpool.new(function, buffer, 0)
 
     def command_shortcut_save(self, index, type, command) -> None:
         row = index - 1

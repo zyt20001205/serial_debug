@@ -2533,12 +2533,12 @@ class AdvancedSendWidget(QWidget):
             self.buffer_group = None
             self.database_group = None
 
-        def new(self, thread_id: str, buffer: list, debug: bool) -> None:
+        def new(self, thread_id: str, buffer: list, debug_level: int) -> None:
             mutex = QMutex()
             condition = QWaitCondition()
             stopwatch = QElapsedTimer()
 
-            thread = self.AdvancedSendThread(buffer, mutex, condition, stopwatch, debug)
+            thread = self.AdvancedSendThread(buffer, mutex, condition, stopwatch, debug_level)
             thread.setObjectName(thread_id)
 
             thread.highlight_signal.connect(self.table_highlight)
@@ -2553,10 +2553,12 @@ class AdvancedSendWidget(QWidget):
 
             self.threadpool.append(thread)
             self.combobox_refresh()
-            if debug:
-                shared.port_log_widget.log_insert(f"debug start", "warning")
+            if debug_level == 2:
+                shared.port_log_widget.log_insert(f"debugger start", "info")
+            elif debug_level == 1:
+                shared.port_log_widget.log_insert(f"editor start", "info")
             else:
-                shared.port_log_widget.log_insert(f"advanced send start, thread id: {thread_id}", "info")
+                shared.port_log_widget.log_insert(f"{thread_id} start", "info")
             thread.start()
 
         def remove(self, thread: "AdvancedSendThread") -> None:
@@ -2565,7 +2567,7 @@ class AdvancedSendWidget(QWidget):
             # remove from thread pool
             self.threadpool.remove(thread)
             thread_id = thread.objectName()
-            shared.port_log_widget.log_insert(f"advanced send end, thread id: {thread_id}", "info")
+            shared.port_log_widget.log_insert(f"{thread_id} end", "info")
             self.combobox_refresh()
 
         def stop(self, thread: "AdvancedSendThread" = None) -> None:
@@ -2591,11 +2593,11 @@ class AdvancedSendWidget(QWidget):
             self.combobox.clear()
             count = len(self.threadpool)
             if count == 0:
-                self.combobox.addItem("Idle", "none")
+                self.combobox.addItem("idle", "none")
             elif count == 1:
                 self.combobox.addItem(self.threadpool[0].objectName(), self.threadpool[0])
             else:
-                self.combobox.addItem(f"Active Threads {count}", "all")
+                self.combobox.addItem(f"{count} threads ", "all")
                 for thread in self.threadpool:
                     self.combobox.addItem(thread.objectName(), thread)
 
@@ -2626,7 +2628,6 @@ class AdvancedSendWidget(QWidget):
 
         def debug_interface(self, thread: "AdvancedSendThread", operation: str, condition: QWaitCondition):
             global variable, tx_buffer, rx_buffer
-
             if operation == "init":
                 def step_over() -> None:
                     condition.wakeOne()
@@ -2706,7 +2707,6 @@ class AdvancedSendWidget(QWidget):
                     database_value.setEditable(False)
                     self.database_group.appendRow([database_key, database_value])
                 model.appendRow([self.database_group, QStandardItem()])
-
             elif operation == "next":
                 # refresh index
                 self.index_label.setText(f"current index: {thread.index}")
@@ -2743,7 +2743,7 @@ class AdvancedSendWidget(QWidget):
             class ThreadReturn(Exception):
                 pass
 
-            def __init__(self, buffer, mutex, condition, stopwatch, debug, parent=None):
+            def __init__(self, buffer, mutex, condition, stopwatch, debug_level, parent=None):
                 super().__init__(parent)
                 self.index = None
                 self.enable = True
@@ -2751,10 +2751,10 @@ class AdvancedSendWidget(QWidget):
                 self.condition = condition
                 self.buffer = buffer
                 self.stopwatch = stopwatch
-                self.debug = debug
+                self.debug_level = debug_level
                 self.auto = False
 
-            def send(self, buffer, index=0):
+            def send(self, buffer: list, debug_level: int, index: int = 0):
                 def hex2int(hex_str: str) -> int:
                     bit_length = len(hex_str) * 4
                     num = int(hex_str, 16)
@@ -2776,17 +2776,20 @@ class AdvancedSendWidget(QWidget):
                         name = shared.data_collect_widget.database.item(row, 1).text()
                         value = shared.data_collect_widget.database.item(row, 2).text()
                         globals()[name] = value
-                    # highlight current index
-                    self.highlight_signal.emit(length, index, "cyan")
-                    # debug mode
-                    if index == shared.advanced_send_widget.advanced_send_table.currentRow():
-                        self.auto = False
-                    if self.debug:
+                    if debug_level >= 1:  # jump annotated line
+                        if shared.advanced_send_widget.advanced_send_table.item(index, 1).data(Qt.ItemDataRole.UserRole):
+                            index += 1
+                            continue
+                    if debug_level == 2:  # handle debug control
+                        if index == shared.advanced_send_widget.advanced_send_table.currentRow():
+                            self.auto = False
                         if not self.auto:
                             self.mutex.lock()
                             self.debug_signal.emit(self, "next", self.condition)
                             self.condition.wait(self.mutex)
                             self.mutex.unlock()
+                    # highlight current index
+                    self.highlight_signal.emit(length, index, "cyan")
                     # thread abort
                     if not self.enable:
                         raise self.ThreadTerminate
@@ -2819,7 +2822,7 @@ class AdvancedSendWidget(QWidget):
                                 self.send_signal.emit(command, target)
                             else:
                                 command = eval(shared.command_shortcut[row]["command"])
-                                self.send(command)
+                                self.send(buffer=command, debug_level=0)
                             # remove highlight
                             self.highlight_signal.emit(length, index, "white")
                         else:  # not shortcut, suffix calculate required
@@ -2932,13 +2935,14 @@ class AdvancedSendWidget(QWidget):
                         param = buffer[index][1]
                         unit = buffer[index][2]
                         if unit == "ms":
-                            time.sleep(param / 1000)
+                            pass
                         elif unit == "sec":
-                            time.sleep(param)
+                            param *= 1000
                         elif unit == "min":
-                            time.sleep(param * 60)
+                            param *= 60000
                         else:  # unit == "hour"
-                            time.sleep(param * 3600)
+                            param *= 3600000
+                        self.msleep(param)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
                     elif action == "stopwatch":
@@ -2959,7 +2963,7 @@ class AdvancedSendWidget(QWidget):
                         param = buffer[index][1]
                         try:
                             for _ in range(param):
-                                j = self.send(buffer, index + 1)
+                                j = self.send(buffer=buffer, debug_level=self.debug_level, index=index + 1)
                         except self.ThreadReturn as e:
                             j = eval(str(e))
                         except Exception as e:
@@ -3014,7 +3018,7 @@ class AdvancedSendWidget(QWidget):
                     elif action == "abort":
                         self.stop()
                     else:  # action == "tail":
-                        if self.debug:
+                        if self.debug_level == 2:
                             self.debug_signal.emit(self, "end", self.condition)
                         # remove highlight
                         self.highlight_signal.emit(length, index, "white")
@@ -3024,9 +3028,9 @@ class AdvancedSendWidget(QWidget):
 
             def run(self):
                 try:
-                    if self.debug:
+                    if self.debug_level == 2:
                         self.debug_signal.emit(self, "init", self.condition)
-                    self.send(self.buffer)
+                    self.send(buffer=self.buffer, debug_level=self.debug_level)
                 except self.ThreadTerminate:
                     ...
                 except Exception as e:
@@ -3409,6 +3413,8 @@ class AdvancedSendWidget(QWidget):
                 self.row_remove()
             elif event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_D:
                 self.row_duplicate()
+            elif event.modifiers() == Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_Slash:
+                self.row_annotate()
             elif event.key() == Qt.Key.Key_Escape:
                 self.clearSelection()
                 self.clearFocus()
@@ -4460,6 +4466,23 @@ class AdvancedSendWidget(QWidget):
             self.setCellWidget(row, 2, param_widget)
             self.row_indent()
 
+        def row_annotate(self) -> None:
+            # get annotate index
+            row = self.currentRow()
+            # get annotate cell
+            item = self.item(row, 1)
+            # clear selection
+            self.clearSelection()
+            self.clearFocus()
+
+            annotated = item.data(Qt.ItemDataRole.UserRole)
+            if not annotated:
+                item.setBackground(QColor("lightgrey"))
+                item.setData(Qt.ItemDataRole.UserRole, True)
+            else:
+                item.setBackground(QColor("white"))
+                item.setData(Qt.ItemDataRole.UserRole, False)
+
         def row_clear(self) -> None:
             for _ in range(self.rowCount() - 1):
                 self.removeRow(0)
@@ -4528,14 +4551,14 @@ class AdvancedSendWidget(QWidget):
         advanced_send_button.setFixedWidth(26)
         advanced_send_button.setIcon(QIcon("icon:send.svg"))
         advanced_send_button.setToolTip("send")
-        advanced_send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer, False))
+        advanced_send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer, 1))
         control_layout.addWidget(advanced_send_button)
         # advanced debug button
         advanced_debug_button = QPushButton()
         advanced_debug_button.setFixedWidth(26)
         advanced_debug_button.setIcon(QIcon("icon:bug.svg"))
         advanced_debug_button.setToolTip("debug")
-        advanced_debug_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer, True))
+        advanced_debug_button.clicked.connect(lambda: self.advanced_send_threadpool.new("debugger", shared.advanced_send_buffer, 2))
         control_layout.addWidget(advanced_debug_button)
         # advanced send save button
         advanced_save_button = QPushButton()
