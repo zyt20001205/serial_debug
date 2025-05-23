@@ -1,30 +1,32 @@
 import csv
+from math import floor
+import numpy as np
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
-    QMessageBox, QInputDialog, QColorDialog
+    QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
-from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem
+from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem, intColor
 
 import shared
-
-tx_buffer = None
-rx_buffer = None
 
 
 class DataCollectWidget(QWidget):
     def __init__(self) -> None:
         super().__init__()
         # var init
-        self.database = self.DatabaseWidget(self)
+        self.database = self.DatabaseWidget()
         self.datatable = self.DatatableWidget(self)
         self.dataplot = self.DataPlotWidget()
+        self.datastat = self.DataStatWidget()
         self.datacurve = []
+        self.timer = QTimer()
         # draw gui
         self.data_collect_gui()
 
     class DatabaseWidget(QTableWidget):
-        def __init__(self, parent):
+        def __init__(self):
             super().__init__()
             # event init
             self.setDragEnabled(True)
@@ -34,7 +36,6 @@ class DataCollectWidget(QWidget):
             self.setSelectionBehavior(self.SelectionBehavior.SelectRows)
             self.setSelectionMode(self.SelectionMode.SingleSelection)
             # var init
-            self.parent = parent
             self.source_index = None
             self.target_index = None
             # gui init
@@ -331,7 +332,6 @@ class DataCollectWidget(QWidget):
                 self.addItem(self.x_label)
                 self.x_cursor1.sigDragged.connect(x_label_refresh)
                 self.x_cursor2.sigDragged.connect(x_label_refresh)
-                self.getPlotItem().vb.sigRangeChanged.connect(x_label_refresh)
                 x_label_refresh()
                 self.x_visible = True
 
@@ -358,9 +358,171 @@ class DataCollectWidget(QWidget):
                 self.addItem(self.y_label)
                 self.y_cursor1.sigDragged.connect(y_label_refresh)
                 self.y_cursor2.sigDragged.connect(y_label_refresh)
-                self.getPlotItem().vb.sigRangeChanged.connect(y_label_refresh)
                 y_label_refresh()
                 self.y_visible = True
+
+    class DataStatWidget(QListWidget):
+        def __init__(self) -> None:
+            super().__init__()
+            # event init
+            self.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+            self.setDefaultDropAction(Qt.DropAction.MoveAction)
+            # var init
+            self.source_index = None
+            self.target_index = None
+            # gui init
+            self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.setFixedWidth(130)
+            self.setSpacing(2)
+            self.gui()
+
+        class DataStatLabel(QWidget):
+            def __init__(self, parent) -> None:
+                super().__init__()
+                self.parent = parent
+                self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+                self.setObjectName("data_stat_label")
+                self.key_label = QLabel()
+                self.value_label = QLabel()
+                self.gui()
+
+            def setColor(self, color: str) -> None:
+                self.setStyleSheet("QWidget#data_stat_label {border: 2px solid %s; border-radius: 8px;}" % color)
+
+            def setKey(self, key: str) -> None:
+                self.key_label.setText(key)
+
+            def setValue(self, value: str) -> None:
+                self.value_label.setText(value)
+
+            def gui(self) -> None:
+                layout = QHBoxLayout(self)
+                layout.setSpacing(0)
+                layout.setContentsMargins(8, 2, 2, 2)
+
+                labels = QWidget()
+                layout.addWidget(labels)
+                label_layout = QVBoxLayout(labels)
+                label_layout.setContentsMargins(0, 0, 0, 0)
+
+                self.key_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                label_layout.addWidget(self.key_label)
+                self.value_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                label_layout.addWidget(self.value_label)
+
+                setting_button = QPushButton()
+                setting_button.setStyleSheet("border: 0px;")
+                setting_button.setIcon(QIcon("icon:settings.svg"))
+                setting_button.clicked.connect(lambda: print("clicked"))
+                layout.addWidget(setting_button)
+
+        class EmptyLabel(QWidget):
+            def __init__(self, parent) -> None:
+                super().__init__()
+                self.parent = parent
+                self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+                self.setObjectName("empty_label")
+                self.setStyleSheet("QWidget#empty_label {border: 2px solid %s; border-radius: 8px;}" % "#4d5157")
+                self.gui()
+
+            def gui(self) -> None:
+                layout = QHBoxLayout(self)
+                layout.setSpacing(0)
+                layout.setContentsMargins(2, 2, 2, 2)
+
+                add_button = QPushButton()
+                add_button.setStyleSheet("border: 0px;")
+                add_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+                add_button.setIcon(QIcon("icon:add.svg"))
+                add_button.clicked.connect(lambda: self.parent.label_add(0, "max"))
+                layout.addWidget(add_button)
+
+        # drag event: swap
+        def startDrag(self, supported_actions) -> None:
+            self.source_index = self.currentRow()
+            super().startDrag(supported_actions)
+
+        def dropEvent(self, event) -> None:
+            pos = event.position().toPoint()
+            self.target_index = self.indexAt(pos).row()
+            super().dropEvent(event)
+            # call swap func
+            self.label_swap()
+
+        def label_swap(self) -> None:
+            source_index = self.source_index
+            target_index = self.target_index
+            # manipulate shared data collect[datastat]
+            tmp = shared.data_collect["datastat"].pop(source_index)
+            shared.data_collect["datastat"].insert(target_index, tmp)
+            # clear selection
+            self.clearSelection()
+            self.clearFocus()
+            # print(shared.data_collect["datastat"])
+
+        # key press event: remove
+        def keyPressEvent(self, event) -> None:
+            if event.key() == Qt.Key.Key_Delete:
+                self.label_remove()
+            else:
+                super().keyPressEvent(event)
+
+        def label_remove(self) -> None:
+            # get remove index
+            row = self.currentRow()
+            if len(shared.data_collect["datastat"]) == 1:
+                return
+            shared.data_collect["datastat"].pop(row)
+            item = self.item(row)
+            widget = self.itemWidget(item)
+            widget.setParent(None)
+            widget.deleteLater()
+            self.takeItem(row)
+            # print(shared.data_collect["datastat"])
+
+        def label_add(self, index: int, key: str) -> None:
+            # add to gui
+            item = QListWidgetItem()
+            item.setSizeHint(QSize(120, 60))
+            self.insertItem(len(shared.data_collect["datastat"]), item)
+            widget = self.DataStatLabel(self)
+            widget.setColor(intColor(index=shared.data_collect["datastat"][index]["index"], hues=12).name())
+            widget.setKey(key)
+            self.setItemWidget(item, widget)
+            # add to shared data collect[datastat]
+            shared.data_collect["datastat"].append({"index": index, "key": key})
+
+        def label_refresh(self, dataset: list) -> None:
+            for _ in range(len(shared.data_collect["datastat"])):
+                data: np.array = dataset[shared.data_collect["datastat"][_]["index"]]
+                item = self.item(_)
+                widget: DataCollectWidget.DataStatWidget.DataStatLabel = self.itemWidget(item)
+                if shared.data_collect["datastat"][_]["key"] == "max":
+                    if data.size > 0:
+                        widget.setValue(str(f"{data.max():.2f}"))
+                    else:
+                        widget.setValue("N/A")
+                elif shared.data_collect["datastat"][_]["key"] == "min":
+                    if data.size > 0:
+                        widget.setValue(str(f"{data.min():.2f}"))
+                    else:
+                        widget.setValue("N/A")
+
+        def gui(self) -> None:
+            for _ in range(len(shared.data_collect["datastat"])):
+                item = QListWidgetItem()
+                item.setSizeHint(QSize(120, 60))
+                self.addItem(item)
+                widget = self.DataStatLabel(self)
+                widget.setColor(intColor(index=shared.data_collect["datastat"][_]["index"], hues=12).name())
+                widget.setKey(shared.data_collect["datastat"][_]["key"])
+                self.setItemWidget(item, widget)
+            item = QListWidgetItem()
+            item.setSizeHint(QSize(120, 60))
+            self.addItem(item)
+            widget = self.EmptyLabel(self)
+            self.setItemWidget(item, widget)
 
     def data_collect_gui(self) -> None:
         # data collect gui
@@ -368,7 +530,6 @@ class DataCollectWidget(QWidget):
         # data collect tab widget
         tab_widget = QTabWidget()
         tab_widget.setStyleSheet("""QTabWidget::pane {border: none;}""")
-        # tab_widget.currentChanged.connect(self.dataplot_refresh)
         data_collect_layout.addWidget(tab_widget)
 
         # database tab
@@ -416,8 +577,8 @@ class DataCollectWidget(QWidget):
         clear_button = QPushButton()
         clear_button.setFixedWidth(26)
         clear_button.setIcon(QIcon("icon:delete.svg"))
-        clear_button.setToolTip(self.tr("clear datatable"))
-        clear_button.clicked.connect(self.datatable_clear)
+        clear_button.setToolTip(self.tr("clear data"))
+        clear_button.clicked.connect(self.data_clear)
         datatable_control_layout.addWidget(clear_button)
 
         # dataplot tab
@@ -426,14 +587,62 @@ class DataCollectWidget(QWidget):
         tab_widget.setTabIcon(2, QIcon("icon:line_chart.svg"))
         dataplot_layout = QVBoxLayout(dataplot_tab)
         dataplot_layout.setContentsMargins(0, 0, 0, 0)
-        # data plot
-        dataplot_layout.addWidget(self.dataplot)
+        # dataplot/statistic
+        plot_widget = QWidget()
+        dataplot_layout.addWidget(plot_widget)
+        plot_layout = QHBoxLayout(plot_widget)
+        plot_layout.setContentsMargins(0, 0, 0, 0)
+        plot_layout.addWidget(self.dataplot)
         self.dataplot_init()
+        plot_layout.addWidget(self.datastat)
+        self.datastat.hide()
+        # dataplot control widget
+        dataplot_control_widget = QWidget()
+        dataplot_layout.addWidget(dataplot_control_widget)
+        dataplot_control_layout = QHBoxLayout(dataplot_control_widget)
+        dataplot_control_layout.setContentsMargins(0, 0, 0, 0)
+        dataplot_control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        # clear button
+        clear_button = QPushButton()
+        clear_button.setFixedWidth(26)
+        clear_button.setIcon(QIcon("icon:delete.svg"))
+        clear_button.setToolTip(self.tr("clear data"))
+        clear_button.clicked.connect(self.data_clear)
+        dataplot_control_layout.addWidget(clear_button)
+        # vertical cursor button
+        vertical_cursor_button = QPushButton()
+        vertical_cursor_button.setFixedWidth(26)
+        vertical_cursor_button.setCheckable(True)
+        vertical_cursor_button.setIcon(QIcon("icon:split_vertical.svg"))
+        vertical_cursor_button.setToolTip(self.tr("show vertical cursor"))
+        vertical_cursor_button.clicked.connect(self.dataplot.x_cursor_toggle)
+        dataplot_control_layout.addWidget(vertical_cursor_button)
+        # horizontal cursor button
+        horizontal_cursor_button = QPushButton()
+        horizontal_cursor_button.setFixedWidth(26)
+        horizontal_cursor_button.setCheckable(True)
+        horizontal_cursor_button.setIcon(QIcon("icon:split_horizontal.svg"))
+        horizontal_cursor_button.setToolTip(self.tr("show horizontal cursor"))
+        horizontal_cursor_button.clicked.connect(self.dataplot.y_cursor_toggle)
+        dataplot_control_layout.addWidget(horizontal_cursor_button)
+        # statistic button
+        statistic_button = QPushButton()
+        statistic_button.setFixedWidth(26)
+        statistic_button.setCheckable(True)
+        statistic_button.setIcon(QIcon("icon:data_pie.svg"))
+        statistic_button.setToolTip(self.tr("show statistic"))
+        statistic_button.clicked.connect(self.datastat_toggle)
+        dataplot_control_layout.addWidget(statistic_button)
 
     def database_import(self, row: int, data: str) -> None:
         self.database.blockSignals(True)
         self.database.item(row, 2).setText(data)
         self.database.blockSignals(False)
+
+    def data_clear(self) -> None:
+        self.datatable.clearContents()
+        self.datatable.setRowCount(1)
+        self.dataplot_init()
 
     def datatable_import(self, col: int, data: float) -> None:
         # import to datatable
@@ -474,7 +683,6 @@ class DataCollectWidget(QWidget):
         shared.data_collect["datatable"].pop(col)
         self.datatable.removeColumn(col)
         # print(shared.data_collect["datatable"])
-
 
     def datatable_rename(self) -> None:
         # get insert index
@@ -524,11 +732,6 @@ class DataCollectWidget(QWidget):
         except:
             shared.port_log_widget.log_insert(f"datatable save failed", "warning")
 
-    def datatable_clear(self) -> None:
-        self.datatable.clearContents()
-        self.datatable.setRowCount(1)
-        self.dataplot_init()
-
     def dataplot_init(self) -> None:
         self.dataplot.clear()
         self.datacurve = []
@@ -542,7 +745,7 @@ class DataCollectWidget(QWidget):
             curve = PlotCurveItem(
                 name=legend,
                 pen=pg.mkPen(
-                    pg.intColor(index=_, hues=12),
+                    intColor(index=_, hues=12),
                     width=2
                 )
             )
@@ -560,28 +763,25 @@ class DataCollectWidget(QWidget):
         self.datacurve[index]["x"].append(len(self.datacurve[index]["y"]))
         self.datacurve[index]["curve"].setData(x=self.datacurve[index]["x"], y=self.datacurve[index]["y"])
 
-# def dataplot_refresh(self, index: int) -> None:
-#     if index == 2:
-#         self.dataplot.clear()
-#         # draw legend
-#         legend = self.dataplot.addLegend(offset=(10, 10))
-#         legend.setLabelTextColor('#FFFFFF')
-#         legend.setBrush(pg.mkBrush(QColor(0, 0, 0, 96)))
-#         for i in range(self.datatable.columnCount()):
-#             header = self.datatable.horizontalHeaderItem(i)
-#             legend_name = header.text()
-#             data = []
-#             for row in range(self.datatable.rowCount()):
-#                 item = self.datatable.item(row, i)
-#                 data.append(float(item.text()) if item and item.text() else 0.0)
-#             curve = pg.PlotCurveItem(
-#                 name=legend_name,
-#                 pen=pg.mkPen(
-#                     pg.intColor(index=i, hues=12),
-#                     width=2
-#                 )
-#             )
-#             curve.setData(y=data, x=list(range(len(data))))
-#             self.dataplot.addItem(curve)
-#
-#         self.dataplot.autoRange()
+    def datastat_toggle(self, checked: bool) -> None:
+        if checked:
+            self.datastat.show()
+            self.timer.start(100)
+            self.timer.timeout.connect(self.datastat_refresh)
+        else:
+            self.datastat.hide()
+            self.timer.timeout.disconnect(self.datastat_refresh)
+
+    def datastat_refresh(self) -> None:
+        x_min, x_max = self.dataplot.viewRange()[0]
+        x_min = floor(x_min)
+        x_max = floor(x_max)
+        y_min, y_max = self.dataplot.viewRange()[1]
+        dataset = []
+        for line in range(len(self.datacurve)):
+            tmp = []
+            for index in range(x_min, x_max):
+                if 0 <= index < len(self.datacurve[line]["y"]) and y_min < self.datacurve[line]["y"][index] < y_max:
+                    tmp.append(self.datacurve[line]["y"][index])
+            dataset.append(np.array(tmp))
+        self.datastat.label_refresh(dataset)

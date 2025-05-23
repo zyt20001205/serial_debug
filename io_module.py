@@ -4922,7 +4922,7 @@ class FileSendWidget(QWidget):
         # file split button
         file_split_button = QPushButton()
         file_split_button.setFixedWidth(26)
-        file_split_button.setIcon(QIcon("icon:split.svg"))
+        file_split_button.setIcon(QIcon("icon:split_horizontal.svg"))
         file_split_button.setToolTip("split file")
         file_split_button.clicked.connect(self.file_send_split)
         file_split_layout.addWidget(file_split_button)
