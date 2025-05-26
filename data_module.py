@@ -1,10 +1,10 @@
 import csv
-from math import floor
 import numpy as np
+import time
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
-    QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem
+    QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem, QSpinBox, QComboBox
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem, intColor
@@ -18,11 +18,14 @@ class DataCollectWidget(QWidget):
         # var init
         self.database = self.DatabaseWidget()
         self.datatable = self.DatatableWidget(self)
-        self.dataplot = self.DataPlotWidget()
+        self.dataplot = self.DataPlotWidget(self)
         self.datastat = self.DataStatWidget()
         self.datacurve = []
         self.timer = QTimer()
+        self.start_time = None
         # draw gui
+        self.vertical_cursor_button = QPushButton()
+        self.horizontal_cursor_button = QPushButton()
         self.data_collect_gui()
 
     class DatabaseWidget(QTableWidget):
@@ -247,11 +250,12 @@ class DataCollectWidget(QWidget):
                 super().keyPressEvent(event)
 
     class DataPlotWidget(PlotWidget):
-        def __init__(self) -> None:
+        def __init__(self, parent) -> None:
             super().__init__()
+            self.parent = parent
             # plot
             self.setLabel("left", "data")
-            self.setLabel("bottom", "index")
+            self.setLabel("bottom", "time")
             self.setBackground(None)
             self.showGrid(x=True, y=True)
             # x cursor
@@ -303,20 +307,20 @@ class DataCollectWidget(QWidget):
 
         def keyPressEvent(self, event):
             if event.key() == Qt.Key.Key_H:
-                self.x_cursor_toggle()
+                self.parent.horizontal_cursor_button.click()
             elif event.key() == Qt.Key.Key_V:
-                self.y_cursor_toggle()
+                self.parent.vertical_cursor_button.click()
             else:
                 super().keyPressEvent(event)
 
         def x_cursor_toggle(self):
             def x_label_refresh():
                 x1 = self.x_cursor1.value()
-                self.x_cursor1.label.setText(f"x1={x1:.2f}")
+                self.x_cursor1.label.setText(f"t1={x1:.2f}s")
                 x2 = self.x_cursor2.value()
-                self.x_cursor2.label.setText(f"x2={x2:.2f}")
+                self.x_cursor2.label.setText(f"t2={x2:.2f}s")
                 dx = x2 - x1
-                self.x_label.setText(f"Δx={dx:.2f}")
+                self.x_label.setText(f"Δt={dx:.2f}s")
                 self.x_label.setPos(x1 + dx / 2, self.viewRange()[1][1])
 
             if self.x_visible:
@@ -376,6 +380,29 @@ class DataCollectWidget(QWidget):
             self.setFixedWidth(130)
             self.setSpacing(2)
             self.gui()
+            # stat window init
+            self.stat_window = QWidget()
+            self.stat_window.setWindowTitle(self.tr("Statistic Window"))
+            self.stat_window.setWindowFlags(Qt.WindowType.Window)
+            self.stat_window.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+            self.stat_window.setFixedWidth(400)
+            stat_layout = QVBoxLayout(self.stat_window)
+            self.index_label = QLabel(self.tr("Index"))
+            stat_layout.addWidget(self.index_label)
+            self.index_spinbox = QSpinBox()
+            stat_layout.addWidget(self.index_spinbox)
+            self.stat_label = QLabel("Statistic")
+            stat_layout.addWidget(self.stat_label)
+            self.stat_combobox = QComboBox()
+            self.stat_combobox.setPlaceholderText(self.tr("select statistic"))
+            self.stat_combobox.addItem(self.tr("max"), "max")
+            self.stat_combobox.addItem(self.tr("min"), "min")
+            self.stat_combobox.addItem(self.tr("freq"), "freq")
+            self.stat_combobox.addItem(self.tr("period"), "period")
+            stat_layout.addWidget(self.stat_combobox)
+            confirm_button = QPushButton(self.tr("add statistic"))
+            confirm_button.clicked.connect(lambda: self.label_add(self.index_spinbox.value(), self.stat_combobox.currentData()))
+            stat_layout.addWidget(confirm_button)
 
         class DataStatLabel(QWidget):
             def __init__(self, parent) -> None:
@@ -435,7 +462,7 @@ class DataCollectWidget(QWidget):
                 add_button.setStyleSheet("border: 0px;")
                 add_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
                 add_button.setIcon(QIcon("icon:add.svg"))
-                add_button.clicked.connect(lambda: self.parent.label_add(0, "max"))
+                add_button.clicked.connect(self.parent.label_add_window)
                 layout.addWidget(add_button)
 
         # drag event: swap
@@ -481,21 +508,30 @@ class DataCollectWidget(QWidget):
             self.takeItem(row)
             # print(shared.data_collect["datastat"])
 
+        def label_add_window(self) -> None:
+            self.index_spinbox.setRange(0, len(shared.data_collect["datatable"]) - 1)
+            self.index_spinbox.setValue(0)
+            self.stat_combobox.setCurrentIndex(-1)
+            self.stat_window.show()
+
         def label_add(self, index: int, key: str) -> None:
+            self.stat_window.close()
             # add to gui
             item = QListWidgetItem()
             item.setSizeHint(QSize(120, 60))
             self.insertItem(len(shared.data_collect["datastat"]), item)
             widget = self.DataStatLabel(self)
-            widget.setColor(intColor(index=shared.data_collect["datastat"][index]["index"], hues=12).name())
+            widget.setColor(intColor(index=index, hues=12).name())
             widget.setKey(key)
             self.setItemWidget(item, widget)
             # add to shared data collect[datastat]
             shared.data_collect["datastat"].append({"index": index, "key": key})
 
-        def label_refresh(self, dataset: list) -> None:
+        def label_refresh(self, dataset: list, timeset: list = None) -> None:
             for _ in range(len(shared.data_collect["datastat"])):
                 data: np.array = dataset[shared.data_collect["datastat"][_]["index"]]
+                if timeset:
+                    time: np.array = timeset[shared.data_collect["datastat"][_]["index"]]
                 item = self.item(_)
                 widget: DataCollectWidget.DataStatWidget.DataStatLabel = self.itemWidget(item)
                 if shared.data_collect["datastat"][_]["key"] == "max":
@@ -506,6 +542,43 @@ class DataCollectWidget(QWidget):
                 elif shared.data_collect["datastat"][_]["key"] == "min":
                     if data.size > 0:
                         widget.setValue(str(f"{data.min():.2f}"))
+                    else:
+                        widget.setValue("N/A")
+                elif shared.data_collect["datastat"][_]["key"] in ["freq", "period"]:
+                    def period_stat(data: np.array, time: np.array) -> tuple:
+                        if len(data) < 3 or len(time) < 3:
+                            return "N/A", "N/A"
+                        try:
+                            mean_val = np.mean(data)
+                            zero_crossings = []
+                            for i in range(1, len(data)):
+                                if (data[i - 1] - mean_val) * (data[i] - mean_val) < 0:
+                                    t_cross = time[i - 1] + (time[i] - time[i - 1]) * \
+                                              (mean_val - data[i - 1]) / (data[i] - data[i - 1])
+                                    zero_crossings.append(t_cross)
+                            if len(zero_crossings) < 2:
+                                return "N/A", "N/A"
+                            intervals = np.diff(zero_crossings)
+                            if len(intervals) > 0:
+                                period = 2 * np.mean(intervals)
+                                return period, 1.0 / period
+                            else:
+                                return "N/A", "N/A"
+                        except Exception:
+                            return "N/A", "N/A"
+
+                    if data.size > 2 and timeset is not None:
+                        period, freq = period_stat(data, time)
+                        if shared.data_collect["datastat"][_]["key"] == "freq":
+                            if isinstance(freq, str):
+                                widget.setValue(freq)
+                            else:
+                                widget.setValue(f"{freq:.2f}Hz")
+                        else:  # shared.data_collect["datastat"][_]["key"] == "period":
+                            if isinstance(period, str):
+                                widget.setValue(period)
+                            else:
+                                widget.setValue(str(f"{period:.2f}s"))
                     else:
                         widget.setValue("N/A")
 
@@ -610,21 +683,20 @@ class DataCollectWidget(QWidget):
         clear_button.clicked.connect(self.data_clear)
         dataplot_control_layout.addWidget(clear_button)
         # vertical cursor button
-        vertical_cursor_button = QPushButton()
-        vertical_cursor_button.setFixedWidth(26)
-        vertical_cursor_button.setCheckable(True)
-        vertical_cursor_button.setIcon(QIcon("icon:split_vertical.svg"))
-        vertical_cursor_button.setToolTip(self.tr("show vertical cursor"))
-        vertical_cursor_button.clicked.connect(self.dataplot.x_cursor_toggle)
-        dataplot_control_layout.addWidget(vertical_cursor_button)
+
+        self.vertical_cursor_button.setFixedWidth(26)
+        self.vertical_cursor_button.setCheckable(True)
+        self.vertical_cursor_button.setIcon(QIcon("icon:split_vertical.svg"))
+        self.vertical_cursor_button.setToolTip(self.tr("show vertical cursor"))
+        self.vertical_cursor_button.clicked.connect(self.dataplot.x_cursor_toggle)
+        dataplot_control_layout.addWidget(self.vertical_cursor_button)
         # horizontal cursor button
-        horizontal_cursor_button = QPushButton()
-        horizontal_cursor_button.setFixedWidth(26)
-        horizontal_cursor_button.setCheckable(True)
-        horizontal_cursor_button.setIcon(QIcon("icon:split_horizontal.svg"))
-        horizontal_cursor_button.setToolTip(self.tr("show horizontal cursor"))
-        horizontal_cursor_button.clicked.connect(self.dataplot.y_cursor_toggle)
-        dataplot_control_layout.addWidget(horizontal_cursor_button)
+        self.horizontal_cursor_button.setFixedWidth(26)
+        self.horizontal_cursor_button.setCheckable(True)
+        self.horizontal_cursor_button.setIcon(QIcon("icon:split_horizontal.svg"))
+        self.horizontal_cursor_button.setToolTip(self.tr("show horizontal cursor"))
+        self.horizontal_cursor_button.clicked.connect(self.dataplot.y_cursor_toggle)
+        dataplot_control_layout.addWidget(self.horizontal_cursor_button)
         # statistic button
         statistic_button = QPushButton()
         statistic_button.setFixedWidth(26)
@@ -642,6 +714,7 @@ class DataCollectWidget(QWidget):
     def data_clear(self) -> None:
         self.datatable.clearContents()
         self.datatable.setRowCount(1)
+        self.start_time = None
         self.dataplot_init()
 
     def datatable_import(self, col: int, data: float) -> None:
@@ -759,8 +832,14 @@ class DataCollectWidget(QWidget):
             })
 
     def dataplot_refresh(self, index: int, data: float) -> None:
+        if self.start_time is None:
+            self.start_time = time.time()
+            current_time = 0.0
+        else:
+            current_time = time.time() - self.start_time
+
         self.datacurve[index]["y"].append(data)
-        self.datacurve[index]["x"].append(len(self.datacurve[index]["y"]))
+        self.datacurve[index]["x"].append(current_time)
         self.datacurve[index]["curve"].setData(x=self.datacurve[index]["x"], y=self.datacurve[index]["y"])
 
     def datastat_toggle(self, checked: bool) -> None:
@@ -774,14 +853,18 @@ class DataCollectWidget(QWidget):
 
     def datastat_refresh(self) -> None:
         x_min, x_max = self.dataplot.viewRange()[0]
-        x_min = floor(x_min)
-        x_max = floor(x_max)
         y_min, y_max = self.dataplot.viewRange()[1]
         dataset = []
+        timeset = []
         for line in range(len(self.datacurve)):
-            tmp = []
-            for index in range(x_min, x_max):
-                if 0 <= index < len(self.datacurve[line]["y"]) and y_min < self.datacurve[line]["y"][index] < y_max:
-                    tmp.append(self.datacurve[line]["y"][index])
-            dataset.append(np.array(tmp))
-        self.datastat.label_refresh(dataset)
+            tmp_y = []
+            tmp_x = []
+            for i in range(len(self.datacurve[line]["x"])):
+                x_val = self.datacurve[line]["x"][i]
+                y_val = self.datacurve[line]["y"][i]
+                if x_min <= x_val <= x_max and y_min <= y_val <= y_max:
+                    tmp_y.append(y_val)
+                    tmp_x.append(x_val)
+            dataset.append(np.array(tmp_y))
+            timeset.append(np.array(tmp_x))
+        self.datastat.label_refresh(dataset, timeset)
