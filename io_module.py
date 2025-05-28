@@ -4080,15 +4080,8 @@ class AdvancedSendWidget(QWidget):
                     self.row_indent()
                 else:  # self.action == "abort":
                     shared.advanced_send_buffer.insert(row, ["abort"])
-                    self.insertRow(row)
-                    move_icon = QTableWidgetItem()
-                    move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-                    self.setItem(row, 0, move_icon)
-                    action_label = QTableWidgetItem(self.tr("abort"))
-                    self.setItem(row, 1, action_label)
-                    param_widget = QLineEdit()
-                    param_widget.setEnabled(False)
-                    self.setCellWidget(row, 2, param_widget)
+                    # insert to table
+                    self.row_load(row)
                     # close window
                     self.insert_window.close()
                     # row indent
@@ -4100,16 +4093,16 @@ class AdvancedSendWidget(QWidget):
                 self.hint_label.setText(self.tr("select params"))
                 self.next_button.hide()
 
-            self.insert_window.show()
             if not legacy:
                 self.action = None
                 action_page()
             else:
-                if legacy[0] in ["endloop", "endif", "tail"]:
-                    self.insert_window.close()
+                if legacy[0] in ["endloop", "endif", "break", "abort", "tail"]:
+                    return
                 else:
                     self.action = legacy[0]
                     param_page()
+            self.insert_window.show()
 
         def row_remove(self) -> None:
             # get clear index
@@ -4146,10 +4139,49 @@ class AdvancedSendWidget(QWidget):
         def row_duplicate(self) -> None:
             # get duplicate index
             row = self.currentRow()
-            tmp = copy.deepcopy(shared.advanced_send_buffer[row])
-            shared.advanced_send_buffer.insert(row + 1, tmp)
-            # print(shared.advanced_send_buffer)
-            self.row_load(row)
+            if shared.advanced_send_buffer[row][0] == "loop":
+                depth = 0
+                tmp_buffer = []
+                while 1:
+                    tmp = copy.deepcopy(shared.advanced_send_buffer[row])
+                    tmp_buffer.append(tmp)
+                    if shared.advanced_send_buffer[row][0] == "loop":
+                        depth += 1
+                    elif shared.advanced_send_buffer[row][0] == "endloop":
+                        depth -= 1
+                    row += 1
+                    if depth == 0:
+                        break
+                shared.advanced_send_buffer[row:row] = tmp_buffer
+                for _ in range(len(tmp_buffer)):
+                    self.row_load(row)
+                    row += 1
+                # print(shared.advanced_send_buffer)
+            elif shared.advanced_send_buffer[row][0] == "if":
+                depth = 0
+                tmp_buffer = []
+                while 1:
+                    tmp = copy.deepcopy(shared.advanced_send_buffer[row])
+                    tmp_buffer.append(tmp)
+                    if shared.advanced_send_buffer[row][0] == "if":
+                        depth += 1
+                    elif shared.advanced_send_buffer[row][0] == "endif":
+                        depth -= 1
+                    row += 1
+                    if depth == 0:
+                        break
+                shared.advanced_send_buffer[row:row] = tmp_buffer
+                for _ in range(len(tmp_buffer)):
+                    self.row_load(row)
+                    row += 1
+                # print(shared.advanced_send_buffer)
+            elif shared.advanced_send_buffer[row][0] in ["endloop", "endif", "tail"]:
+                return
+            else:
+                tmp = copy.deepcopy(shared.advanced_send_buffer[row])
+                shared.advanced_send_buffer.insert(row + 1, tmp)
+                # print(shared.advanced_send_buffer)
+                self.row_load(row + 1)
             # table indent
             self.row_indent()
 
