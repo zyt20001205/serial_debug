@@ -33,44 +33,38 @@ class CommandShortcutWidget(QWidget):
             self.target_index = None
             # gui init
             self.setRowCount(len(shared.command_shortcut))
-            self.setColumnCount(4)
+            self.setColumnCount(3)
             self.setIconSize(QSize(24, 24))
             horizontal_header = self.horizontalHeader()
             horizontal_header.setVisible(False)
-            self.setColumnWidth(0, 30)
-            horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-            horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-            self.setColumnWidth(3, 30)
+            horizontal_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+            self.setColumnWidth(2, 30)
             self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             self.row_load()
             self.cellChanged.connect(self.row_change)
 
         def row_load(self) -> None:
             for _ in range(len(shared.command_shortcut)):
-                # move_icon
-                move_icon = QTableWidgetItem()
-                move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-                move_icon.setBackground(QColor(shared.command_shortcut[_]["color"]))
-                self.setItem(_, 0, move_icon)
                 # function_label
                 function_label = QTableWidgetItem(shared.command_shortcut[_]["function"])
                 function_label.setBackground(QColor(shared.command_shortcut[_]["color"]))
-                self.setItem(_, 1, function_label)
+                self.setItem(_, 0, function_label)
                 # command_label
                 command_label = QTableWidgetItem(shared.command_shortcut[_]["command"])
                 command_label.setBackground(QColor(shared.command_shortcut[_]["color"]))
-                self.setItem(_, 2, command_label)
+                self.setItem(_, 1, command_label)
                 # send button
                 send_button = QPushButton()
                 send_button.setIcon(QIcon("icon:send.svg"))
                 send_button.clicked.connect(self.parent.command_shortcut_send)
-                self.setCellWidget(_, 3, send_button)
+                self.setCellWidget(_, 2, send_button)
 
         def row_change(self, row, col) -> None:
-            if col == 1:
-                shared.command_shortcut[row]["function"] = self.item(row, 1).text()
+            if col == 0:
+                shared.command_shortcut[row]["function"] = self.item(row, 0).text()
             else:  # col == 2:
-                shared.command_shortcut[row]["command"] = self.item(row, 2).text()
+                shared.command_shortcut[row]["command"] = self.item(row, 1).text()
             # print(shared.command_shortcut)
 
         # drag event: swap
@@ -119,19 +113,17 @@ class CommandShortcutWidget(QWidget):
             shared.command_shortcut.insert(target_index, tmp)
             self.blockSignals(True)
             # remove source row
-            move = self.takeItem(source_index, 0)
-            function = self.takeItem(source_index, 1)
-            command = self.takeItem(source_index, 2)
+            function = self.takeItem(source_index, 0)
+            command = self.takeItem(source_index, 1)
             self.removeRow(source_index)
             # insert target row
             self.insertRow(target_index)
-            self.setItem(target_index, 0, move)
-            self.setItem(target_index, 1, function)
-            self.setItem(target_index, 2, command)
+            self.setItem(target_index, 0, function)
+            self.setItem(target_index, 1, command)
             send_button = QPushButton()
             send_button.setIcon(QIcon("icon:send.svg"))
             send_button.clicked.connect(self.parent.command_shortcut_send)
-            self.setCellWidget(target_index, 3, send_button)
+            self.setCellWidget(target_index, 2, send_button)
             self.blockSignals(False)
             # clear selection
             self.clearSelection()
@@ -168,21 +160,17 @@ class CommandShortcutWidget(QWidget):
             self.insertRow(row)
             self.blockSignals(True)
 
-            # move_icon
-            move_icon = QTableWidgetItem()
-            move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-            self.setItem(row, 0, move_icon)
             # function_label
             function_label = QTableWidgetItem(shared.command_shortcut[row]["function"])
-            self.setItem(row, 1, function_label)
+            self.setItem(row, 0, function_label)
             # command_label
             command_label = QTableWidgetItem(shared.command_shortcut[row]["command"])
-            self.setItem(row, 2, command_label)
+            self.setItem(row, 1, command_label)
             # send button
             send_button = QPushButton()
             send_button.setIcon(QIcon("icon:send.svg"))
             send_button.clicked.connect(self.parent.command_shortcut_send)
-            self.setCellWidget(row, 3, send_button)
+            self.setCellWidget(row, 2, send_button)
 
             self.blockSignals(False)
             # print(shared.command_shortcut)
@@ -206,21 +194,17 @@ class CommandShortcutWidget(QWidget):
             self.insertRow(row)
             self.blockSignals(True)
 
-            # move_icon
-            move_icon = QTableWidgetItem()
-            move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-            self.setItem(row, 0, move_icon)
             # function_label
             function_label = QTableWidgetItem(shared.command_shortcut[row]["function"])
-            self.setItem(row, 1, function_label)
+            self.setItem(row, 0, function_label)
             # command_label
             command_label = QTableWidgetItem(shared.command_shortcut[row]["command"])
-            self.setItem(row, 2, command_label)
+            self.setItem(row, 1, command_label)
             # send button
             send_button = QPushButton()
             send_button.setIcon(QIcon("icon:send.svg"))
             send_button.clicked.connect(self.parent.command_shortcut_send)
-            self.setCellWidget(row, 3, send_button)
+            self.setCellWidget(row, 2, send_button)
 
             self.blockSignals(False)
             # print(shared.command_shortcut)
@@ -234,7 +218,6 @@ class CommandShortcutWidget(QWidget):
                 return
             self.item(row, 0).setBackground(color)
             self.item(row, 1).setBackground(color)
-            self.item(row, 2).setBackground(color)
             # save to shared
             shared.command_shortcut[row]["color"] = color.name()
             # clear selection
@@ -269,7 +252,7 @@ class CommandShortcutWidget(QWidget):
         # get widget index
         index = None
         for row in range(self.shortcut_table.rowCount()):
-            if self.shortcut_table.cellWidget(row, 3) == self.sender():
+            if self.shortcut_table.cellWidget(row, 2) == self.sender():
                 index = row
                 break
         if index is None:
@@ -290,6 +273,6 @@ class CommandShortcutWidget(QWidget):
         shared.command_shortcut[row]["command"] = command
         # shortcut table save
         self.shortcut_table.blockSignals(True)
-        self.shortcut_table.item(row, 2).setText(command)
+        self.shortcut_table.item(row, 1).setText(command)
         self.shortcut_table.blockSignals(False)
         # print(shared.command_shortcut)

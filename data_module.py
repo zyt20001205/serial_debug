@@ -43,14 +43,13 @@ class DataCollectWidget(QWidget):
             self.target_index = None
             # gui init
             self.setRowCount(len(shared.data_collect["database"]))
-            self.setColumnCount(4)
+            self.setColumnCount(3)
             self.setIconSize(QSize(24, 24))
             horizontal_header = self.horizontalHeader()
             horizontal_header.setVisible(False)
-            self.setColumnWidth(0, 30)
-            horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-            horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-            self.setColumnWidth(3, 30)
+            horizontal_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+            self.setColumnWidth(2, 30)
             vertical_header = self.verticalHeader()
             vertical_header.setVisible(False)
             self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -59,30 +58,25 @@ class DataCollectWidget(QWidget):
 
         def row_load(self) -> None:
             for _ in range(len(shared.data_collect["database"])):
-                # move_icon
-                move_icon = QTableWidgetItem()
-                move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-                move_icon.setBackground(QColor(shared.data_collect["database"][_]["color"]))
-                self.setItem(_, 0, move_icon)
                 # label
                 label = QTableWidgetItem(shared.data_collect["database"][_]["label"])
                 label.setBackground(QColor(shared.data_collect["database"][_]["color"]))
-                self.setItem(_, 1, label)
+                self.setItem(_, 0, label)
                 # value
                 value = QTableWidgetItem()
                 value.setBackground(QColor(shared.data_collect["database"][_]["color"]))
-                self.setItem(_, 2, value)
+                self.setItem(_, 1, value)
                 # link button
                 link_button = QPushButton()
                 link_button.setIcon(QIcon("icon:link.svg"))
                 link_button.clicked.connect(self.row_link)
-                self.setCellWidget(_, 3, link_button)
+                self.setCellWidget(_, 2, link_button)
 
         def row_change(self, row, col) -> None:
-            if col == 1:
+            if col == 0:
                 # save cell
                 shared.data_collect["database"][row]["label"] = self.item(row, 1).text()
-            else:  # if col == 2:
+            else:  # if col == 1:
                 link = shared.data_collect["database"][row]["link"]
                 if not link:
                     return
@@ -108,7 +102,7 @@ class DataCollectWidget(QWidget):
             # get widget index
             index = None
             for row in range(len(shared.data_collect["database"])):
-                if self.cellWidget(row, 3) == self.sender():
+                if self.cellWidget(row, 2) == self.sender():
                     index = row
                     break
             if index is None:
@@ -140,20 +134,18 @@ class DataCollectWidget(QWidget):
             shared.data_collect["database"].insert(target_index, tmp)
             self.blockSignals(True)
             # remove source row
-            move = self.takeItem(source_index, 0)
-            label = self.takeItem(source_index, 1)
-            value = self.takeItem(source_index, 2)
+            label = self.takeItem(source_index, 0)
+            value = self.takeItem(source_index, 1)
             self.removeRow(source_index)
             # insert target row
             self.insertRow(target_index)
-            self.setItem(target_index, 0, move)
-            self.setItem(target_index, 1, label)
-            self.setItem(target_index, 2, value)
+            self.setItem(target_index, 0, label)
+            self.setItem(target_index, 1, value)
             # link button
             link_button = QPushButton()
             link_button.setIcon(QIcon("icon:link.svg"))
             link_button.clicked.connect(self.row_link)
-            self.setCellWidget(target_index, 3, link_button)
+            self.setCellWidget(target_index, 2, link_button)
             self.blockSignals(False)
             # clear selection
             self.clearSelection()
@@ -187,21 +179,17 @@ class DataCollectWidget(QWidget):
             self.insertRow(row)
             self.blockSignals(True)
 
-            # move_icon
-            move_icon = QTableWidgetItem()
-            move_icon.setIcon(QIcon("icon:arrow_move.svg"))
-            self.setItem(row, 0, move_icon)
             # label
             label = QTableWidgetItem("new")
-            self.setItem(row, 1, label)
+            self.setItem(row, 0, label)
             # value
             value = QTableWidgetItem()
-            self.setItem(row, 2, value)
+            self.setItem(row, 1, value)
             # link button
             link_button = QPushButton()
             link_button.setIcon(QIcon("icon:link.svg"))
             link_button.clicked.connect(self.row_link)
-            self.setCellWidget(row, 3, link_button)
+            self.setCellWidget(row, 2, link_button)
 
             self.blockSignals(False)
             # print(shared.data_collect["database"])
@@ -224,7 +212,6 @@ class DataCollectWidget(QWidget):
                 return
             self.item(row, 0).setBackground(color)
             self.item(row, 1).setBackground(color)
-            self.item(row, 2).setBackground(color)
             # save to shared
             shared.data_collect["database"][row]["color"] = color.name()
             # clear selection
@@ -733,7 +720,7 @@ class DataCollectWidget(QWidget):
 
     def database_import(self, row: int, data: str) -> None:
         self.database.blockSignals(True)
-        self.database.item(row, 2).setText(data)
+        self.database.item(row, 1).setText(data)
         self.database.blockSignals(False)
 
     def data_clear(self) -> None:

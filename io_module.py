@@ -2702,9 +2702,9 @@ class AdvancedSendWidget(QWidget):
                 model.appendRow([self.buffer_group, QStandardItem()])
                 self.database_group = QStandardItem("database")
                 for _ in range(len(shared.data_collect["database"])):
-                    database_key = QStandardItem(shared.data_collect_widget.database.item(_, 1).text())
+                    database_key = QStandardItem(shared.data_collect_widget.database.item(_, 0).text())
                     database_key.setEditable(False)
-                    database_value = QStandardItem(shared.data_collect_widget.database.item(_, 2).text())
+                    database_value = QStandardItem(shared.data_collect_widget.database.item(_, 1).text())
                     database_value.setEditable(False)
                     self.database_group.appendRow([database_key, database_value])
                 model.appendRow([self.database_group, QStandardItem()])
@@ -2723,7 +2723,7 @@ class AdvancedSendWidget(QWidget):
                     self.buffer_group.child(2 * _ + 1, 1).setText(value)
                 # refresh database
                 for _ in range(len(shared.data_collect["database"])):
-                    value = shared.data_collect_widget.database.item(_, 2).text()
+                    value = shared.data_collect_widget.database.item(_, 1).text()
                     self.database_group.child(_, 1).setText(value)
             else:  # operation == "end"
                 self.debug_window.close()
@@ -2780,8 +2780,8 @@ class AdvancedSendWidget(QWidget):
                         rx_buffer.append(shared.port_status_widget.tab_list[_].rx_buffer)
                     # database variable import
                     for row in range(len(shared.data_collect["database"])):
-                        name = shared.data_collect_widget.database.item(row, 1).text()
-                        value = shared.data_collect_widget.database.item(row, 2).text()
+                        name = shared.data_collect_widget.database.item(row, 0).text()
+                        value = shared.data_collect_widget.database.item(row, 1).text()
                         globals()[name] = value
                     if debug_level == 2:  # handle debug control
                         if shared.advanced_send_widget.advanced_send_table.item(index, 1).data(Qt.ItemDataRole.UserRole) == 2:
@@ -4249,7 +4249,7 @@ class AdvancedSendWidget(QWidget):
             stream = QDataStream(data, QIODevice.OpenModeFlag.ReadOnly)
             # read type
             if stream.readQString() == "advanced":
-                self.advanced_send_table.row_load(eval(stream.readQString()))
+                self.advanced_send_table.table_load(eval(stream.readQString()))
             else:
                 QMessageBox.critical(shared.main_window, "Invalid input", "Please choose an advanced shortcut.")
                 shared.port_log_widget.log_insert("shortcut load failed", "error")
