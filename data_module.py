@@ -397,6 +397,7 @@ class DataCollectWidget(QWidget):
             self.stat_combobox.setPlaceholderText(self.tr("select statistic"))
             self.stat_combobox.addItem(self.tr("max"), "max")
             self.stat_combobox.addItem(self.tr("min"), "min")
+            self.stat_combobox.addItem(self.tr("mean"), "mean")
             self.stat_combobox.addItem(self.tr("freq"), "freq")
             self.stat_combobox.addItem(self.tr("period"), "period")
             stat_layout.addWidget(self.stat_combobox)
@@ -532,6 +533,8 @@ class DataCollectWidget(QWidget):
                 data: np.array = dataset[shared.data_collect["datastat"][_]["index"]]
                 if timeset:
                     time: np.array = timeset[shared.data_collect["datastat"][_]["index"]]
+                else:
+                    time = None
                 item = self.item(_)
                 widget: DataCollectWidget.DataStatWidget.DataStatLabel = self.itemWidget(item)
                 if shared.data_collect["datastat"][_]["key"] == "max":
@@ -544,43 +547,65 @@ class DataCollectWidget(QWidget):
                         widget.setValue(str(f"{data.min():.2f}"))
                     else:
                         widget.setValue("N/A")
-                elif shared.data_collect["datastat"][_]["key"] in ["freq", "period"]:
-                    def period_stat(data: np.array, time: np.array) -> tuple:
-                        if len(data) < 3 or len(time) < 3:
-                            return "N/A", "N/A"
+                elif shared.data_collect["datastat"][_]["key"] == "mean":
+                    if data.size > 0:
+                        widget.setValue(str(f"{data.mean():.2f}"))
+                    else:
+                        widget.setValue("N/A")
+                elif shared.data_collect["datastat"][_]["key"] == "freq":
+                    def freq_stat(data: np.array, time: np.array) -> float | str:
+                        if data.size < 3 or time.size < 3:
+                            return "N/A"
                         try:
                             mean_val = np.mean(data)
                             zero_crossings = []
                             for i in range(1, len(data)):
                                 if (data[i - 1] - mean_val) * (data[i] - mean_val) < 0:
-                                    t_cross = time[i - 1] + (time[i] - time[i - 1]) * \
-                                              (mean_val - data[i - 1]) / (data[i] - data[i - 1])
+                                    t_cross = time[i - 1] + (time[i] - time[i - 1]) * (mean_val - data[i - 1]) / (data[i] - data[i - 1])
                                     zero_crossings.append(t_cross)
                             if len(zero_crossings) < 2:
-                                return "N/A", "N/A"
+                                return "N/A"
                             intervals = np.diff(zero_crossings)
                             if len(intervals) > 0:
                                 period = 2 * np.mean(intervals)
-                                return period, 1.0 / period
+                                return 1 / period
                             else:
-                                return "N/A", "N/A"
+                                return "N/A"
                         except Exception:
-                            return "N/A", "N/A"
+                            return "N/A"
 
-                    if data.size > 2 and timeset is not None:
-                        period, freq = period_stat(data, time)
-                        if shared.data_collect["datastat"][_]["key"] == "freq":
-                            if isinstance(freq, str):
-                                widget.setValue(freq)
-                            else:
-                                widget.setValue(f"{freq:.2f}Hz")
-                        else:  # shared.data_collect["datastat"][_]["key"] == "period":
-                            if isinstance(period, str):
-                                widget.setValue(period)
-                            else:
-                                widget.setValue(str(f"{period:.2f}s"))
+                    freq = freq_stat(data, time)
+                    if isinstance(freq, str):
+                        widget.setValue(freq)
                     else:
-                        widget.setValue("N/A")
+                        widget.setValue(str(f"{freq:.2f}hz"))
+                elif shared.data_collect["datastat"][_]["key"] == "period":
+                    def period_stat(data: np.array, time: np.array) -> float | str:
+                        if data.size < 3 or time.size < 3:
+                            return "N/A"
+                        try:
+                            mean_val = np.mean(data)
+                            zero_crossings = []
+                            for i in range(1, len(data)):
+                                if (data[i - 1] - mean_val) * (data[i] - mean_val) < 0:
+                                    t_cross = time[i - 1] + (time[i] - time[i - 1]) * (mean_val - data[i - 1]) / (data[i] - data[i - 1])
+                                    zero_crossings.append(t_cross)
+                            if len(zero_crossings) < 2:
+                                return "N/A"
+                            intervals = np.diff(zero_crossings)
+                            if len(intervals) > 0:
+                                period = 2 * np.mean(intervals)
+                                return period
+                            else:
+                                return "N/A"
+                        except Exception:
+                            return "N/A"
+
+                    period = period_stat(data, time)
+                    if isinstance(period, str):
+                        widget.setValue(period)
+                    else:
+                        widget.setValue(str(f"{period:.2f}s"))
 
         def gui(self) -> None:
             for _ in range(len(shared.data_collect["datastat"])):
