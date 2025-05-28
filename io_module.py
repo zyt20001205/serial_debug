@@ -4227,10 +4227,23 @@ class AdvancedSendWidget(QWidget):
                 breakpoint_icon.setIcon(QIcon("icon:breakpoint.svg"))
                 self.setItem(row, 0, breakpoint_icon)
 
-        def row_clear(self) -> None:
-            for _ in range(self.rowCount() - 1):
-                self.removeRow(0)
-            shared.advanced_send_buffer = [["tail"]]
+        def table_clear(self) -> None:
+            messagebox = QMessageBox(
+                QMessageBox.Icon.Warning,
+                self.tr("Clear Table"),
+                self.tr("This will permanently delete all data in the table.\nThis action cannot be undone!"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                shared.main_window
+            )
+            messagebox.setDefaultButton(QMessageBox.StandardButton.No)
+            messagebox.button(QMessageBox.StandardButton.Yes).setText(self.tr("Clear"))
+            messagebox.button(QMessageBox.StandardButton.No).setText(self.tr("Cancel"))
+            result = messagebox.exec()
+
+            if result == QMessageBox.StandardButton.Yes:
+                for _ in range(self.rowCount() - 1):
+                    self.removeRow(0)
+                shared.advanced_send_buffer = [["tail"]]
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasFormat('application/x-qabstractitemmodeldatalist'):
@@ -4316,7 +4329,7 @@ class AdvancedSendWidget(QWidget):
         advanced_clear_button.setFixedWidth(26)
         advanced_clear_button.setIcon(QIcon("icon:delete.svg"))
         advanced_clear_button.setToolTip("clear")
-        advanced_clear_button.clicked.connect(self.advanced_send_table.row_clear)
+        advanced_clear_button.clicked.connect(self.advanced_send_table.table_clear)
         control_layout.addWidget(advanced_clear_button)
         # advanced send abort button
         abort_button = QPushButton()
