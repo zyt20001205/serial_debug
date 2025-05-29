@@ -63,7 +63,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     ],
     "data_collect": {
         "database": [{"label": "new", "link": "", "color": "#ffffff"}],
-        "datatable": ["new"]
+        "datatable": ["new"],
+        "datastat": [],
     }
 }
 
