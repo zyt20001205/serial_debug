@@ -10,7 +10,7 @@ import shared
 CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "version": "1.2.0",
+    "version": "1.2.1",
     "check": True,
     "layout": {
         "tab": "send_tab",

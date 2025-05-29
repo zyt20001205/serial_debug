@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QP
     QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem, QSpinBox, QComboBox
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
-from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem, intColor
+from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem, intColor, LegendItem
 
 import shared
 
@@ -292,7 +292,7 @@ class DataCollectWidget(QWidget):
             self.y_label = TextItem(color='r', anchor=(1, 0.5))
             self.y_visible = False
 
-        def keyPressEvent(self, event):
+        def keyPressEvent(self, event) -> None:
             if event.key() == Qt.Key.Key_H:
                 self.parent.horizontal_cursor_button.click()
             elif event.key() == Qt.Key.Key_V:
@@ -300,7 +300,7 @@ class DataCollectWidget(QWidget):
             else:
                 super().keyPressEvent(event)
 
-        def x_cursor_toggle(self):
+        def x_cursor_toggle(self) -> None:
             def x_label_refresh():
                 x1 = self.x_cursor1.value()
                 self.x_cursor1.label.setText(f"t1={x1:.2f}s")
@@ -326,7 +326,7 @@ class DataCollectWidget(QWidget):
                 x_label_refresh()
                 self.x_visible = True
 
-        def y_cursor_toggle(self):
+        def y_cursor_toggle(self) -> None:
             def y_label_refresh():
                 y1 = self.y_cursor1.value()
                 self.y_cursor1.label.setText(f"y1={y1:.2f}")
@@ -742,6 +742,8 @@ class DataCollectWidget(QWidget):
             self.datatable.insertRow(row_count)
             cell = QTableWidgetItem(str(data))
             self.datatable.setItem(row_count, col, cell)
+        # scroll to bottom
+        self.datatable.scrollToBottom()
         # add data to plot
         self.dataplot_refresh(col, data)
 
@@ -820,15 +822,15 @@ class DataCollectWidget(QWidget):
     def dataplot_init(self) -> None:
         self.dataplot.clear()
         self.datacurve = []
-        legend = self.dataplot.addLegend(offset=(10, 10))
+        legend: LegendItem = self.dataplot.addLegend(offset=(10, 10))
         legend.setLabelTextColor('#FFFFFF')
         legend.setBrush(pg.mkBrush(QColor(0, 0, 0, 96)))
         for _ in range(self.datatable.columnCount()):
             # generate curve
             header = self.datatable.horizontalHeaderItem(_)
-            legend = header.text()
+            name = header.text()
             curve = PlotCurveItem(
-                name=legend,
+                name=name,
                 pen=pg.mkPen(
                     intColor(index=_, hues=12),
                     width=2
@@ -842,6 +844,16 @@ class DataCollectWidget(QWidget):
                 "x": [],
                 "y": []
             })
+            # add curve control
+            for i, (sample, label) in enumerate(legend.items):
+                label.mousePressEvent = lambda event, index=i: self.dataplot_toggle(index)
+
+    def dataplot_toggle(self, index: int) -> None:
+        curve: PlotCurveItem = self.datacurve[index]["curve"]
+        if curve.isVisible():
+            curve.hide()
+        else:
+            curve.show()
 
     def dataplot_refresh(self, index: int, data: float) -> None:
         if self.start_time is None:
