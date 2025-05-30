@@ -222,7 +222,6 @@ class DataCollectWidget(QWidget):
 
         def __init__(self, parent):
             super().__init__()
-            self.setSelectionBehavior(self.SelectionBehavior.SelectColumns)
             self.parent = parent
 
         def keyPressEvent(self, event):
@@ -486,7 +485,7 @@ class DataCollectWidget(QWidget):
         def label_remove(self) -> None:
             # get remove index
             row = self.currentRow()
-            if len(shared.data_collect["datastat"]) == 1:
+            if len(shared.data_collect["datastat"]) == 0:
                 return
             shared.data_collect["datastat"].pop(row)
             item = self.item(row)
@@ -724,10 +723,23 @@ class DataCollectWidget(QWidget):
         self.database.blockSignals(False)
 
     def data_clear(self) -> None:
-        self.datatable.clearContents()
-        self.datatable.setRowCount(1)
-        self.start_time = None
-        self.dataplot_init()
+        messagebox = QMessageBox(
+            QMessageBox.Icon.Warning,
+            self.tr("Clear Table"),
+            self.tr("This will permanently delete all data in the table.\nThis action cannot be undone!"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            shared.main_window
+        )
+        messagebox.setDefaultButton(QMessageBox.StandardButton.No)
+        messagebox.button(QMessageBox.StandardButton.Yes).setText(self.tr("Clear"))
+        messagebox.button(QMessageBox.StandardButton.No).setText(self.tr("Cancel"))
+        result = messagebox.exec()
+
+        if result == QMessageBox.StandardButton.Yes:
+            self.datatable.clearContents()
+            self.datatable.setRowCount(1)
+            self.start_time = None
+            self.dataplot_init()
 
     def datatable_import(self, col: int, data: float) -> None:
         # import to datatable

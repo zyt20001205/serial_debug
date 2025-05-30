@@ -3240,9 +3240,7 @@ class AdvancedSendWidget(QWidget):
                 param_widget.addItem(QIcon("icon:play.svg"), "start")
                 param_widget.addItem(QIcon("icon:stop.svg"), "restart")
                 param_widget.addItem(QIcon("icon:pause.svg"), "elapsed")
-                index = param_widget.findData(param1)
-                if index >= 0:
-                    param_widget.setCurrentIndex(index)
+                param_widget.setCurrentText(param1)
                 param_widget.currentTextChanged.connect(self.row_change)
             elif action == "loop":
                 # action label
@@ -4340,7 +4338,14 @@ class AdvancedSendWidget(QWidget):
         control_layout.addWidget(abort_button)
 
         def global_abort_window() -> None:
+            existing_window = shared.main_window.findChild(QWidget, "global_abort_window")
+            if existing_window is not None and existing_window.isVisible():
+                existing_window.raise_()
+                existing_window.activateWindow()
+                return
+            
             abort_window = QWidget(shared.main_window)
+            abort_window.setObjectName("global_abort_window")
             abort_window.setWindowTitle(self.tr("Abort"))
             abort_window.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
 

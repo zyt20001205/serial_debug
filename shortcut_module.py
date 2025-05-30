@@ -151,7 +151,7 @@ class CommandShortcutWidget(QWidget):
             row = self.currentRow()
             # command shortcut insert
             shared.command_shortcut.insert(row, {
-                "type": None,
+                "type": "single",
                 "function": "new",
                 "command": "",
                 "color": "#ffffff",
