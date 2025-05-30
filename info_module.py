@@ -18,6 +18,11 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">QQ: 2376926590</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">mail: z18917941512@qq.com</span></p>
         <br>
+        <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025- v1.2.2 - release</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send table/data table/data plot delete protection.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Shortcut insert bug fix.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Abort window bug fix.</span></p>
+        <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-05-29 v1.2.1 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">More progress on plot widget.</span></p>
         <br>
