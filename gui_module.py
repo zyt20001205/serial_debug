@@ -273,7 +273,15 @@ def shortcut_init():
     if shared.search_shortcut:
         shared.search_shortcut.deleteLater()
     shared.search_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["search"]), shared.main_window)
-    shared.search_shortcut.activated.connect(shared.port_log_widget.port_search_toggle)
+    
+    def search_focus_check():
+        focus_widget = QApplication.focusWidget()
+        if focus_widget == shared.port_log_widget or shared.port_log_widget.isAncestorOf(focus_widget):
+            shared.port_log_widget.search_toggle()
+        elif focus_widget == shared.data_collect_widget or shared.data_collect_widget.isAncestorOf(focus_widget):
+            shared.data_collect_widget.DataSearchWidget.search_toggle(shared.data_collect_widget.datasearch)
+    
+    shared.search_shortcut.activated.connect(search_focus_check)
 
     if shared.zoom_out_shortcut:
         shared.zoom_out_shortcut.deleteLater()

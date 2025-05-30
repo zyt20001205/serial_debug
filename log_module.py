@@ -24,7 +24,7 @@ class PortLogWidget(QWidget):
         # draw gui
         self.port_log_gui()
 
-    def port_search_toggle(self) -> None:
+    def search_toggle(self) -> None:
         if self.search_widget.isVisible():
             self.search_widget.setVisible(False)
             self.search_lineedit.setText("")

@@ -4,7 +4,7 @@ import time
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QDrag, QIcon, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
-    QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem, QSpinBox, QComboBox
+    QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem, QSpinBox, QComboBox, QSplitter, QLineEdit
 from PySide6.QtCore import Qt, QMimeData, QSize
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, InfiniteLine, TextItem, PlotCurveItem, intColor, LegendItem
@@ -18,6 +18,7 @@ class DataCollectWidget(QWidget):
         # var init
         self.database = self.DatabaseWidget()
         self.datatable = self.DatatableWidget(self)
+        self.datasearch = self.DataSearchWidget()
         self.dataplot = self.DataPlotWidget(self)
         self.datastat = self.DataStatWidget()
         self.datacurve = []
@@ -219,10 +220,14 @@ class DataCollectWidget(QWidget):
             self.clearFocus()
 
     class DatatableWidget(QTableWidget):
-
         def __init__(self, parent):
             super().__init__()
             self.parent = parent
+
+            self.setRowCount(1)
+            self.setColumnCount(len(shared.data_collect["datatable"]))
+            self.setHorizontalHeaderLabels(shared.data_collect["datatable"])
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         def keyPressEvent(self, event):
             if event.key() == Qt.Key.Key_Delete:
@@ -234,6 +239,89 @@ class DataCollectWidget(QWidget):
                 self.clearFocus()
             else:
                 super().keyPressEvent(event)
+
+    class DataSearchWidget(QWidget):
+        def __init__(self) -> None:
+            super().__init__()
+            # instance variables
+            self.search_lineedit = QLineEdit()
+            self.match_exact_button = QPushButton()
+            self.match_case_button = QPushButton()
+            self.statistic_label = QLabel(self.tr("0 results"))
+            self.match_list = None
+            self.match_index = None
+            # draw gui
+            self.gui()
+            self.hide()
+
+        def search_toggle(self) -> None:
+            if self.isVisible():
+                self.setVisible(False)
+                self.search_lineedit.setText("")
+            else:
+                self.setVisible(True)
+                self.search_lineedit.setFocus()
+
+        def searchtag_toggle(self, tag: str) -> None:
+            self.match_exact_button.setChecked(False)
+            self.match_case_button.setChecked(False)
+            if tag == "exact":
+                self.match_exact_button.setChecked(True)
+            elif tag == "case":
+                self.match_case_button.setChecked(True)
+
+            self.data_search()
+
+        def data_search(self) -> None:
+            table: "DataCollectWidget.DatatableWidget" = shared.data_collect_widget.datatable
+            keyword = self.search_lineedit.text()
+            self.match_list = table.findItems(keyword, Qt.MatchFlag.MatchContains)
+            self.match_index = 0
+            if self.match_list:
+                self.statistic_label.setText(f"1/{len(self.match_list)}")
+                table.setCurrentItem(self.match_list[self.match_index])
+                table.scrollToItem(self.match_list[self.match_index])
+
+        def gui(self) -> None:
+            datasearch_layout = QHBoxLayout(self)
+            datasearch_layout.setContentsMargins(0, 5, 0, 0)
+            search_splitter = QSplitter(Qt.Orientation.Horizontal)
+            datasearch_layout.addWidget(search_splitter)
+            # search entry widget
+            search_entry_widget = QWidget()
+            search_entry_layout = QHBoxLayout(search_entry_widget)
+            search_entry_layout.setContentsMargins(0, 0, 0, 0)
+            search_splitter.addWidget(search_entry_widget)
+            # search lineedit
+            self.search_lineedit.setStyleSheet("background-color: white;margin: 0px;")
+            self.search_lineedit.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.search_lineedit.setClearButtonEnabled(True)
+            self.search_lineedit.textChanged.connect(self.data_search)
+            search_entry_layout.addWidget(self.search_lineedit)
+            # match exact button
+            self.match_exact_button.setFixedWidth(26)
+            self.match_exact_button.setIcon(QIcon("icon:text_color.svg"))
+            self.match_exact_button.setCheckable(True)
+            self.match_exact_button.setChecked(True)
+            self.match_exact_button.setToolTip(self.tr("match exact"))
+            self.match_exact_button.clicked.connect(lambda: self.searchtag_toggle("exact"))
+            search_entry_layout.addWidget(self.match_exact_button)
+            # match case button
+            self.match_case_button.setFixedWidth(26)
+            self.match_case_button.setIcon(QIcon("icon:text_change_case.svg"))
+            self.match_case_button.setCheckable(True)
+            self.match_case_button.setToolTip(self.tr("match case"))
+            self.match_case_button.clicked.connect(lambda: self.searchtag_toggle("case"))
+            search_entry_layout.addWidget(self.match_case_button)
+
+            # search control widget
+            search_control_widget = QWidget()
+            search_control_layout = QHBoxLayout(search_control_widget)
+            search_control_layout.setContentsMargins(0, 0, 0, 0)
+            search_control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+            search_splitter.addWidget(search_control_widget)
+            # statistic label
+            search_control_layout.addWidget(self.statistic_label)
 
     class DataPlotWidget(PlotWidget):
         def __init__(self, parent) -> None:
@@ -432,7 +520,7 @@ class DataCollectWidget(QWidget):
                 layout.addWidget(setting_button)
 
         class EmptyLabel(QWidget):
-            def __init__(self, parent) -> None:
+            def __init__(self, parent: "DataCollectWidget.DataStatWidget") -> None:
                 super().__init__()
                 self.parent = parent
                 self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
@@ -631,11 +719,9 @@ class DataCollectWidget(QWidget):
         tab_widget.setTabIcon(1, QIcon("icon:table.svg"))
         datatable_layout = QVBoxLayout(datatable_tab)
         datatable_layout.setContentsMargins(0, 0, 0, 0)
+        # datasearch
+        datatable_layout.addWidget(self.datasearch)
         # datatable
-        self.datatable.setRowCount(1)
-        self.datatable.setColumnCount(len(shared.data_collect["datatable"]))
-        self.datatable.setHorizontalHeaderLabels(shared.data_collect["datatable"])
-        self.datatable.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         datatable_layout.addWidget(self.datatable)
         # datatable control widget
         datatable_control_widget = QWidget()
@@ -717,11 +803,13 @@ class DataCollectWidget(QWidget):
         statistic_button.clicked.connect(self.datastat_toggle)
         dataplot_control_layout.addWidget(statistic_button)
 
+    # database func
     def database_import(self, row: int, data: str) -> None:
         self.database.blockSignals(True)
         self.database.item(row, 1).setText(data)
         self.database.blockSignals(False)
 
+    # datatable&dataplot func
     def data_clear(self) -> None:
         messagebox = QMessageBox(
             QMessageBox.Icon.Warning,
@@ -741,6 +829,7 @@ class DataCollectWidget(QWidget):
             self.start_time = None
             self.dataplot_init()
 
+    # datatable func
     def datatable_import(self, col: int, data: float) -> None:
         # import to datatable
         row_count = self.datatable.rowCount()
@@ -831,6 +920,7 @@ class DataCollectWidget(QWidget):
         except:
             shared.port_log_widget.log_insert(f"datatable save failed", "warning")
 
+    # dataplot func
     def dataplot_init(self) -> None:
         self.dataplot.clear()
         self.datacurve = []
@@ -878,6 +968,7 @@ class DataCollectWidget(QWidget):
         self.datacurve[index]["x"].append(current_time)
         self.datacurve[index]["curve"].setData(x=self.datacurve[index]["x"], y=self.datacurve[index]["y"])
 
+    # datastat func
     def datastat_toggle(self, checked: bool) -> None:
         if checked:
             self.datastat.show()
