@@ -1,9 +1,22 @@
 import os
 from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QMediaDevices, QImageCapture
-from PySide6.QtCore import QEventLoop, QTimer
+from PySide6.QtCore import QEventLoop, QTimer, QObject
+
+import shared
 
 
-def guardian():
+class MouseEventFilter(QObject):
+    def __init__(self):
+        super().__init__()
+
+    def eventFilter(self, obj, event):
+        if obj == shared.abort_button:
+            return False
+        else:
+            return True
+
+
+def guard():
     # find camera device
     camera_device = QMediaDevices.videoInputs()[0]
     camera = QCamera(camera_device)

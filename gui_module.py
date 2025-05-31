@@ -12,7 +12,7 @@ from document_module import DocumentWidget, config_save, config_save_as, config_
 from view_module import ViewWidget
 from setting_module import SettingWidget
 from info_module import InfoWidget
-from guardian_module import guardian
+from guard_module import guard, MouseEventFilter
 
 toolbar: QToolBar
 send_tab: QAction
@@ -32,6 +32,9 @@ advanced_send_dock_widget: QDockWidget
 file_send_dock_widget: QDockWidget
 command_shortcut_dock_widget: QDockWidget
 data_collect_dock_widget: QDockWidget
+
+guard_enable = False
+guard_filter = MouseEventFilter()
 
 
 def main_gui():
@@ -294,12 +297,21 @@ def shortcut_init():
     shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
     shared.zoom_in_shortcut.activated.connect(shared.port_log_widget.log_zoom_in)
 
-    def guardian_toggle() -> None:
-        print("guardian on")
-        shared.abort_button.clicked.connect(guardian)
+    def guard_toggle() -> None:
+        global guard_enable
+        if guard_enable:
+            guard_enable = False
+            shared.main_window.removeEventFilter(guard_filter)
+            shared.port_log_widget.log_insert("guard mode off", "warning")
+            shared.abort_button.clicked.disconnect(guard)
+        else:
+            guard_enable = True
+            shared.main_window.installEventFilter(guard_filter)
+            shared.port_log_widget.log_insert("guard mode on", "warning")
+            shared.abort_button.clicked.connect(guard)
 
-    guardian_shortcut = QShortcut(QKeySequence("Ctrl+G"), shared.main_window)
-    guardian_shortcut.activated.connect(guardian_toggle)
+    guard_shortcut = QShortcut(QKeySequence("Ctrl+G"), shared.main_window)
+    guard_shortcut.activated.connect(guard_toggle)
 
 
 def tab_init():
