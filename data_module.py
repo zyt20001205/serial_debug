@@ -772,9 +772,10 @@ class DataCollectWidget(QWidget):
                 item = QListWidgetItem()
                 item.setSizeHint(QSize(120, 60))
                 self.addItem(item)
+                index = shared.data_collect["datastat"][_]["index"]
                 widget = self.DataStatLabel(self)
-                widget.setColor(intColor(index=shared.data_collect["datastat"][_]["index"], hues=12).name())
-                widget.setKey(shared.data_collect["datastat"][_]["key"])
+                widget.setColor(intColor(index=index, hues=12).name())
+                widget.setKey(shared.data_collect["datatable"][index] + " " + shared.data_collect["datastat"][_]["key"])
                 self.setItemWidget(item, widget)
             item = QListWidgetItem()
             item.setSizeHint(QSize(120, 60))
@@ -948,6 +949,7 @@ class DataCollectWidget(QWidget):
             # print(shared.data_collect["datatable"])
         else:
             shared.port_log_widget.log_insert("datatable column insert cancelled", "warning")
+        self.dataplot_init()
 
     def datatable_remove(self) -> None:
         # get remove index
@@ -957,6 +959,7 @@ class DataCollectWidget(QWidget):
         shared.data_collect["datatable"].pop(col)
         self.datatable.removeColumn(col)
         # print(shared.data_collect["datatable"])
+        self.dataplot_init()
 
     def datatable_rename(self) -> None:
         # get insert index
@@ -975,6 +978,7 @@ class DataCollectWidget(QWidget):
             # print(shared.data_collect["datatable"])
         else:
             shared.port_log_widget.log_insert("datatable column rename cancelled", "warning")
+        self.dataplot_init()
 
     def datatable_save(self) -> None:
         try:

@@ -1807,11 +1807,12 @@ class PortStatusWidget(QWidget):
                                                      "2: Two stop bits."))
                 self.port_param_layout.addWidget(stopbits_combobox, 3, 1)
                 # timeout value
-                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                timeout_label = QLabel(self.tr("Timeout"))
                 self.port_param_layout.addWidget(timeout_label, 4, 0)
                 timeout_spinbox.show()
                 timeout_spinbox.setRange(0, 100)
                 timeout_spinbox.setSingleStep(1)
+                timeout_spinbox.setSuffix("ms")
                 if index == -1:
                     timeout_spinbox.setValue(0)
                 else:
@@ -1841,11 +1842,12 @@ class PortStatusWidget(QWidget):
                 self.port_param_layout.addWidget(remoteport_lineedit, 1, 1)
 
                 # timeout value
-                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                timeout_label = QLabel(self.tr("Timeout"))
                 self.port_param_layout.addWidget(timeout_label, 2, 0)
                 timeout_spinbox.show()
                 timeout_spinbox.setRange(0, 100)
                 timeout_spinbox.setSingleStep(1)
+                timeout_spinbox.setSuffix("ms")
                 if index == -1:
                     timeout_spinbox.setValue(0)
                 else:
@@ -1888,11 +1890,12 @@ class PortStatusWidget(QWidget):
                 self.port_param_layout.addWidget(localport_lineedit, 1, 1)
 
                 # timeout value
-                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                timeout_label = QLabel(self.tr("Timeout"))
                 self.port_param_layout.addWidget(timeout_label, 2, 0)
                 timeout_spinbox = QSpinBox()
                 timeout_spinbox.setRange(0, 100)
                 timeout_spinbox.setSingleStep(1)
+                timeout_spinbox.setSuffix("ms")
                 if index == -1:
                     timeout_spinbox.setValue(0)
                 else:
@@ -1951,11 +1954,12 @@ class PortStatusWidget(QWidget):
                 self.port_param_layout.addWidget(remoteport_lineedit, 3, 1)
 
                 # timeout value
-                timeout_label = QLabel(self.tr("Timeout(ms)"))
+                timeout_label = QLabel(self.tr("Timeout"))
                 self.port_param_layout.addWidget(timeout_label, 4, 0)
                 timeout_spinbox = QSpinBox()
                 timeout_spinbox.setRange(0, 100)
                 timeout_spinbox.setSingleStep(1)
+                timeout_spinbox.setSuffix("ms")
                 if index == -1:
                     timeout_spinbox.setValue(0)
                 else:
@@ -2198,6 +2202,7 @@ class PortStatusWidget(QWidget):
         tx_interval_spinbox = QSpinBox()
         tx_interval_spinbox.setRange(0, 1000)
         tx_interval_spinbox.setSingleStep(1)
+        tx_interval_spinbox.setSuffix("ms")
         if index == -1:
             tx_interval_spinbox.setValue(0)
         else:
@@ -2243,6 +2248,7 @@ class PortStatusWidget(QWidget):
         rx_size_spinbox = QSpinBox()
         rx_size_spinbox.setRange(0, 100)
         rx_size_spinbox.setSingleStep(1)
+        rx_size_spinbox.setSuffix("bytes")
         if index == -1:
             rx_size_spinbox.setValue(0)
         else:
