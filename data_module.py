@@ -244,8 +244,12 @@ class DataCollectWidget(QWidget):
         def __init__(self) -> None:
             super().__init__()
             # instance variables
+            self.table = None
             self.search_lineedit = QLineEdit()
             self.match_exact_button = QPushButton()
+            self.match_contain_button = QPushButton()
+            self.match_start_button = QPushButton()
+            self.match_end_button = QPushButton()
             self.match_case_button = QPushButton()
             self.statistic_label = QLabel(self.tr("0 results"))
             self.match_list = None
@@ -264,23 +268,61 @@ class DataCollectWidget(QWidget):
 
         def searchtag_toggle(self, tag: str) -> None:
             self.match_exact_button.setChecked(False)
+            self.match_contain_button.setChecked(False)
+            self.match_start_button.setChecked(False)
+            self.match_end_button.setChecked(False)
             self.match_case_button.setChecked(False)
             if tag == "exact":
                 self.match_exact_button.setChecked(True)
+            elif tag == "contain":
+                self.match_contain_button.setChecked(True)
+            elif tag == "start":
+                self.match_start_button.setChecked(True)
+            elif tag == "end":
+                self.match_end_button.setChecked(True)
             elif tag == "case":
                 self.match_case_button.setChecked(True)
 
             self.data_search()
 
         def data_search(self) -> None:
-            table: "DataCollectWidget.DatatableWidget" = shared.data_collect_widget.datatable
+            self.table: "DataCollectWidget.DatatableWidget" = shared.data_collect_widget.datatable
             keyword = self.search_lineedit.text()
-            self.match_list = table.findItems(keyword, Qt.MatchFlag.MatchContains)
+            if self.match_exact_button.isChecked():
+                flag = Qt.MatchFlag.MatchExactly
+            elif self.match_contain_button.isChecked():
+                flag = Qt.MatchFlag.MatchContains
+            elif self.match_start_button.isChecked():
+                flag = Qt.MatchFlag.MatchStartsWith
+            elif self.match_end_button.isChecked():
+                flag = Qt.MatchFlag.MatchEndsWith
+            elif self.match_case_button.isChecked():
+                flag = Qt.MatchFlag.MatchCaseSensitive
+            else:
+                flag = Qt.MatchFlag.MatchContains
+
+            self.match_list = self.table.findItems(keyword, flag)
             self.match_index = 0
             if self.match_list:
-                self.statistic_label.setText(f"1/{len(self.match_list)}")
-                table.setCurrentItem(self.match_list[self.match_index])
-                table.scrollToItem(self.match_list[self.match_index])
+                self.statistic_label.setText(f"{self.match_index + 1}/{len(self.match_list)}")
+                self.table.setCurrentItem(self.match_list[self.match_index])
+                self.table.scrollToItem(self.match_list[self.match_index])
+
+        def search_previous(self) -> None:
+            if self.match_index == 0:
+                return
+            self.match_index -= 1
+            self.statistic_label.setText(f"{self.match_index + 1}/{len(self.match_list)}")
+            self.table.setCurrentItem(self.match_list[self.match_index])
+            self.table.scrollToItem(self.match_list[self.match_index])
+
+        def search_next(self) -> None:
+            if self.match_index == len(self.match_list) - 1:
+                return
+            self.match_index += 1
+            self.statistic_label.setText(f"{self.match_index + 1}/{len(self.match_list)}")
+            self.table.setCurrentItem(self.match_list[self.match_index])
+            self.table.scrollToItem(self.match_list[self.match_index])
 
         def gui(self) -> None:
             datasearch_layout = QHBoxLayout(self)
@@ -300,12 +342,33 @@ class DataCollectWidget(QWidget):
             search_entry_layout.addWidget(self.search_lineedit)
             # match exact button
             self.match_exact_button.setFixedWidth(26)
-            self.match_exact_button.setIcon(QIcon("icon:text_color.svg"))
+            self.match_exact_button.setIcon(QIcon("icon:text.svg"))
             self.match_exact_button.setCheckable(True)
-            self.match_exact_button.setChecked(True)
             self.match_exact_button.setToolTip(self.tr("match exact"))
             self.match_exact_button.clicked.connect(lambda: self.searchtag_toggle("exact"))
             search_entry_layout.addWidget(self.match_exact_button)
+            # match contain button
+            self.match_contain_button.setFixedWidth(26)
+            self.match_contain_button.setIcon(QIcon("icon:contain.svg"))
+            self.match_contain_button.setCheckable(True)
+            self.match_contain_button.setChecked(True)
+            self.match_contain_button.setToolTip(self.tr("match contain"))
+            self.match_contain_button.clicked.connect(lambda: self.searchtag_toggle("contain"))
+            search_entry_layout.addWidget(self.match_contain_button)
+            # match start button
+            self.match_start_button.setFixedWidth(26)
+            self.match_start_button.setIcon(QIcon("icon:contain_start.svg"))
+            self.match_start_button.setCheckable(True)
+            self.match_start_button.setToolTip(self.tr("match start"))
+            self.match_start_button.clicked.connect(lambda: self.searchtag_toggle("start"))
+            search_entry_layout.addWidget(self.match_start_button)
+            # match end button
+            self.match_end_button.setFixedWidth(26)
+            self.match_end_button.setIcon(QIcon("icon:contain_end.svg"))
+            self.match_end_button.setCheckable(True)
+            self.match_end_button.setToolTip(self.tr("match end"))
+            self.match_end_button.clicked.connect(lambda: self.searchtag_toggle("end"))
+            search_entry_layout.addWidget(self.match_end_button)
             # match case button
             self.match_case_button.setFixedWidth(26)
             self.match_case_button.setIcon(QIcon("icon:text_change_case.svg"))
@@ -320,6 +383,20 @@ class DataCollectWidget(QWidget):
             search_control_layout.setContentsMargins(0, 0, 0, 0)
             search_control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
             search_splitter.addWidget(search_control_widget)
+            # search previous button
+            search_previous_button = QPushButton()
+            search_previous_button.setFixedWidth(26)
+            search_previous_button.setIcon(QIcon("icon:arrow_up.svg"))
+            search_previous_button.setToolTip(self.tr("search previous"))
+            search_previous_button.clicked.connect(self.search_previous)
+            search_control_layout.addWidget(search_previous_button)
+            # search next button
+            search_next_button = QPushButton()
+            search_next_button.setFixedWidth(26)
+            search_next_button.setIcon(QIcon("icon:arrow_down.svg"))
+            search_next_button.setToolTip(self.tr("search next"))
+            search_next_button.clicked.connect(self.search_next)
+            search_control_layout.addWidget(search_next_button)
             # statistic label
             search_control_layout.addWidget(self.statistic_label)
 

@@ -117,7 +117,7 @@ class PortLogWidget(QWidget):
         search_entry_layout.addWidget(self.match_case_button)
         # match word button
         self.match_word_button.setFixedWidth(26)
-        self.match_word_button.setIcon(QIcon("icon:text_color.svg"))
+        self.match_word_button.setIcon(QIcon("icon:text.svg"))
         self.match_word_button.setCheckable(True)
         self.match_word_button.setToolTip(self.tr("match word"))
         self.match_word_button.toggled.connect(log_search)
