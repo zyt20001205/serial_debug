@@ -46,6 +46,7 @@ class SettingWidget(QWidget):
         self.load_sequence = QKeySequenceEdit(shared.shortcut_setting["load"])
         self.quit_sequence = QKeySequenceEdit(shared.shortcut_setting["quit"])
         self.search_sequence = QKeySequenceEdit(shared.shortcut_setting["search"])
+        self.guard_sequence = QKeySequenceEdit(shared.shortcut_setting["guard"])
         self.zoom_in_sequence = QKeySequenceEdit(shared.shortcut_setting["zoom_in"])
         self.zoom_out_sequence = QKeySequenceEdit(shared.shortcut_setting["zoom_out"])
         # draw gui
@@ -366,6 +367,8 @@ class SettingWidget(QWidget):
                 shortcut_icon.setPixmap(QIcon("icon:arrow_exit.svg").pixmap(128, 128))
             elif icon == "search":
                 shortcut_icon.setPixmap(QIcon("icon:search.svg").pixmap(128, 128))
+            elif icon == "lock_closed":
+                shortcut_icon.setPixmap(QIcon("icon:lock_closed.svg").pixmap(128, 128))
             elif icon == "zoom_in":
                 shortcut_icon.setPixmap(QIcon("icon:zoom_in.svg").pixmap(128, 128))
             elif icon == "zoom_out":
@@ -439,22 +442,30 @@ class SettingWidget(QWidget):
         self.search_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("search"))
         self.search_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
         shortcut_param_layout.addWidget(self.search_sequence, 4, 1)
+        # guard shortcut
+        guard_label = QLabel(self.tr("Guard"))
+        guard_label.setFont(self.font)
+        shortcut_param_layout.addWidget(guard_label, 5, 0)
+        self.guard_sequence.setFont(self.font)
+        self.guard_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("lock_closed"))
+        self.guard_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
+        shortcut_param_layout.addWidget(self.guard_sequence, 5, 1)
         # zoom in shortcut
         zoom_in_label = QLabel(self.tr("Zoom In"))
         zoom_in_label.setFont(self.font)
-        shortcut_param_layout.addWidget(zoom_in_label, 5, 0)
+        shortcut_param_layout.addWidget(zoom_in_label, 6, 0)
         self.zoom_in_sequence.setFont(self.font)
         self.zoom_in_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("zoom_in"))
         self.zoom_in_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
-        shortcut_param_layout.addWidget(self.zoom_in_sequence, 5, 1)
+        shortcut_param_layout.addWidget(self.zoom_in_sequence, 6, 1)
         # zoom out shortcut
         zoom_out_label = QLabel(self.tr("Zoom Out"))
         zoom_out_label.setFont(self.font)
-        shortcut_param_layout.addWidget(zoom_out_label, 6, 0)
+        shortcut_param_layout.addWidget(zoom_out_label, 7, 0)
         self.zoom_out_sequence.setFont(self.font)
         self.zoom_out_sequence.keySequenceChanged.connect(lambda: shortcut_view_gui_refresh("zoom_out"))
         self.zoom_out_sequence.editingFinished.connect(lambda: shortcut_view_gui_refresh("check"))
-        shortcut_param_layout.addWidget(self.zoom_out_sequence, 6, 1)
+        shortcut_param_layout.addWidget(self.zoom_out_sequence, 7, 1)
         # shortcut view widget
         shortcut_view_widget = QWidget()
         shortcut_layout.addWidget(shortcut_view_widget)
@@ -504,6 +515,8 @@ class SettingWidget(QWidget):
         shared.shortcut_setting["quit"] = "Ctrl+Q"
         self.search_sequence.setKeySequence("Ctrl+F")
         shared.shortcut_setting["search"] = "Ctrl+F"
+        self.guard_sequence.setKeySequence("Ctrl+G")
+        shared.shortcut_setting["guard"] = "Ctrl+G"
         self.zoom_in_sequence.setKeySequence("Ctrl+]")
         shared.shortcut_setting["zoom_in"] = "Ctrl+]"
         self.zoom_out_sequence.setKeySequence("Ctrl+[")
@@ -541,6 +554,7 @@ class SettingWidget(QWidget):
         shared.shortcut_setting["load"] = self.load_sequence.keySequence().toString()
         shared.shortcut_setting["quit"] = self.quit_sequence.keySequence().toString()
         shared.shortcut_setting["search"] = self.search_sequence.keySequence().toString()
+        shared.shortcut_setting["guard"] = self.guard_sequence.keySequence().toString()
         shared.shortcut_setting["zoom_in"] = self.zoom_in_sequence.keySequence().toString()
         shared.shortcut_setting["zoom_out"] = self.zoom_out_sequence.keySequence().toString()
         # save to config

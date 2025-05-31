@@ -870,14 +870,14 @@ class DataCollectWidget(QWidget):
         self.vertical_cursor_button.setFixedWidth(26)
         self.vertical_cursor_button.setCheckable(True)
         self.vertical_cursor_button.setIcon(QIcon("icon:split_vertical.svg"))
-        self.vertical_cursor_button.setToolTip(self.tr("show vertical cursor"))
+        self.vertical_cursor_button.setToolTip(self.tr("vertical cursor"))
         self.vertical_cursor_button.clicked.connect(self.dataplot.x_cursor_toggle)
         dataplot_control_layout.addWidget(self.vertical_cursor_button)
         # horizontal cursor button
         self.horizontal_cursor_button.setFixedWidth(26)
         self.horizontal_cursor_button.setCheckable(True)
         self.horizontal_cursor_button.setIcon(QIcon("icon:split_horizontal.svg"))
-        self.horizontal_cursor_button.setToolTip(self.tr("show horizontal cursor"))
+        self.horizontal_cursor_button.setToolTip(self.tr("horizontal cursor"))
         self.horizontal_cursor_button.clicked.connect(self.dataplot.y_cursor_toggle)
         dataplot_control_layout.addWidget(self.horizontal_cursor_button)
         # statistic button
@@ -885,7 +885,7 @@ class DataCollectWidget(QWidget):
         statistic_button.setFixedWidth(26)
         statistic_button.setCheckable(True)
         statistic_button.setIcon(QIcon("icon:data_pie.svg"))
-        statistic_button.setToolTip(self.tr("show statistic"))
+        statistic_button.setToolTip(self.tr("statistic"))
         statistic_button.clicked.connect(self.datastat_toggle)
         dataplot_control_layout.addWidget(statistic_button)
 

@@ -238,7 +238,7 @@ class CommandShortcutWidget(QWidget):
         icon.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         overlay_layout.addWidget(icon)
-        label = QLabel("Drop Shortcut To Relocate", self.overlay)
+        label = QLabel(self.tr("Drop Shortcut To Relocate"), self.overlay)
         label.setStyleSheet("color: black; font-size: 24px; font-weight: bold; background-color: rgba(0, 0, 0, 0);")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         overlay_layout.addWidget(label)

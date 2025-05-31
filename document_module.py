@@ -35,6 +35,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "load": "Ctrl+L",
         "quit": "Ctrl+Q",
         "search": "Ctrl+F",
+        "guard": "Ctrl+G",
         "zoom_in": "Ctrl+]",
         "zoom_out": "Ctrl+["
     },

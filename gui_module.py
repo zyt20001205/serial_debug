@@ -273,10 +273,6 @@ def shortcut_init():
     shared.quit_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["quit"]), shared.main_window)
     shared.quit_shortcut.activated.connect(shared.main_window.close)
 
-    if shared.search_shortcut:
-        shared.search_shortcut.deleteLater()
-    shared.search_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["search"]), shared.main_window)
-
     def search_focus_check():
         focus_widget = QApplication.focusWidget()
         if focus_widget == shared.port_log_widget or shared.port_log_widget.isAncestorOf(focus_widget):
@@ -284,17 +280,10 @@ def shortcut_init():
         elif focus_widget == shared.data_collect_widget or shared.data_collect_widget.isAncestorOf(focus_widget):
             shared.data_collect_widget.DataSearchWidget.search_toggle(shared.data_collect_widget.datasearch)
 
+    if shared.search_shortcut:
+        shared.search_shortcut.deleteLater()
+    shared.search_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["search"]), shared.main_window)
     shared.search_shortcut.activated.connect(search_focus_check)
-
-    if shared.zoom_out_shortcut:
-        shared.zoom_out_shortcut.deleteLater()
-    shared.zoom_out_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_out"]), shared.main_window)
-    shared.zoom_out_shortcut.activated.connect(shared.port_log_widget.log_zoom_out)
-
-    if shared.zoom_in_shortcut:
-        shared.zoom_in_shortcut.deleteLater()
-    shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
-    shared.zoom_in_shortcut.activated.connect(shared.port_log_widget.log_zoom_in)
 
     def guard_toggle() -> None:
         global guard_enable
@@ -311,8 +300,20 @@ def shortcut_init():
             shared.port_log_widget.log_insert("guard mode on", "warning")
             shared.abort_button.clicked.connect(guard)
 
-    guard_shortcut = QShortcut(QKeySequence("Ctrl+G"), shared.main_window)
-    guard_shortcut.activated.connect(guard_toggle)
+    if shared.guard_shortcut:
+        shared.guard_shortcut.deleteLater()
+    shared.guard_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["guard"]), shared.main_window)
+    shared.guard_shortcut.activated.connect(guard_toggle)
+
+    if shared.zoom_out_shortcut:
+        shared.zoom_out_shortcut.deleteLater()
+    shared.zoom_out_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_out"]), shared.main_window)
+    shared.zoom_out_shortcut.activated.connect(shared.port_log_widget.log_zoom_out)
+
+    if shared.zoom_in_shortcut:
+        shared.zoom_in_shortcut.deleteLater()
+    shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
+    shared.zoom_in_shortcut.activated.connect(shared.port_log_widget.log_zoom_in)
 
 
 def tab_init():

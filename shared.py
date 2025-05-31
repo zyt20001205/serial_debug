@@ -21,6 +21,7 @@ save_as_shortcut = None
 load_shortcut = None
 quit_shortcut = None
 search_shortcut = None
+guard_shortcut = None
 zoom_in_shortcut = None
 zoom_out_shortcut = None
 
