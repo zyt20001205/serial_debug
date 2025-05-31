@@ -436,6 +436,7 @@ class PortStatusWidget(QWidget):
             setting_button = QPushButton()
             setting_button.setFixedWidth(26)
             setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.setToolTip(self.tr("port setting"))
             setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
             setting_layout.addWidget(setting_button)
             # tx buffer widget
@@ -799,6 +800,7 @@ class PortStatusWidget(QWidget):
             setting_button = QPushButton()
             setting_button.setFixedWidth(26)
             setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.setToolTip(self.tr("port setting"))
             setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
             setting_layout.addWidget(setting_button)
             # tx buffer widget
@@ -1272,6 +1274,7 @@ class PortStatusWidget(QWidget):
             setting_button = QPushButton()
             setting_button.setFixedWidth(26)
             setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.setToolTip(self.tr("port setting"))
             setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
             setting_layout.addWidget(setting_button)
             # tx buffer widget
@@ -1618,6 +1621,7 @@ class PortStatusWidget(QWidget):
             setting_button = QPushButton()
             setting_button.setFixedWidth(26)
             setting_button.setIcon(QIcon("icon:settings.svg"))
+            setting_button.setToolTip(self.tr("port setting"))
             setting_button.clicked.connect(lambda: self.parent.port_tab_edit(self.parent.tab_widget.indexOf(self)))
             setting_layout.addWidget(setting_button)
             # tx buffer widget
@@ -1686,6 +1690,7 @@ class PortStatusWidget(QWidget):
         add_button = QPushButton()
         add_button.setFixedWidth(26)
         add_button.setIcon(QIcon("icon:add.svg"))
+        add_button.setToolTip(self.tr("add port"))
         add_button.clicked.connect(lambda: self.port_tab_edit(-1))
         self.tab_widget.setCornerWidget(add_button)
 
@@ -2409,21 +2414,21 @@ class SingleSendWidget(QWidget):
         self.single_send_button.setFixedWidth(26)
         self.single_send_button.setIcon(QIcon("icon:send.svg"))
         self.single_send_button.clicked.connect(lambda: shared.port_status_widget.port_write(self.single_send_textedit.toPlainText(), "CURRENT"))
-        self.single_send_button.setToolTip("send")
+        self.single_send_button.setToolTip(self.tr("send"))
         control_layout.addWidget(self.single_send_button)
         # single save button
         single_save_button = QPushButton()
         single_save_button.setFixedWidth(26)
         single_save_button.setIcon(QIcon("icon:save.svg"))
         single_save_button.clicked.connect(self.single_send_save)
-        single_save_button.setToolTip("save to shortcut")
+        single_save_button.setToolTip(self.tr("save to shortcut"))
         control_layout.addWidget(single_save_button)
         # single clear button
         single_clear_button = QPushButton()
         single_clear_button.setFixedWidth(26)
         single_clear_button.setIcon(QIcon("icon:delete.svg"))
         single_clear_button.clicked.connect(self.single_send_clear)
-        single_clear_button.setToolTip("clear")
+        single_clear_button.setToolTip(self.tr("clear"))
         control_layout.addWidget(single_clear_button)
 
         # initialize gui
