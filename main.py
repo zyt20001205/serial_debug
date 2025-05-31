@@ -1,14 +1,15 @@
 import sys
 import asyncio
 import qdarktheme
-from PySide6.QtWidgets import QMainWindow, QApplication
-from PySide6.QtCore import QDir
+from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QVBoxLayout, QLabel
+from PySide6.QtCore import QDir, Qt
 import PySide6.QtAsyncio as QtAsyncio
 
 import shared
 from gui_module import main_gui
 from document_module import config_file_load, config_file_load_from, config_to_shared, config_save_on_closed
 from update_module import UpdateWidget
+
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
@@ -17,6 +18,18 @@ class MainWindow(QMainWindow):
         self.resize(1600, 900)
         self.setAcceptDrops(True)
         self.setDockNestingEnabled(True)
+        # overlay
+        self.overlay = QWidget(self)
+        self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 96);")
+        self.overlay.hide()
+        overlay_layout = QVBoxLayout(self.overlay)
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_layout.setSpacing(0)
+        overlay_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label = QLabel(self.tr("Guard Mode Activated"), self.overlay)
+        label.setStyleSheet("color: black; font-size: 24px; font-weight: bold; background-color: rgba(0, 0, 0, 0);")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        overlay_layout.addWidget(label)
 
     def closeEvent(self, event):
         if config_save_on_closed():

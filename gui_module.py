@@ -12,7 +12,7 @@ from document_module import DocumentWidget, config_save, config_save_as, config_
 from view_module import ViewWidget
 from setting_module import SettingWidget
 from info_module import InfoWidget
-from guard_module import guard, MouseEventFilter
+from guard_module import guard
 
 toolbar: QToolBar
 send_tab: QAction
@@ -34,7 +34,6 @@ command_shortcut_dock_widget: QDockWidget
 data_collect_dock_widget: QDockWidget
 
 guard_enable = False
-guard_filter = MouseEventFilter()
 
 
 def main_gui():
@@ -301,12 +300,14 @@ def shortcut_init():
         global guard_enable
         if guard_enable:
             guard_enable = False
-            shared.main_window.removeEventFilter(guard_filter)
+            shared.main_window.overlay.hide()
             shared.port_log_widget.log_insert("guard mode off", "warning")
             shared.abort_button.clicked.disconnect(guard)
         else:
             guard_enable = True
-            shared.main_window.installEventFilter(guard_filter)
+            shared.main_window.overlay.setGeometry(shared.main_window.rect())
+            shared.main_window.overlay.raise_()
+            shared.main_window.overlay.show()
             shared.port_log_widget.log_insert("guard mode on", "warning")
             shared.abort_button.clicked.connect(guard)
 
