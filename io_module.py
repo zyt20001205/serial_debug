@@ -4337,33 +4337,34 @@ class AdvancedSendWidget(QWidget):
         abort_button.clicked.connect(self.advanced_send_threadpool.stop)
         control_layout.addWidget(abort_button)
 
-        def global_abort_window() -> None:
-            existing_window = shared.main_window.findChild(QWidget, "global_abort_window")
+        def abort_window() -> None:
+            existing_window = shared.main_window.findChild(QWidget, "abort_window")
             if existing_window is not None and existing_window.isVisible():
                 existing_window.raise_()
                 existing_window.activateWindow()
                 return
-            
+
             abort_window = QWidget(shared.main_window)
-            abort_window.setObjectName("global_abort_window")
+            abort_window.setObjectName("abort_window")
             abort_window.setWindowTitle(self.tr("Abort"))
             abort_window.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
 
             abort_layout = QVBoxLayout(abort_window)
             abort_layout.setContentsMargins(0, 0, 0, 0)
-            global_abort_button = QPushButton()
-            global_abort_button.setStyleSheet("""border: none; padding: 0px;""")
-            global_abort_button.setIcon(QIcon("icon:stop_sign.svg"))
-            global_abort_button.setIconSize(QSize(96, 96))
-            global_abort_button.clicked.connect(self.advanced_send_threadpool.stop)
-            abort_layout.addWidget(global_abort_button)
+            abort_button = QPushButton()
+            abort_button.setStyleSheet("""border: none; padding: 0px;""")
+            abort_button.setIcon(QIcon("icon:stop_sign.svg"))
+            abort_button.setIconSize(QSize(96, 96))
+            abort_button.clicked.connect(self.advanced_send_threadpool.stop)
+            shared.abort_button = abort_button
+            abort_layout.addWidget(abort_button)
 
             abort_window.show()
             x = QApplication.primaryScreen().availableGeometry().right() - 128
             y = QApplication.primaryScreen().availableGeometry().bottom() - 128
             abort_window.move(x, y)
 
-        global_abort_window()
+        abort_window()
 
         # advanced send thread combobox
         self.advanced_send_combobox.addItem("Idle", "none")

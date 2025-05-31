@@ -1,6 +1,7 @@
 version = None
 check = None
 main_window = None
+abort_button = None
 
 port_log_widget = None
 port_status_widget = None
@@ -23,8 +24,6 @@ search_shortcut = None
 zoom_in_shortcut = None
 zoom_out_shortcut = None
 
-send_suffix_combobox = None
-status_bar = None
 log_textedit = None
 
 database_table = None

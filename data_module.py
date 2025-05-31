@@ -2,7 +2,7 @@ import csv
 import numpy as np
 import time
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QDrag, QIcon, QColor
+from PySide6.QtGui import QDrag, QIcon, QColor, QBrush
 from PySide6.QtWidgets import QVBoxLayout, QHeaderView, QSizePolicy, QWidget, QPushButton, QHBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, QTabWidget, \
     QMessageBox, QInputDialog, QColorDialog, QLabel, QListWidget, QListWidgetItem, QSpinBox, QComboBox, QSplitter, QLineEdit
 from PySide6.QtCore import Qt, QMimeData, QSize
@@ -287,6 +287,13 @@ class DataCollectWidget(QWidget):
 
         def data_search(self) -> None:
             self.table: "DataCollectWidget.DatatableWidget" = shared.data_collect_widget.datatable
+            # clear highlight
+            for row in range(self.table.rowCount()):
+                for col in range(self.table.columnCount()):
+                    item = self.table.item(row, col)
+                    if item is not None:
+                        item.setBackground(QBrush())
+            # search param
             keyword = self.search_lineedit.text()
             if self.match_exact_button.isChecked():
                 flag = Qt.MatchFlag.MatchExactly
@@ -304,6 +311,8 @@ class DataCollectWidget(QWidget):
             self.match_list = self.table.findItems(keyword, flag)
             self.match_index = 0
             if self.match_list:
+                for cell in self.match_list:
+                    cell.setBackground(QColor("yellow"))
                 self.statistic_label.setText(f"{self.match_index + 1}/{len(self.match_list)}")
                 self.table.setCurrentItem(self.match_list[self.match_index])
                 self.table.scrollToItem(self.match_list[self.match_index])

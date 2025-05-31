@@ -12,6 +12,7 @@ from document_module import DocumentWidget, config_save, config_save_as, config_
 from view_module import ViewWidget
 from setting_module import SettingWidget
 from info_module import InfoWidget
+from guardian_module import guardian
 
 toolbar: QToolBar
 send_tab: QAction
@@ -273,14 +274,14 @@ def shortcut_init():
     if shared.search_shortcut:
         shared.search_shortcut.deleteLater()
     shared.search_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["search"]), shared.main_window)
-    
+
     def search_focus_check():
         focus_widget = QApplication.focusWidget()
         if focus_widget == shared.port_log_widget or shared.port_log_widget.isAncestorOf(focus_widget):
             shared.port_log_widget.search_toggle()
         elif focus_widget == shared.data_collect_widget or shared.data_collect_widget.isAncestorOf(focus_widget):
             shared.data_collect_widget.DataSearchWidget.search_toggle(shared.data_collect_widget.datasearch)
-    
+
     shared.search_shortcut.activated.connect(search_focus_check)
 
     if shared.zoom_out_shortcut:
@@ -292,6 +293,13 @@ def shortcut_init():
         shared.zoom_in_shortcut.deleteLater()
     shared.zoom_in_shortcut = QShortcut(QKeySequence(shared.shortcut_setting["zoom_in"]), shared.main_window)
     shared.zoom_in_shortcut.activated.connect(shared.port_log_widget.log_zoom_in)
+
+    def guardian_toggle() -> None:
+        print("guardian on")
+        shared.abort_button.clicked.connect(guardian)
+
+    guardian_shortcut = QShortcut(QKeySequence("Ctrl+G"), shared.main_window)
+    guardian_shortcut.activated.connect(guardian_toggle)
 
 
 def tab_init():
