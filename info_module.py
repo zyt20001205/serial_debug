@@ -20,6 +20,7 @@ class InfoWidget(QWidget):
         <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025- v1.2.2 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send table/data table/data plot delete protection.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add guard mode.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Shortcut insert bug fix.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Abort window bug fix.</span></p>
         <br>
