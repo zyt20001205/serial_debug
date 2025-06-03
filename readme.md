@@ -42,8 +42,8 @@
 
 <br>
 
-<img src="screenshot/port_data_processing_1.png" alt="Port Data Processing" width="70">
-<img src="screenshot/port_data_processing_2.png" alt="Port Data Processing" width="330">
+<img src="screenshot/port_data_processing_1.png" alt="Port Data Processing" width="140">
+<img src="screenshot/port_data_processing_2.png" alt="Port Data Processing" width="660">
 
 </div>
 
