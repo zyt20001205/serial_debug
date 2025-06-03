@@ -14,11 +14,11 @@
 
 ## Features
 
-### Multiple Port Control
+### Multiple Port/Protocol Support
 
 <div align="center">
 
-<img src="screenshot/multiple_port_control.png" alt="Multiple Port Control" width="400">
+<img src="screenshot/multiple_port_protocol_support.png" alt="Multiple Port Control" width="600">
 
 </div>
 
