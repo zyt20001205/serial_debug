@@ -14,7 +14,7 @@ from update_module import UpdateWidget
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("serial debug")
+        self.setWindowTitle("UniComm")
         self.resize(1600, 900)
         self.setAcceptDrops(True)
         self.setDockNestingEnabled(True)
