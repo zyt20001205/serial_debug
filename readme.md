@@ -26,11 +26,7 @@
 
 <div align="center">
 
-<img src="screenshot/visual_script_coding_0.png" alt="Visual Script Coding" width="400">
-
-<br>
-
-<img src="screenshot/visual_script_coding_1.png" alt="Visual Script Coding" width="400">
+<img src="screenshot/visual_script_coding.gif" alt="Visual Script Coding" width="400">
 
 </div>
 
