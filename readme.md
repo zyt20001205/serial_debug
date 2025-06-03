@@ -10,6 +10,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/zyt20001205/UniComm?color=%2334D058&label=Version)](https://github.com/zyt20001205/UniComm/releases)
 [![PySide6](https://img.shields.io/badge/Built%20with-PySide6-blue)](https://pypi.org/project/PySide6/)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)]()
 
 </div>
 
