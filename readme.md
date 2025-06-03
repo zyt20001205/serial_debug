@@ -4,7 +4,7 @@ UniComm
 
 <div align="center">
 
-[![GitHub release](https://img.shields.io/github/v/release/zyt20001205/UniComm?color=%2334D058&label=Version)](https://github.com/你的用户名/你的仓库名/releases)
+[![GitHub release](https://img.shields.io/github/v/release/zyt20001205/UniComm?color=%2334D058&label=Version)](https://github.com/zyt20001205/UniComm/releases)
 
 </div>
 
