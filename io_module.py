@@ -2745,7 +2745,7 @@ class AdvancedSendWidget(QWidget):
             send_signal = Signal(str, str)
             request_signal = Signal(QThread, str, str, QWaitCondition)
             database_import_signal = Signal(int, str)
-            datatable_import_signal = Signal(int, float)
+            datatable_import_signal = Signal(int, str)
             message_signal = Signal(QThread, str, str, QWaitCondition)
             debug_signal = Signal(QThread, str, QWaitCondition)
 
@@ -2867,7 +2867,7 @@ class AdvancedSendWidget(QWidget):
                             self.highlight_signal.emit(length, index, "lightcoral")
                     elif action == "datatable":
                         try:
-                            data = eval(buffer[index][1])
+                            data = str(eval(buffer[index][1]))
                             label = buffer[index][2]
                             # get widget index
                             for row in range(len(shared.data_collect["datatable"])):

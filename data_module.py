@@ -917,7 +917,7 @@ class DataCollectWidget(QWidget):
             self.dataplot_init()
 
     # datatable func
-    def datatable_import(self, col: int, data: float) -> None:
+    def datatable_import(self, col: int, data: str) -> None:
         # import to datatable
         row_count = self.datatable.rowCount()
         try:
@@ -925,15 +925,15 @@ class DataCollectWidget(QWidget):
                 row for row in range(row_count)
                 if self.datatable.item(row, col) is None
             )
-            self.datatable.setItem(first_empty_row, col, QTableWidgetItem(str(data)))
+            self.datatable.setItem(first_empty_row, col, QTableWidgetItem(data))
         except:
             self.datatable.insertRow(row_count)
-            cell = QTableWidgetItem(str(data))
+            cell = QTableWidgetItem(data)
             self.datatable.setItem(row_count, col, cell)
         # scroll to bottom
         self.datatable.scrollToBottom()
         # add data to plot
-        self.dataplot_refresh(col, data)
+        self.dataplot_refresh(col, float(data))
 
     def datatable_insert(self) -> None:
         # get insert index

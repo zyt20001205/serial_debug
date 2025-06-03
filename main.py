@@ -70,10 +70,10 @@ if __name__ == "__main__":
     # resource dir
     if hasattr(sys, '_MEIPASS'):  # release environment
         QDir.addSearchPath('icon', '_internal/icon/')
-        QDir.addSearchPath('lang', '_internal/translations/')
+        QDir.addSearchPath('lang', '_internal/translation/')
     else:  # development environment
         QDir.addSearchPath('icon', 'icon/')
-        QDir.addSearchPath('lang', 'translations/')
+        QDir.addSearchPath('lang', 'translation/')
     qdarktheme.setup_theme("light")
     # instantiation main window
     main_window = MainWindow()

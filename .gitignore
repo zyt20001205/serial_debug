@@ -10,4 +10,4 @@ build/
 # Config
 config.json 
 # Translations
-translations/zh_CN.ts
+translation/zh_CN.ts
