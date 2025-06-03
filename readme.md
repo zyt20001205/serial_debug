@@ -49,8 +49,6 @@
 
 Download the latest release from [Releases](https://github.com/zyt20001205/UniComm/releases) page.
 
-### Quickstart
-
 ## For Developers
 
 ### Requirements
