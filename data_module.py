@@ -295,6 +295,9 @@ class DataCollectWidget(QWidget):
                         item.setBackground(QBrush())
             # search param
             keyword = self.search_lineedit.text()
+            if not keyword:
+                self.statistic_label.setText(self.tr("0 results"))
+                return
             if self.match_exact_button.isChecked():
                 flag = Qt.MatchFlag.MatchExactly
             elif self.match_contain_button.isChecked():
@@ -316,6 +319,8 @@ class DataCollectWidget(QWidget):
                 self.statistic_label.setText(f"{self.match_index + 1}/{len(self.match_list)}")
                 self.table.setCurrentItem(self.match_list[self.match_index])
                 self.table.scrollToItem(self.match_list[self.match_index])
+            else:
+                self.statistic_label.setText(self.tr("0 results"))
 
         def search_previous(self) -> None:
             if self.match_index == 0:
