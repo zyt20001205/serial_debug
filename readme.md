@@ -51,6 +51,14 @@
 
 Download the latest release from [Releases](https://github.com/zyt20001205/UniComm/releases) page.
 
+### Sending First Command
+
+<div align="center">
+
+<img src="screenshot/sending_first_command.gif" alt="Sending First Command" width="800">
+
+</div>
+
 ## For Developers
 
 ### Requirements
