@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-    A universal communication debugging tool for multiple protocols
+    A programmable communication debugging tool for multiple protocols
 </p>
 
 <div align="center">
