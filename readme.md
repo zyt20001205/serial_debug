@@ -21,7 +21,7 @@
 
 <div align="center">
 
-<img src="screenshot/multiple_port_protocol_support.png" alt="Multiple Port Control" width="600">
+<img src="screenshot/multiple_port_protocol_support.png" alt="Multiple Port/Protocol Control" width="600">
 
 </div>
 
@@ -29,7 +29,7 @@
 
 <div align="center">
 
-<img src="screenshot/visual_script_coding.gif" alt="Visual Script Coding" width="800">
+<img src="screenshot/visual_script_coding_saving.gif" alt="Visual Script Coding & Saving" width="800">
 
 </div>
 
@@ -37,12 +37,7 @@
 
 <div align="center">
 
-<img src="screenshot/port_data_processing_0.png" alt="Port Data Processing" width="400">
-
-<br>
-
-<img src="screenshot/port_data_processing_1.png" alt="Port Data Processing" width="140">
-<img src="screenshot/port_data_processing_2.png" alt="Port Data Processing" width="660">
+<img src="screenshot/port_data_collecting_processing.gif" alt="Port Data Collecting & Processing" width="800">
 
 </div>
 
@@ -52,11 +47,11 @@
 
 Download the latest release from [Releases](https://github.com/zyt20001205/UniComm/releases) page.
 
-### Sending First Command
+### Sending & Saving First Command
 
 <div align="center">
 
-<img src="screenshot/sending_first_command.gif" alt="Sending First Command" width="800">
+<img src="screenshot/sending_saving_first_command.gif" alt="Sending & Saving First Command" width="800">
 
 </div>
 
@@ -73,7 +68,7 @@ Download the latest release from [Releases](https://github.com/zyt20001205/UniCo
 ### Pack Command
 
 ```shell
-nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --include-data-dir=icon=icon --include-data-dir=translation=translation --output-dir=dist main.py
+nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --include-data-dir=icon=icon --include-data-dir=translation=translation --include-data-file=LICENSE=LICENSE --output-dir=dist src/main.py
 ```
 
 ### Localization

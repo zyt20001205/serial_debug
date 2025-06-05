@@ -923,6 +923,8 @@ class DataCollectWidget(QWidget):
 
     # datatable func
     def datatable_import(self, col: int, data: str) -> None:
+        if data == "None":
+            data = "0"
         # import to datatable
         row_count = self.datatable.rowCount()
         try:
@@ -933,8 +935,7 @@ class DataCollectWidget(QWidget):
             self.datatable.setItem(first_empty_row, col, QTableWidgetItem(data))
         except:
             self.datatable.insertRow(row_count)
-            cell = QTableWidgetItem(data)
-            self.datatable.setItem(row_count, col, cell)
+            self.datatable.setItem(row_count, col, QTableWidgetItem(data))
         # scroll to bottom
         self.datatable.scrollToBottom()
         # add data to plot
