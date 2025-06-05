@@ -321,15 +321,15 @@ class PortLogWidget(QWidget):
         # replace newline character "\r\n" with html newline character "<br>"
         if shared.log_setting["wrap"] == "crlf":
             message = message.replace("\r\n", "<br>")
+        # check scrollbar lock
+        scrollbar = self.log_textedit.verticalScrollBar()
+        current = scrollbar.value()
+        maximum = scrollbar.maximum()
+        self.log_append(message)
         if shared.log_setting["lock"]:
-            vertical_scrollbar = self.log_textedit.verticalScrollBar()
-            current_value = vertical_scrollbar.value()
-            maximum_value = vertical_scrollbar.maximum()
-            self.log_append(message)
-            if current_value < maximum_value:
-                vertical_scrollbar.setValue(current_value)
+            scrollbar.setValue(current)
         else:
-            self.log_append(message)
+            scrollbar.setValue(maximum)
 
     def log_append(self, message):
         cursor = self.log_textedit.textCursor()
