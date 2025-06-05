@@ -1,4 +1,5 @@
 import sys
+import os
 import asyncio
 import qdarktheme
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QVBoxLayout, QLabel
@@ -68,12 +69,13 @@ if __name__ == "__main__":
     # app initialization
     app = QApplication(sys.argv)
     # resource dir
-    if hasattr(sys, '_MEIPASS'):  # release environment
-        QDir.addSearchPath('icon', '_internal/icon/')
-        QDir.addSearchPath('lang', '_internal/translation/')
+    if "__compiled__" in globals():  # release environment
+        QDir.addSearchPath('icon', './icon/')
+        QDir.addSearchPath('lang', './translation/')
     else:  # development environment
-        QDir.addSearchPath('icon', 'icon/')
-        QDir.addSearchPath('lang', 'translation/')
+        QDir.addSearchPath('icon', '../icon/')
+        QDir.addSearchPath('lang', '../translation/')
+    # set theme
     qdarktheme.setup_theme("light")
     # instantiation main window
     main_window = MainWindow()
