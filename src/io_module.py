@@ -2503,6 +2503,7 @@ class AdvancedSendWidget(QWidget):
 
         self.advanced_send_table = self.AdvancedSendTableWidget(self)
         self.advanced_send_combobox = QComboBox()
+        self.help_window = QWidget(shared.main_window)
 
         self.advanced_send_threadpool = self.AdvancedSendThreadPool(self.advanced_send_table, self.advanced_send_combobox)
 
@@ -3359,6 +3360,35 @@ class AdvancedSendWidget(QWidget):
         # drag event: swap
         def startDrag(self, supported_actions) -> None:
             self.source_index = self.currentRow()
+            if shared.advanced_send_buffer[self.source_index][0] == "loop":
+                # hide row inside loop
+                depth = 0
+                index = self.source_index
+                while 1:
+                    if shared.advanced_send_buffer[index][0] == "loop":
+                        depth += 1
+                        index += 1
+                    elif shared.advanced_send_buffer[index][0] == "endloop":
+                        depth -= 1
+                    self.hideRow(index)
+                    index += 1
+                    if depth == 0:
+                        break
+            elif shared.advanced_send_buffer[self.source_index][0] == "if":
+                # hide row inside if
+                depth = 0
+                index = self.source_index
+                while 1:
+                    if shared.advanced_send_buffer[index][0] == "if":
+                        depth += 1
+                        index += 1
+                    elif shared.advanced_send_buffer[index][0] == "endif":
+                        depth -= 1
+                    self.hideRow(index)
+                    index += 1
+                    if depth == 0:
+                        break
+
             # create mime data
             mime_data = QMimeData()
             mime_data.setData('application/x-qabstractitemmodeldatalist', b"")
@@ -3369,18 +3399,58 @@ class AdvancedSendWidget(QWidget):
 
         def dropEvent(self, event) -> None:
             self.target_index = self.rowAt(event.position().toPoint().y())
+            for row in range(self.rowCount()):
+                self.showRow(row)
             self.row_swap()
 
         def row_swap(self) -> None:
             source_index = self.source_index
             target_index = self.target_index
-            # manipulate advanced send buffer
-            tmp = shared.advanced_send_buffer.pop(source_index)
-            shared.advanced_send_buffer.insert(target_index, tmp)
-            # remove source row
-            self.removeRow(source_index)
-            # insert target row
-            self.row_load(target_index)
+            if shared.advanced_send_buffer[source_index][0] == "tail" or shared.advanced_send_buffer[target_index][0] == "tail":
+                # block swap with tail
+                return
+            elif shared.advanced_send_buffer[source_index][0] == "loop":
+                # manipulate advanced send buffer
+                depth = 0
+                while 1:
+                    if shared.advanced_send_buffer[source_index][0] == "loop":
+                        depth += 1
+                    elif shared.advanced_send_buffer[source_index][0] == "endloop":
+                        depth -= 1
+                    tmp = shared.advanced_send_buffer.pop(source_index)
+                    self.removeRow(source_index)
+                    shared.advanced_send_buffer.insert(target_index, tmp)
+                    self.row_load(target_index)
+                    if source_index > target_index:
+                        source_index += 1
+                        target_index += 1
+                    if depth == 0:
+                        break
+            elif shared.advanced_send_buffer[source_index][0] == "if":
+                # manipulate advanced send buffer
+                depth = 0
+                while 1:
+                    if shared.advanced_send_buffer[source_index][0] == "if":
+                        depth += 1
+                    elif shared.advanced_send_buffer[source_index][0] == "endif":
+                        depth -= 1
+                    tmp = shared.advanced_send_buffer.pop(source_index)
+                    self.removeRow(source_index)
+                    shared.advanced_send_buffer.insert(target_index, tmp)
+                    self.row_load(target_index)
+                    if source_index > target_index:
+                        source_index += 1
+                        target_index += 1
+                    if depth == 0:
+                        break
+            else:
+                # manipulate advanced send buffer
+                tmp = shared.advanced_send_buffer.pop(source_index)
+                shared.advanced_send_buffer.insert(target_index, tmp)
+                # remove source row
+                self.removeRow(source_index)
+                # insert target row
+                self.row_load(target_index)
             # auto indent
             self.row_indent()
             # clear selection
@@ -4303,57 +4373,52 @@ class AdvancedSendWidget(QWidget):
         # advanced send table
         advanced_send_layout.addWidget(self.advanced_send_table)
 
-        control_splitter = QSplitter(Qt.Orientation.Horizontal)
-        control_splitter.setFixedHeight(30)
-        advanced_send_layout.addWidget(control_splitter)
         # advanced send control
         control_widget = QWidget()
-        control_splitter.addWidget(control_widget)
+        advanced_send_layout.addWidget(control_widget)
         control_layout = QHBoxLayout(control_widget)
         control_layout.setContentsMargins(0, 0, 0, 0)
-        control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        control_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         # advanced send button
-        advanced_send_button = QPushButton()
-        advanced_send_button.setFixedWidth(26)
-        advanced_send_button.setIcon(QIcon("icon:send.svg"))
-        advanced_send_button.setToolTip("send")
-        advanced_send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer, 1))
-        control_layout.addWidget(advanced_send_button)
+        send_button = QPushButton()
+        send_button.setFixedWidth(26)
+        send_button.setIcon(QIcon("icon:send.svg"))
+        send_button.setToolTip(self.tr("send"))
+        send_button.clicked.connect(lambda: self.advanced_send_threadpool.new("editor", shared.advanced_send_buffer, 1))
+        control_layout.addWidget(send_button)
         # advanced debug button
-        advanced_debug_button = QPushButton()
-        advanced_debug_button.setFixedWidth(26)
-        advanced_debug_button.setIcon(QIcon("icon:bug.svg"))
-        advanced_debug_button.setToolTip("debug")
-        advanced_debug_button.clicked.connect(lambda: self.advanced_send_threadpool.new("debugger", shared.advanced_send_buffer, 2))
-        control_layout.addWidget(advanced_debug_button)
+        debug_button = QPushButton()
+        debug_button.setFixedWidth(26)
+        debug_button.setIcon(QIcon("icon:bug.svg"))
+        debug_button.setToolTip(self.tr("debug"))
+        debug_button.clicked.connect(lambda: self.advanced_send_threadpool.new("debugger", shared.advanced_send_buffer, 2))
+        control_layout.addWidget(debug_button)
         # advanced send save button
-        advanced_save_button = QPushButton()
-        advanced_save_button.setFixedWidth(26)
-        advanced_save_button.setIcon(QIcon("icon:save.svg"))
-        advanced_save_button.setToolTip("save to shortcut")
-        advanced_save_button.clicked.connect(self.advanced_send_save)
-        control_layout.addWidget(advanced_save_button)
+        save_button = QPushButton()
+        save_button.setFixedWidth(26)
+        save_button.setIcon(QIcon("icon:save.svg"))
+        save_button.setToolTip(self.tr("save to shortcut"))
+        save_button.clicked.connect(self.advanced_send_save)
+        control_layout.addWidget(save_button)
         # advanced send clear button
-        advanced_clear_button = QPushButton()
-        advanced_clear_button.setFixedWidth(26)
-        advanced_clear_button.setIcon(QIcon("icon:delete.svg"))
-        advanced_clear_button.setToolTip("clear")
-        advanced_clear_button.clicked.connect(self.advanced_send_table.table_clear)
-        control_layout.addWidget(advanced_clear_button)
+        clear_button = QPushButton()
+        clear_button.setFixedWidth(26)
+        clear_button.setIcon(QIcon("icon:delete.svg"))
+        clear_button.setToolTip(self.tr("clear"))
+        clear_button.clicked.connect(self.advanced_send_table.table_clear)
+        control_layout.addWidget(clear_button)
         # advanced send abort button
         abort_button = QPushButton()
         abort_button.setFixedWidth(26)
         abort_button.setIcon(QIcon("icon:stop.svg"))
-        abort_button.setToolTip("abort")
+        abort_button.setToolTip(self.tr("abort"))
         abort_button.clicked.connect(self.advanced_send_threadpool.stop)
         control_layout.addWidget(abort_button)
 
         def abort_window() -> None:
             existing_window = shared.main_window.findChild(QWidget, "abort_window")
             if existing_window is not None and existing_window.isVisible():
-                existing_window.raise_()
-                existing_window.activateWindow()
-                return
+                existing_window.close()
 
             abort_window = QWidget(shared.main_window)
             abort_window.setObjectName("abort_window")
@@ -4379,7 +4444,64 @@ class AdvancedSendWidget(QWidget):
 
         # advanced send thread combobox
         self.advanced_send_combobox.addItem("Idle", "none")
-        control_splitter.addWidget(self.advanced_send_combobox)
+        self.advanced_send_combobox.setFixedWidth(120)
+        control_layout.addWidget(self.advanced_send_combobox)
+        # spacer
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        control_layout.addWidget(spacer)
+        # advanced send help button
+        help_button = QPushButton()
+        help_button.setFixedWidth(26)
+        help_button.setIcon(QIcon("icon:question_circle.svg"))
+        help_button.setToolTip(self.tr("help"))
+        help_button.clicked.connect(self.help_window.show)
+        control_layout.addWidget(help_button)
+
+        def help_window() -> None:
+            self.help_window.setWindowTitle(self.tr("Help Window"))
+            self.help_window.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
+            self.help_window.setStyleSheet("font-size: 16px;")
+            self.help_window.setFixedWidth(400)
+
+            help_layout = QGridLayout(self.help_window)
+
+            insert_key = QLabel("insert")
+            help_layout.addWidget(insert_key, 0, 0)
+            insert_label = QLabel(self.tr("insert row above selection"))
+            help_layout.addWidget(insert_label, 0, 1)
+
+            delete_key = QLabel("delete")
+            help_layout.addWidget(delete_key, 1, 0)
+            delete_label = QLabel(self.tr("delete selected row"))
+            help_layout.addWidget(delete_label, 1, 1)
+
+            edit_key = QLabel(self.tr("double click"))
+            help_layout.addWidget(edit_key, 2, 0)
+            edit_label = QLabel(self.tr("edit selected row"))
+            help_layout.addWidget(edit_label, 2, 1)
+
+            move_key = QLabel(self.tr("drag and move"))
+            help_layout.addWidget(move_key, 3, 0)
+            move_label = QLabel(self.tr("move selected row"))
+            help_layout.addWidget(move_label, 3, 1)
+
+            breakpoint_key = QLabel("CTRL + D")
+            help_layout.addWidget(breakpoint_key, 4, 0)
+            breakpoint_label = QLabel(self.tr("duplicate selected row"))
+            help_layout.addWidget(breakpoint_label, 4, 1)
+
+            breakpoint_key = QLabel("CTRL + B")
+            help_layout.addWidget(breakpoint_key, 5, 0)
+            breakpoint_label = QLabel(self.tr("add breakpoint"))
+            help_layout.addWidget(breakpoint_label, 5, 1)
+
+            annotation_key = QLabel("CTRL + /")
+            help_layout.addWidget(annotation_key, 6, 0)
+            annotation_label = QLabel(self.tr("add annotation"))
+            help_layout.addWidget(annotation_label, 6, 1)
+
+        help_window()
 
     @staticmethod
     def advanced_send_save() -> None:

@@ -76,7 +76,7 @@ nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --inc
 Generate .ts file:
 
 ```shell
-pyside6-lupdate data_module.py document_module.py gui_module.py io_module.py log_module.py setting_module.py -ts translation/zh_CN.ts
+pyside6-lupdate src/data_module.py src/document_module.py src/gui_module.py src/io_module.py src/log_module.py src/setting_module.py -ts translation/zh_CN.ts
 ```
 
 Do translation:

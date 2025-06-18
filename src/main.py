@@ -78,8 +78,7 @@ if __name__ == "__main__":
     # set theme
     qdarktheme.setup_theme("light")
     # instantiation main window
-    main_window = MainWindow()
-    shared.main_window = main_window
+    shared.main_window = MainWindow()
     # load config from config file
     config = config_file_load()
     # load config to shared
