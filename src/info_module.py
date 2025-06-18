@@ -20,6 +20,7 @@ class InfoWidget(QWidget):
         <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-XX-XX v1.2.3 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add help button.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send widget optimized.</span></p>
         <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-06-03 v1.2.2 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send table/data table/data plot delete protection.</span></p>
