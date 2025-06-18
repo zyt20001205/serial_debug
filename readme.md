@@ -2,6 +2,12 @@
     UniComm
 </h1>
 
+<div align="center">
+
+<img src="icon/icon.ico" alt="Multiple Port/Protocol Control" width="96">
+
+</div>
+
 <p align="center">
     A programmable communication debugging tool for multiple protocols
 </p>
@@ -68,7 +74,7 @@ Download the latest release from [Releases](https://github.com/zyt20001205/UniCo
 ### Pack Command
 
 ```shell
-nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --include-data-dir=icon=icon --include-data-dir=translation=translation --include-data-file=LICENSE=LICENSE --output-dir=dist src/main.py
+nuitka --standalone --enable-plugin=pyside6 --windows-console-mode=disable --windows-icon-from-ico="icon/icon.ico" --include-data-dir=icon=icon --include-data-dir=translation=translation --include-data-file=LICENSE=LICENSE --output-dir=dist src/main.py
 ```
 
 ### Localization

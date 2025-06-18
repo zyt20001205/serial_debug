@@ -19,6 +19,7 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">mail: z18917941512@qq.com</span></p>
         <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-XX-XX v1.2.3 - release</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add app icon.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add help button.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send widget optimized.</span></p>
         <br>
