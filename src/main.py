@@ -2,6 +2,7 @@ import sys
 import os
 import asyncio
 import qdarktheme
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import QDir, Qt
 import PySide6.QtAsyncio as QtAsyncio
@@ -16,6 +17,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("UniComm")
+        self.setWindowIcon(QIcon("icon:icon.ico"))
         self.resize(1600, 900)
         self.setAcceptDrops(True)
         self.setDockNestingEnabled(True)
