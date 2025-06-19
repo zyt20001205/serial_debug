@@ -4,7 +4,7 @@
 
 <div align="center">
 
-<img src="icon/icon.ico" alt="icon" width="96">
+<img src="icon/icon.ico" alt="icon" width="128">
 
 </div>
 
