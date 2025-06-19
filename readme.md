@@ -53,11 +53,11 @@
 
 Download the latest release from [Releases](https://github.com/zyt20001205/UniComm/releases) page.
 
-### Sending & Saving First Command
+### Quick Start
 
 <div align="center">
 
-<img src="screenshot/sending_saving_first_command.gif" alt="Sending & Saving First Command" width="800">
+<img src="screenshot/quick_start.gif" alt="Quick Start" width="800">
 
 </div>
 
