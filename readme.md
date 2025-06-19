@@ -4,7 +4,7 @@
 
 <div align="center">
 
-<img src="icon/icon.ico" alt="Multiple Port/Protocol Control" width="96">
+<img src="icon/icon.ico" alt="icon" width="96">
 
 </div>
 
