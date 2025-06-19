@@ -1,12 +1,12 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextBrowser
 
 
 class InfoWidget(QWidget):
     def __init__(self) -> None:
         super().__init__()
         # instance variables
-        self.info_textedit = QTextEdit(self)
+        self.info_textedit = QTextBrowser(self)
         # draw gui
         self.info_gui()
 
@@ -15,6 +15,8 @@ class InfoWidget(QWidget):
         info_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.info_textedit.setHtml("""
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">Contact Author: Yitian Zhou</span></p>
+        <p><span style="font-family:Times New Roman; font-size:24px; color:black;">Github: <a href="https://github.com/zyt20001205/UniComm" style="color:blue; text-decoration:underline;">https://github.com/zyt20001205/UniComm</a></span></p>
+        <p><span style="font-family:Times New Roman; font-size:24px; color:black;">Gitee: <a href="https://gitee.com/ZHOU_125/UniComm" style="color:blue; text-decoration:underline;">https://gitee.com/ZHOU_125/UniComm</a></span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">QQ: 2376926590</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">mail: z18917941512@qq.com</span></p>
         <br>
@@ -74,4 +76,6 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Log module supports clear and save operation.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Document module supports config file load and save operation.</span></p>
         """)
+        self.info_textedit.setOpenExternalLinks(True)
+        self.info_textedit.setReadOnly(True)
         info_layout.addWidget(self.info_textedit)
