@@ -3458,7 +3458,16 @@ class AdvancedSendWidget(QWidget):
             self.clearFocus()
             # print(shared.advanced_send_buffer)
 
-        # key press event: insert/remove/duplicate/annotate/breakpoint
+        # mouse press event: clear selection
+        def mousePressEvent(self, event) -> None:
+            if event.button() == Qt.MouseButton.LeftButton:
+                index = self.indexAt(event.pos())
+            if not index.isValid():
+                self.clearSelection()
+                self.clearFocus()
+            super().mousePressEvent(event)
+
+        # key press event: insert/remove/duplicate/annotate/breakpoint/clear selection
         def keyPressEvent(self, event) -> None:
             if event.key() == Qt.Key.Key_Insert:
                 self.row_insert()
