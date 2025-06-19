@@ -3,7 +3,7 @@ import os
 
 import requests
 from PySide6.QtCore import Qt, QThread, Signal, QStandardPaths
-from PySide6.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton, QProgressBar
+from PySide6.QtWidgets import QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton, QProgressBar, QComboBox
 
 import shared
 
@@ -73,16 +73,32 @@ class UpdateWidget(QWidget):
             def stop(self):
                 self.enable = False
 
-        def update_download(self) -> None:
+        def update_download(self, source: str | None) -> None:
             try:
-                # get download link
-                assets = self.response_data.get("assets", [])
-                if not assets:
-                    QMessageBox.warning(shared.main_window, self.tr("Download Failed"),
-                                        self.tr("No download assets found."))
+                if not source:
                     return
-                # select first asset download link
-                download_url = assets[0]["browser_download_url"]
+                elif source == "github":
+                    # get download link
+                    api_url = "https://api.github.com/repos/zyt20001205/UniComm/releases/latest"
+                    response = requests.get(api_url, timeout=1)
+                    response_data = json.loads(response.text)
+                    assets = response_data.get("assets", [])
+                    if not assets:
+                        QMessageBox.warning(shared.main_window, self.tr("Download Failed"),
+                                            self.tr("No download assets found."))
+                        return
+                    # select first asset download link
+                    download_url = assets[0]["browser_download_url"]
+                else:  # source == "gitee"
+                    api_url = "https://gitee.com/api/v5/repos/ZHOU_125/UniComm/releases/latest"
+                    response = requests.get(api_url, timeout=1)
+                    response_data = json.loads(response.text)
+                    assets = response_data.get("assets", [])
+                    if not assets:
+                        QMessageBox.warning(shared.main_window, self.tr("Download Failed"),
+                                            self.tr("No download assets found."))
+                        return
+                    download_url = assets[0]["browser_download_url"]
                 self.download_button.setEnabled(False)
                 self.progress_bar.setVisible(True)
                 self.progress_bar.setValue(0)
@@ -161,8 +177,15 @@ class UpdateWidget(QWidget):
             control_layout.setContentsMargins(0, 0, 0, 0)
             control_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
+            # source combobox
+            source_combobox = QComboBox()
+            source_combobox.addItem(self.tr("choose source"), None)
+            source_combobox.addItem("github", "github")
+            source_combobox.addItem("gitee", "gitee")
+            control_layout.addWidget(source_combobox)
+
             # download button
-            self.download_button.clicked.connect(self.update_download)
+            self.download_button.clicked.connect(lambda: self.update_download(source_combobox.currentData()))
             control_layout.addWidget(self.download_button)
 
             # ignore button
@@ -175,9 +198,11 @@ class UpdateWidget(QWidget):
             return [int(part) for part in version.split('.')]
 
         try:
-            api_url = "https://api.github.com/repos/zyt20001205/serial_debug/releases/latest"
+            api_url = "https://api.github.com/repos/zyt20001205/UniComm/releases/latest"
+            # api_url = "https://gitee.com/api/v5/repos/ZHOU_125/UniComm/releases/latest"
             response = requests.get(api_url, timeout=1)
             response_data = json.loads(response.text)
+            # print(response_data)
             latest_version = version_to_list(response_data['tag_name'].lstrip('v'))
             local_version = version_to_list(shared.version)
 

@@ -18,10 +18,11 @@ class InfoWidget(QWidget):
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">QQ: 2376926590</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">mail: z18917941512@qq.com</span></p>
         <br>
-        <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-XX-XX v1.2.3 - release</span></p>
+        <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-06-19 v1.2.3 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add app icon.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add help button.</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send widget optimized.</span></p>
+        <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Add Gitee repository mirroring.</span></p>
         <br>
         <p><span style="font-family:Times New Roman; font-size:24px; color:black; font-weight: bold;">2025-06-03 v1.2.2 - release</span></p>
         <p><span style="font-family:Times New Roman; font-size:20px; color:black;">Advanced send table/data table/data plot delete protection.</span></p>
